@@ -35,6 +35,7 @@ const canonicalRootFiles = new Set([
   ".prettierrc.json",
   "CHANGELOG.md",
   "CODEX_IMPLEMENTATION_CHECKLIST.md",
+  "CODEX_UNIFIED_MODEL_ROUTING_CHECKLIST.md",
   "CODE_OF_CONDUCT.md",
   "CONTRIBUTING.md",
   "LICENSE",

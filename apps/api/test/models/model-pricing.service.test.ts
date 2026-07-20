@@ -59,7 +59,7 @@ function fixture() {
       findFirst: vi.fn().mockResolvedValue({
         id: modelId,
         name: "主模型",
-        litellmTag: "openai/gpt-4.1",
+        requestModel: "openai/gpt-4.1",
         application: { baseCurrency: "CNY" },
       }),
     },

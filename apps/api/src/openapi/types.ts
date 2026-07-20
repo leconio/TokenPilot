@@ -14,6 +14,7 @@ export interface OpenApiSchema {
   readonly minLength?: number;
   readonly maxLength?: number;
   readonly minimum?: number;
+  readonly exclusiveMinimum?: number;
   readonly maximum?: number;
   readonly minItems?: number;
   readonly maxItems?: number;

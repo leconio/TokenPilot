@@ -55,6 +55,11 @@ const aiuStatusOptions: readonly ComboboxOption[] = [
   { value: "unrated", label: "尚未计算" },
   { value: "invalid_usage", label: "用量信息不完整" },
 ];
+const connectionDriverOptions: readonly ComboboxOption[] = [
+  { value: "litellm", label: "LiteLLM" },
+  { value: "openai_compatible", label: "OpenAI 兼容接口" },
+  { value: "anthropic", label: "Anthropic 接口" },
+];
 
 const propertyOperators: Readonly<Record<AnalysisDataType, readonly AnalysisOperator[]>> = {
   TEXT: ["equals", "not_equals", "contains", "starts_with", "is_set", "is_not_set"],
@@ -161,8 +166,16 @@ export function useAnalysisOptions(activeFieldIds: ReadonlySet<string>) {
     activeFieldIds.has("builtin:user_tag");
   const models = useControlQuery<unknown>(
     ["analysis-options", applicationSlug, "models"],
-    activeFieldIds.has("builtin:model_tag") || activeFieldIds.has("builtin:provider")
+    activeFieldIds.has("builtin:model_id") ||
+      activeFieldIds.has("builtin:request_model") ||
+      activeFieldIds.has("builtin:provider")
       ? applicationApiPath(applicationSlug, "/models")
+      : null,
+  );
+  const connections = useControlQuery<unknown>(
+    ["analysis-options", applicationSlug, "connections"],
+    activeFieldIds.has("builtin:connection_id")
+      ? applicationApiPath(applicationSlug, "/connections")
       : null,
   );
   const virtualModels = useControlQuery<unknown>(
@@ -189,10 +202,21 @@ export function useAnalysisOptions(activeFieldIds: ReadonlySet<string>) {
     const userRows = normalizePage<ResourceRow>(users.data, ["users"]).items;
     const userGroupRows = normalizePage<ResourceRow>(userGroups.data, ["user_groups"]).items;
     const modelOptions = modelRows.flatMap((row) => {
-      const value = text(row, "litellmTag", "litellm_tag");
+      const value = text(row, "requestModel", "request_model");
       return value
         ? [{ value, label: text(row, "displayName", "display_name") ?? value, keywords: value }]
         : [];
+    });
+    const modelIdOptions = modelRows.flatMap((row) => {
+      const value = text(row, "id");
+      return value
+        ? [{ value, label: text(row, "displayName", "display_name", "name") ?? value }]
+        : [];
+    });
+    const connectionRows = normalizePage<ResourceRow>(connections.data, ["connections"]).items;
+    const connectionOptions = connectionRows.flatMap((row) => {
+      const value = text(row, "id");
+      return value ? [{ value, label: text(row, "name") ?? value }] : [];
     });
     const virtualOptions = virtualRows.flatMap((row) => {
       const value = text(row, "stableName", "stable_name");
@@ -223,8 +247,11 @@ export function useAnalysisOptions(activeFieldIds: ReadonlySet<string>) {
       return value ? [{ value, label: text(row, "name") ?? value }] : [];
     });
     return {
-      "builtin:model_tag": distinct(modelOptions),
+      "builtin:model_id": distinct(modelIdOptions),
+      "builtin:request_model": distinct(modelOptions),
       "builtin:virtual_model": distinct(virtualOptions),
+      "builtin:connection_id": distinct(connectionOptions),
+      "builtin:connection_driver": connectionDriverOptions,
       "builtin:provider": distinct(providerOptions),
       "builtin:user_id": distinct(userOptions),
       "builtin:display_user": distinct(displayOptions),
@@ -234,7 +261,7 @@ export function useAnalysisOptions(activeFieldIds: ReadonlySet<string>) {
       "builtin:cost_status": costStatusOptions,
       "builtin:aiu_status": aiuStatusOptions,
     } satisfies Readonly<Record<string, readonly ComboboxOption[]>>;
-  }, [models.data, userGroups.data, users.data, virtualModels.data]);
+  }, [connections.data, models.data, userGroups.data, users.data, virtualModels.data]);
 }
 
 export function useUserLabelMap(enabled: boolean): ReadonlyMap<string, string> {

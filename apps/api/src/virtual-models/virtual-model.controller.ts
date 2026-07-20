@@ -24,6 +24,12 @@ export class VirtualModelController {
     return this.virtualModels.list();
   }
 
+  @Get(":id")
+  @RequireMachineScope("configuration:read")
+  get(@Param("id") id: string) {
+    return this.virtualModels.get(id);
+  }
+
   @Post()
   @RequireMachineScope("configuration:write")
   create(@Body() body: unknown) {
@@ -58,6 +64,12 @@ export class VirtualModelController {
     return this.virtualModels.updateTarget(id, targetId, body);
   }
 
+  @Delete(":id/routes/:targetId")
+  @RequireMachineScope("configuration:write")
+  removeTarget(@Param("id") id: string, @Param("targetId") targetId: string) {
+    return this.virtualModels.removeTarget(id, targetId);
+  }
+
   @Post(":id/rules")
   @RequireMachineScope("configuration:write")
   addRule(@Param("id") id: string, @Body() body: unknown) {
@@ -80,5 +92,11 @@ export class VirtualModelController {
   @RequireMachineScope("configuration:read")
   simulate(@Param("id") id: string, @Body() body: unknown) {
     return this.virtualModels.simulate(id, body);
+  }
+
+  @Delete(":id")
+  @RequireMachineScope("configuration:write")
+  delete(@Param("id") id: string) {
+    return this.virtualModels.delete(id);
   }
 }

@@ -50,7 +50,7 @@ const scenarioDetails = {
   peak: {
     hour: 10,
     provider: "openai",
-    modelTag: "fake/openai-fast",
+    requestModel: "fake/openai-fast",
     tag: "cp:text.fast:peak",
     rule: "peak",
     reason: "scheduled_peak",
@@ -58,7 +58,7 @@ const scenarioDetails = {
   offpeak: {
     hour: 2,
     provider: "google",
-    modelTag: "fake/gemini-fast",
+    requestModel: "fake/gemini-fast",
     tag: "cp:text.fast:offpeak",
     rule: "offpeak",
     reason: "scheduled_offpeak",
@@ -66,7 +66,7 @@ const scenarioDetails = {
   fallback: {
     hour: 10,
     provider: "azure",
-    modelTag: "fake/azure-fast",
+    requestModel: "fake/azure-fast",
     tag: "cp:text.fast:peak",
     rule: "peak",
     reason: "provider_fallback",
@@ -75,7 +75,7 @@ const scenarioDetails = {
   override: {
     hour: 10,
     provider: "google",
-    modelTag: "fake/gemini-fast",
+    requestModel: "fake/gemini-fast",
     tag: "cp:text.fast:emergency",
     rule: "emergency-override",
     reason: "manual_override",
@@ -108,6 +108,8 @@ function eventFor(scenario, index, seed) {
     request: {
       request_id: requestId,
       attempt_id: `${requestId}-attempt-${isPrimaryFailure ? "01" : scenario === "fallback" ? "02" : "01"}`,
+      attempt_index: isPrimaryFailure ? 0 : scenario === "fallback" ? 1 : 0,
+      is_final_attempt: !isPrimaryFailure,
       operation_id: `business-${requestIndex.toString().padStart(4, "0")}`,
       parent_request_id: `business-${index.toString().padStart(4, "0")}`,
       conversation_id: null,
@@ -116,7 +118,7 @@ function eventFor(scenario, index, seed) {
     },
     model: {
       virtual_model: "text.fast",
-      model_tag: details.modelTag,
+      request_model: details.requestModel,
       provider: details.provider,
     },
     route: {

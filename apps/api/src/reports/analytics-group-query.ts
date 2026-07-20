@@ -5,8 +5,11 @@ import { propertyColumn } from "./clickhouse-query.js";
 import type { ReportQuery } from "./query.js";
 
 const minuteGroupDimensions = new Set<ReportGroupDimension>([
-  "model_tag",
+  "model_id",
+  "request_model",
   "virtual_model",
+  "connection_id",
+  "connection_driver",
   "provider",
   "route_reason",
   "time",
@@ -17,8 +20,11 @@ const minuteGroupDimensions = new Set<ReportGroupDimension>([
 ]);
 
 export function groupExpression(dimension: ReportGroupDimension): string {
-  if (dimension === "model_tag") return "event.model_tag";
+  if (dimension === "model_id") return "event.model_id";
+  if (dimension === "request_model") return "event.request_model";
   if (dimension === "virtual_model") return "event.virtual_model";
+  if (dimension === "connection_id") return "event.connection_id";
+  if (dimension === "connection_driver") return "event.connection_driver";
   if (dimension === "provider") return "event.provider";
   if (dimension === "user_id") return "event.user_id";
   if (dimension === "user_tag") {

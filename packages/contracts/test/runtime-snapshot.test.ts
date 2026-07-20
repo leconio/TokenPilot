@@ -9,10 +9,15 @@ import {
   virtualModelRouteMatchSchema,
 } from "../src/index.js";
 
+const connectionId = "00000000-0000-4000-8000-000000000102";
+
 const target = {
   model_id: "00000000-0000-4000-8000-000000000101",
-  model_tag: "openai/gpt-5-mini",
+  connection_id: connectionId,
+  request_model: "openai/gpt-5-mini",
   provider: "openai",
+  task_type: "chat",
+  capabilities: ["streaming", "tools"],
   route_tag: "cp:assistant:default",
   fallback_order: 0,
   weight: 1,
@@ -25,6 +30,17 @@ const snapshot = {
   etag: `sha256:${"a".repeat(64)}`,
   signature: `sha256:${"c".repeat(64)}`,
   expires_at: "2026-07-19T14:00:00.000Z",
+  connections: {
+    [connectionId]: {
+      id: connectionId,
+      name: "OpenAI",
+      driver: "openai_compatible",
+      base_url: "https://api.openai.com/v1",
+      credential_ref: "OPENAI_API_KEY",
+      timeout_ms: 60_000,
+      max_retries: 2,
+    },
+  },
   routing: {
     assistant: {
       virtual_model_id: "00000000-0000-4000-8000-000000000100",

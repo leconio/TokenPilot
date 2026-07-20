@@ -12,8 +12,8 @@ export const systemTranslations = {
   访问密钥: "Access keys",
   创建访问密钥: "Create access key",
   停用访问密钥: "Disable access key",
-  "接入密钥只显示一次。请先保存，再完成 LiteLLM 和首个模型配置。":
-    "The ingest key is shown once. Save it before configuring LiteLLM and your first model.",
+  "接入密钥只显示一次。请先保存，再完成调用连接和首个模型配置。":
+    "The application key is shown once. Save it before configuring a connection and your first model.",
   "查看基本信息、管理访问密钥和隐私保护。日常使用通常不需要修改这里。":
     "Review instance details, access keys, and privacy controls. Most teams rarely change these settings.",
   应用功能: "Application tag",

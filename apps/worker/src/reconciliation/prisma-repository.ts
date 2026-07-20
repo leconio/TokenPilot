@@ -24,7 +24,7 @@ export function persistedDimensions(value: ReconciliationDimensions) {
     time_bucket: value.bucketStart,
     virtual_model: value.virtualModel,
     model_id: value.modelId,
-    model_tag: value.modelTag,
+    request_model: value.requestModel,
     provider: value.provider,
     user_id: value.userId,
   } as const;
@@ -37,7 +37,7 @@ export function restoredDimensions(value: unknown): ReconciliationDimensions {
     readonly time_bucket: string;
     readonly virtual_model: string | null;
     readonly model_id: string | null;
-    readonly model_tag: string | null;
+    readonly request_model: string | null;
     readonly provider: string | null;
     readonly user_id: string | null;
   };
@@ -47,7 +47,7 @@ export function restoredDimensions(value: unknown): ReconciliationDimensions {
     bucketStart: persisted.time_bucket,
     virtualModel: persisted.virtual_model,
     modelId: persisted.model_id,
-    modelTag: persisted.model_tag,
+    requestModel: persisted.request_model,
     provider: persisted.provider,
     userId: persisted.user_id,
   };

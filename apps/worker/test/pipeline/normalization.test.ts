@@ -13,6 +13,8 @@ describe("normalizeUsageEvent", () => {
       request: {
         request_id: "request-1",
         attempt_id: "attempt-1",
+        attempt_index: 0,
+        is_final_attempt: true,
         operation_id: null,
         parent_request_id: null,
         session_id: null,
@@ -20,7 +22,7 @@ describe("normalizeUsageEvent", () => {
         trace_id: null,
       },
       model: {
-        model_tag: "provider/model",
+        request_model: "provider/model",
         provider: "provider",
       },
       route: null,

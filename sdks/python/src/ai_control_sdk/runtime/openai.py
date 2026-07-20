@@ -80,15 +80,20 @@ def apply_ai_context_to_openai_request(
         "virtual_model": route.virtual_model,
         "route_tag": route.route_tag,
         "model_id": route.primary.model_id,
-        "model_tag": route.primary.model_tag,
+        "connection_id": route.primary.connection_id,
+        "request_model": route.primary.request_model,
         "configuration_version": route.configuration_version,
         "fallback_model_ids": [target.model_id for target in route.fallbacks],
         "candidate_models": [
-            {"model_id": target.model_id, "model_tag": target.model_tag}
+            {
+                "model_id": target.model_id,
+                "connection_id": target.connection_id,
+                "request_model": target.request_model,
+            }
             for target in (route.primary, *route.fallbacks)
         ],
     }
-    output_body["model"] = route.primary.model_tag
-    output_body["fallbacks"] = [target.model_tag for target in route.fallbacks]
+    output_body["model"] = route.primary.request_model
+    output_body["fallbacks"] = [target.request_model for target in route.fallbacks]
     output_body["metadata"] = metadata
     return output_body, output_options

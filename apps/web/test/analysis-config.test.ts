@@ -18,7 +18,7 @@ describe("analysis query configuration", () => {
       metric: "provider_cost",
       filter_match: "any",
       conditions: JSON.stringify([
-        { kind: "builtin", field: "model_tag", operator: "equals", values: ["company/chat"] },
+        { kind: "builtin", field: "request_model", operator: "equals", values: ["company/chat"] },
         { kind: "builtin", field: "provider", operator: "equals", values: ["openai"] },
         { kind: "builtin", field: "provider", operator: "equals", values: ["azure"] },
       ]),
@@ -32,7 +32,7 @@ describe("analysis query configuration", () => {
         {
           id: "query-0",
           kind: "builtin",
-          field: "model_tag",
+          field: "request_model",
           operator: "equals",
           values: ["company/chat"],
         },
@@ -75,7 +75,7 @@ describe("analysis query configuration", () => {
         {
           id: "one",
           kind: "builtin" as const,
-          field: "model_tag" as const,
+          field: "request_model" as const,
           operator: "equals" as const,
           values: ["openai/gpt-4.1-mini"],
         },
@@ -94,12 +94,12 @@ describe("analysis query configuration", () => {
       from: "2026-07-09T12:00:00.000Z",
       to: "2026-07-16T12:00:00.000Z",
       filter_match: "all",
-      group_dimension: "model_tag",
+      group_dimension: "request_model",
     });
     expect(JSON.parse(String(parameters.conditions))).toEqual([
       {
         kind: "builtin",
-        field: "model_tag",
+        field: "request_model",
         operator: "equals",
         values: ["openai/gpt-4.1-mini"],
       },
@@ -115,14 +115,14 @@ describe("analysis query configuration", () => {
         {
           id: "one",
           kind: "builtin" as const,
-          field: "model_tag" as const,
+          field: "request_model" as const,
           operator: "equals" as const,
           values: ["openai/gpt-4.1-mini"],
         },
         {
           id: "two",
           kind: "builtin" as const,
-          field: "model_tag" as const,
+          field: "request_model" as const,
           operator: "equals" as const,
           values: ["anthropic/claude-sonnet-4"],
         },
@@ -163,12 +163,12 @@ describe("analysis query configuration", () => {
   it("turns a selected group into an exact event drill-down condition", () => {
     const selection = {
       ...defaultAnalysisSelection("usage"),
-      group: { kind: "builtin", dimension: "model_tag" } as const,
+      group: { kind: "builtin", dimension: "request_model" } as const,
       conditions: [
         {
           id: "old-model",
           kind: "builtin" as const,
-          field: "model_tag" as const,
+          field: "request_model" as const,
           operator: "equals" as const,
           values: ["old-model"],
         },
@@ -185,9 +185,9 @@ describe("analysis query configuration", () => {
     expect(selectionForGroupDrill(selection, [], "selected-model")?.conditions).toEqual([
       selection.conditions[1],
       {
-        id: "drill-model_tag",
+        id: "drill-request_model",
         kind: "builtin",
-        field: "model_tag",
+        field: "request_model",
         operator: "equals",
         values: ["selected-model"],
       },

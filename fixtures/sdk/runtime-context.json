@@ -3,6 +3,7 @@
     "schema_version": "2.0",
     "version": "runtime-v42",
     "expires_at": "2026-07-16T14:00:00.000Z",
+    "connections": {},
     "routing": {},
     "aiu": {
       "enabled": true,
@@ -17,8 +18,8 @@
       "analytics_allowed_keys": ["client", "region"]
     },
     "application_id": "00000000-0000-4000-8000-000000000042",
-    "etag": "sha256:9e61aa30e0f405cbefd6cd7a7d854a062f3bc553345b56fc06149eb271af2a48",
-    "signature": "sha256:7e32f921b5e732b54e625d327292fc1b7e100a3004cc11447b84239587308307"
+    "etag": "sha256:7150297ca1f744e8df191fc85880129ec06ef5164904077525107d23810862b0",
+    "signature": "sha256:af6e53dd01810d7827b6b57a8d30b904084349d66385a77e02f4d6b91b176ef5"
   },
   "context": {
     "user_id": "user_123",

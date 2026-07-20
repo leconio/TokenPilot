@@ -22,6 +22,13 @@ export function collectPerformanceStages(
   readonly stages: readonly PerformanceStageEvidence[];
   readonly statuses: Readonly<Record<string, PerformanceStageStatus>>;
 }>;
+export function performanceModelFromSnapshot(snapshot: unknown): {
+  readonly id: string;
+  readonly connection_id: string;
+  readonly connection_driver: string;
+  readonly request_model: string;
+  readonly provider: string | null;
+};
 export function runRemotePerformanceAcceptance(
   arguments_: readonly string[],
   environment?: NodeJS.ProcessEnv,

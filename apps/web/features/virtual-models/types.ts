@@ -1,7 +1,8 @@
 export interface ModelItem {
   readonly id: string;
   readonly name: string;
-  readonly litellm_tag: string;
+  readonly request_model: string;
+  readonly task_type: "chat" | "embedding" | "image" | "audio";
   readonly enabled: boolean;
 }
 
@@ -47,6 +48,7 @@ export interface VirtualModelItem {
   readonly id: string;
   readonly name: string;
   readonly display_name: string;
+  readonly task_type: "chat" | "embedding" | "image" | "audio";
   readonly enabled: boolean;
   readonly default_model: ModelItem | null;
   readonly targets: readonly VirtualModelTarget[];

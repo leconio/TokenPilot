@@ -42,7 +42,7 @@ function dimensionsKey(value: ReconciliationDimensions): string {
     value.applicationId,
     value.virtualModel,
     value.modelId,
-    value.modelTag,
+    value.requestModel,
     value.provider,
     value.userId,
   ]);

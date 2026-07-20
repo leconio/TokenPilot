@@ -1,7 +1,12 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
 
 import { connectorHeartbeatSchema, type ConnectorHeartbeat } from "@tokenpilot/contracts";
-import { ConnectorStatus, type DatabaseClient, type Prisma } from "@tokenpilot/db";
+import {
+  CallConnectionStatus,
+  ConnectorStatus,
+  type DatabaseClient,
+  type Prisma,
+} from "@tokenpilot/db";
 
 import { AuditService } from "./audit.service.js";
 import { AuditContextService } from "./audit-context.js";
@@ -14,6 +19,11 @@ const MAX_FUTURE_CLOCK_SKEW_MS = 5 * 60 * 1000;
 const statusValues = {
   healthy: ConnectorStatus.HEALTHY,
   degraded: ConnectorStatus.DEGRADED,
+} as const;
+
+const connectionStatusValues = {
+  healthy: CallConnectionStatus.AVAILABLE,
+  degraded: CallConnectionStatus.DEGRADED,
 } as const;
 
 export type HeartbeatRequestHeaders = Readonly<
@@ -222,6 +232,15 @@ export class HeartbeatService {
           where: { id: connector.id },
           select: { lastHeartbeatId: true },
         });
+        if (current.lastHeartbeatId === heartbeat.heartbeat_id) {
+          await transaction.callConnection.updateMany({
+            where: { applicationId, connectorInstanceId: connector.id },
+            data: {
+              lastSeenAt: receivedAt,
+              status: connectionStatusValues[heartbeat.status],
+            },
+          });
+        }
 
         if (before === null || materialConfigurationChanged(before, heartbeat)) {
           await this.audit.record(

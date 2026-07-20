@@ -139,7 +139,7 @@
         "model_id": {
           "$ref": "#/$defs/__schema4"
         },
-        "model_tag": {
+        "request_model": {
           "$ref": "#/$defs/__schema5"
         },
         "provider": {
@@ -155,7 +155,7 @@
         "time_bucket",
         "virtual_model",
         "model_id",
-        "model_tag",
+        "request_model",
         "provider",
         "user_id"
       ],

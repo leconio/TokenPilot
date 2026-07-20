@@ -13,12 +13,12 @@ interface TrendRow {
 }
 
 interface ModelRow extends TrendRow {
-  readonly model_tag?: unknown;
+  readonly request_model?: unknown;
   readonly virtual_model?: unknown;
 }
 
 interface CostRow {
-  readonly model_tag?: unknown;
+  readonly request_model?: unknown;
   readonly currency?: unknown;
   readonly amount?: unknown;
 }
@@ -28,7 +28,7 @@ interface HistoryRow {
   readonly request_id?: unknown;
   readonly event_time?: unknown;
   readonly virtual_model?: unknown;
-  readonly model_tag?: unknown;
+  readonly request_model?: unknown;
   readonly status?: unknown;
 }
 
@@ -40,7 +40,7 @@ export interface ApplicationUserAnalytics {
     readonly aiu_micros: string;
   }[];
   readonly models: readonly {
-    readonly model_tag: string;
+    readonly request_model: string;
     readonly virtual_model: string;
     readonly calls: number;
     readonly tokens: string;
@@ -53,7 +53,7 @@ export interface ApplicationUserAnalytics {
     readonly request_id: string;
     readonly event_time: string;
     readonly virtual_model: string;
-    readonly model_tag: string;
+    readonly request_model: string;
     readonly status: string;
   }[];
 }
@@ -105,39 +105,39 @@ export async function queryApplicationUserAnalytics(
       }),
       clickhouse.query({
         query: `
-          SELECT model_tag, virtual_model,
+          SELECT request_model, virtual_model,
             toUInt64(sum(calls)) AS calls,
             toString(sum(tokens)) AS tokens,
             toString(sum(aiu_micros)) AS aiu_micros
           FROM (
-            SELECT model_tag, virtual_model, uniqExact(request_id) AS calls,
+            SELECT request_model, virtual_model, uniqExact(request_id) AS calls,
               toDecimal128(0, 9) AS tokens, toInt64(0) AS aiu_micros
-            FROM current_usage_events_raw WHERE ${where} GROUP BY model_tag, virtual_model
+            FROM current_usage_events_raw WHERE ${where} GROUP BY request_model, virtual_model
             UNION ALL
-            SELECT model_tag, virtual_model, toUInt64(0) AS calls,
+            SELECT request_model, virtual_model, toUInt64(0) AS calls,
               sumIf(quantity, unit = 'token') AS tokens, toInt64(0) AS aiu_micros
-            FROM current_usage_lines WHERE ${where} GROUP BY model_tag, virtual_model
+            FROM current_usage_lines WHERE ${where} GROUP BY request_model, virtual_model
             UNION ALL
-            SELECT model_tag, virtual_model, toUInt64(0) AS calls,
+            SELECT request_model, virtual_model, toUInt64(0) AS calls,
               toDecimal128(0, 9) AS tokens,
               sumIf(rating_sign * assumeNotNull(aiu_micros), rating_kind = 'aiu' AND isNotNull(aiu_micros)) AS aiu_micros
-            FROM current_rating_events WHERE ${where} GROUP BY model_tag, virtual_model
+            FROM current_rating_events WHERE ${where} GROUP BY request_model, virtual_model
           )
-          GROUP BY model_tag, virtual_model
-          ORDER BY aiu_micros DESC, model_tag LIMIT 200
+          GROUP BY request_model, virtual_model
+          ORDER BY aiu_micros DESC, request_model LIMIT 200
         `,
         query_params: range,
         format: "JSONEachRow",
       }),
       clickhouse.query({
         query: `
-          SELECT model_tag, assumeNotNull(currency) AS currency,
+          SELECT request_model, assumeNotNull(currency) AS currency,
             toString(sum(rating_sign * assumeNotNull(amount_decimal))) AS amount
           FROM current_rating_events
           WHERE ${where}
             AND rating_kind = 'provider_cost'
             AND isNotNull(currency) AND isNotNull(amount_decimal)
-          GROUP BY model_tag, currency ORDER BY model_tag, currency LIMIT 1000
+          GROUP BY request_model, currency ORDER BY request_model, currency LIMIT 1000
         `,
         query_params: range,
         format: "JSONEachRow",
@@ -146,7 +146,7 @@ export async function queryApplicationUserAnalytics(
         query: `
           SELECT event_id, request_id,
             formatDateTime(event_time, '%Y-%m-%dT%H:%i:%S.%fZ', 'UTC') AS event_time,
-            virtual_model, model_tag, status
+            virtual_model, request_model, status
           FROM current_usage_events_raw
           WHERE ${where}
           ORDER BY event_time DESC, event_id DESC LIMIT 100
@@ -164,10 +164,10 @@ export async function queryApplicationUserAnalytics(
     const costsByModel = new Map<string, Array<{ currency: string; amount: string }>>();
     const allCosts = new Map<string, Prisma.Decimal>();
     for (const row of costRows) {
-      if (typeof row.model_tag !== "string" || typeof row.currency !== "string") continue;
+      if (typeof row.request_model !== "string" || typeof row.currency !== "string") continue;
       const amount = metricDecimal(row.amount);
-      costsByModel.set(row.model_tag, [
-        ...(costsByModel.get(row.model_tag) ?? []),
+      costsByModel.set(row.request_model, [
+        ...(costsByModel.get(row.request_model) ?? []),
         { currency: row.currency, amount: amount.toString() },
       ]);
       allCosts.set(row.currency, (allCosts.get(row.currency) ?? new Prisma.Decimal(0)).add(amount));
@@ -186,16 +186,16 @@ export async function queryApplicationUserAnalytics(
             ],
       ),
       models: modelRows.flatMap((row) =>
-        typeof row.model_tag !== "string"
+        typeof row.request_model !== "string"
           ? []
           : [
               {
-                model_tag: row.model_tag,
+                request_model: row.request_model,
                 virtual_model: typeof row.virtual_model === "string" ? row.virtual_model : "",
                 calls: Number(metricInteger(row.calls)),
                 tokens: metricDecimal(row.tokens).toString(),
                 aiu_micros: metricInteger(row.aiu_micros).toString(),
-                costs: costsByModel.get(row.model_tag) ?? [],
+                costs: costsByModel.get(row.request_model) ?? [],
               },
             ],
       ),
@@ -214,7 +214,7 @@ export async function queryApplicationUserAnalytics(
                 request_id: row.request_id,
                 event_time: row.event_time,
                 virtual_model: typeof row.virtual_model === "string" ? row.virtual_model : "",
-                model_tag: typeof row.model_tag === "string" ? row.model_tag : "",
+                request_model: typeof row.request_model === "string" ? row.request_model : "",
                 status: typeof row.status === "string" ? row.status : "unknown",
               },
             ],

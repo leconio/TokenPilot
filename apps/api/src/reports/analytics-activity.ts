@@ -20,6 +20,7 @@ function eventProjection(group: string, where: string): string {
     SELECT
       event.event_id,
       event.request_id,
+      if(empty(event.operation_id), event.request_id, event.operation_id) AS operation_key,
       event.user_id,
       event.status,
       event.latency_ms,
@@ -53,18 +54,18 @@ const usageProjection = `
 `;
 
 function metricExpression(metric: ActivityMetric): string {
-  if (metric === "requests") return "toString(uniqExact(event.request_id))";
+  if (metric === "requests") return "toString(uniqExact(event.operation_key))";
   if (metric === "tokens") return "toString(sum(ifNull(usage.total_tokens, 0)))";
   if (metric === "unique_users") {
     return "toString(uniqExactIf(event.user_id, notEmpty(event.user_id)))";
   }
   if (metric === "success_rate") {
     return `if(
-      uniqExact(event.request_id) = 0,
+      uniqExact(event.operation_key) = 0,
       NULL,
       toString(round(
-        100 * uniqExactIf(event.request_id, event.status = 'success') /
-          uniqExact(event.request_id),
+        100 * uniqExactIf(event.operation_key, event.status = 'success') /
+          uniqExact(event.operation_key),
         6
       ))
     )`;

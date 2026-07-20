@@ -21,7 +21,7 @@ const dimensions: ReconciliationDimensions = {
   bucketSize: "hour",
   virtualModel: "text.fast",
   modelId: "model-1",
-  modelTag: "openai-primary",
+  requestModel: "openai-primary",
   provider: "openai",
   userId: "user_hmac:0123456789abcdef",
 };
@@ -48,7 +48,7 @@ describe("Prisma reconciliation persistence mapping", () => {
       time_bucket: dimensions.bucketStart,
       virtual_model: "text.fast",
       model_id: "model-1",
-      model_tag: "openai-primary",
+      request_model: "openai-primary",
       provider: "openai",
       user_id: "user_hmac:0123456789abcdef",
     });

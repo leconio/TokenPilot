@@ -22,7 +22,7 @@ describe("dual-store reconciliation snapshot source", () => {
           bucket_start: "2026-07-16 00:00:00.000",
           virtual_model: "",
           model_id: "",
-          model_tag: "",
+          request_model: "",
           provider: "",
           user_id: "user-1",
           event_count: "1",

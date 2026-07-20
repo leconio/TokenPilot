@@ -123,7 +123,9 @@
             "config_version",
             "virtual_model",
             "model_id",
-            "model_tag",
+            "connection_id",
+            "connection_driver",
+            "request_model",
             "provider",
             "status",
             "schema_version",
@@ -255,11 +257,14 @@
       ]
     },
     "__schema15": {
-      "default": "model_tag",
+      "default": "request_model",
       "type": "string",
       "enum": [
-        "model_tag",
+        "model_id",
+        "request_model",
         "virtual_model",
+        "connection_id",
+        "connection_driver",
         "user_id",
         "user_tag",
         "provider",

@@ -114,7 +114,7 @@ describe("ClickHouse current analytics baseline contract", () => {
     expect(raw).toContain("event_text_list_properties Map(String, Array(String))");
     expect(raw).toContain("user_text_list_properties Map(String, Array(String))");
     expect(raw).toContain("user_id String");
-    expect(raw).toContain("model_tag LowCardinality(String)");
+    expect(raw).toContain("request_model LowCardinality(String)");
     expect(raw).not.toMatch(/logical_model|base_model_id|deployment_id|actual_model_raw/iu);
     expect(raw).toContain("payload_hash String");
     expect(raw).toContain("latency_ms Nullable(UInt64)");

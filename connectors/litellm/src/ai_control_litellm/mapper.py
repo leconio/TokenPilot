@@ -164,8 +164,10 @@ def map_standard_payload(
     http_status = payload.http_status
     if http_status is None and status == "success":
         http_status = 200
-    model_tag = payload.routed_model_tag or projection.model_tag or _bounded(payload.model)
-    if model_tag is None:
+    request_model = (
+        payload.routed_request_model or projection.request_model or _bounded(payload.model)
+    )
+    if request_model is None:
         raise ValueError("LiteLLM did not provide the real model tag")
     model_id = payload.routed_model_id or projection.model_id
     fallback_from = _bounded(payload.fallback_from)
@@ -182,6 +184,8 @@ def map_standard_payload(
     request: dict[str, object] = {
         "request_id": request_id,
         "attempt_id": attempt_id,
+        "attempt_index": payload.attempt_index,
+        "is_final_attempt": status == "success" or payload.is_last_candidate,
         "operation_id": projection.operation_id,
         "parent_request_id": projection.parent_request_id,
         "session_id": projection.session_id,
@@ -204,7 +208,9 @@ def map_standard_payload(
         "model": {
             "virtual_model": virtual_model,
             "model_id": model_id,
-            "model_tag": model_tag,
+            "connection_id": payload.routed_connection_id or projection.connection_id,
+            "connection_driver": projection.connection_driver or "litellm",
+            "request_model": request_model,
             "provider": _provider(payload),
         },
         "route": {

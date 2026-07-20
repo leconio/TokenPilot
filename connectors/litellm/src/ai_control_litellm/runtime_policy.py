@@ -340,7 +340,9 @@ class RuntimePolicyClient:
                 "context_version": cp.get("context_version") or "1",
                 "virtual_model": virtual_model,
                 "model_id": str(route.primary["model_id"]),
-                "model_tag": str(route.primary["model_tag"]),
+                "connection_id": str(route.primary["connection_id"]),
+                "connection_driver": "litellm",
+                "request_model": str(route.primary["request_model"]),
                 "configuration_version": str(route.configuration_version),
             }
         )
@@ -354,12 +356,15 @@ class RuntimePolicyClient:
                     "virtual_model": virtual_model,
                     "route_tag": route.route_tag,
                     "model_id": route.primary["model_id"],
-                    "model_tag": route.primary["model_tag"],
+                    "connection_id": route.primary["connection_id"],
+                    "connection_driver": "litellm",
+                    "request_model": route.primary["request_model"],
                     "candidate_model_ids": candidate_model_ids,
                     "candidate_models": [
                         {
                             "model_id": candidate["model_id"],
-                            "model_tag": candidate["model_tag"],
+                            "connection_id": candidate["connection_id"],
+                            "request_model": candidate["request_model"],
                         }
                         for candidate in candidates
                     ],
@@ -369,10 +374,10 @@ class RuntimePolicyClient:
             }
         )
         output = dict(data)
-        primary_model = str(route.primary["model_tag"])
+        primary_model = str(route.primary["request_model"])
         output["model"] = primary_model
         output["fallbacks"] = [
-            {primary_model: [str(target["model_tag"]) for target in route.fallbacks]}
+            {primary_model: [str(target["request_model"]) for target in route.fallbacks]}
         ]
         output["metadata"] = metadata
         return output

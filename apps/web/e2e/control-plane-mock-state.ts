@@ -25,9 +25,32 @@ export interface MockApplication {
 export interface MockModel {
   id: string;
   name: string;
-  litellm_tag: string;
-  provider: string | null;
+  request_model: string;
+  provider: string;
+  connection_id: string;
+  task_type: "chat" | "embedding" | "image" | "audio";
+  capabilities: string[];
   enabled: boolean;
+}
+
+export interface MockConnection {
+  id: string;
+  name: string;
+  driver: "litellm" | "openai_compatible" | "anthropic";
+  base_url: string | null;
+  credential_ref: string | null;
+  public_config: Record<string, unknown>;
+  enabled: boolean;
+  status: "unverified" | "available" | "degraded" | "offline";
+  last_seen_at: string | null;
+  connector_instance: {
+    id: string;
+    instance_id: string;
+    name: string;
+    status: string;
+  } | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface MockUser {
@@ -129,8 +152,11 @@ export function initialMockModels(): Map<string, MockModel[]> {
         {
           id: "model-support",
           name: "快速模型",
-          litellm_tag: "openai/gpt-4.1-mini",
+          request_model: "openai/gpt-4.1-mini",
           provider: "openai",
+          connection_id: "connection-support",
+          task_type: "chat",
+          capabilities: ["streaming", "tools", "structured_output"],
           enabled: true,
         },
       ],
@@ -141,12 +167,36 @@ export function initialMockModels(): Map<string, MockModel[]> {
         {
           id: "model-voice",
           name: "语音模型",
-          litellm_tag: "openai/gpt-4o-audio",
+          request_model: "openai/gpt-4o-audio",
           provider: "openai",
+          connection_id: "connection-voice",
+          task_type: "audio",
+          capabilities: ["streaming", "audio_input", "audio_output"],
           enabled: true,
         },
       ],
     ],
+  ]);
+}
+
+export function initialMockConnections(): Map<string, MockConnection[]> {
+  const connection = (slug: string, name: string): MockConnection => ({
+    id: `connection-${slug}`,
+    name,
+    driver: "openai_compatible",
+    base_url: "https://api.openai.com/v1",
+    credential_ref: "OPENAI_API_KEY",
+    public_config: { timeout_ms: 60_000, max_retries: 2 },
+    enabled: true,
+    status: "available",
+    last_seen_at: mockNow,
+    connector_instance: null,
+    created_at: mockNow,
+    updated_at: mockNow,
+  });
+  return new Map([
+    ["support", [connection("support", "OpenAI 主连接")]],
+    ["voice", [connection("voice", "语音模型连接")]],
   ]);
 }
 

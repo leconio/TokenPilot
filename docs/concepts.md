@@ -18,11 +18,22 @@ Common usage lines are:
 - `reasoning_tokens`: hidden reasoning reported by a supporting Provider;
 - `output_tokens`: visible model output.
 
-## Model
+## Application, connection, real model, and virtual model
 
-A TokenPilot model is the LiteLLM model name used for a real request, such as `openai/gpt-4.1`.
-Provider cost and AI Unit rates bind directly to this model. There is no second model catalog or
-runtime-model identity to maintain.
+An **application** is the isolation boundary. Its users, fields, reports, model settings, and API
+key never cross into another application.
+
+A **call connection** describes how the application reaches a model service. It can point to
+LiteLLM, an OpenAI-compatible service, or Anthropic. TokenPilot stores only a local credential
+reference such as `OPENAI_API_KEY`; the value stays in the application environment.
+
+A **real model** combines a connection with the model name sent on the wire. Provider-cost and AI
+Unit rates bind to this record, so the same Provider model reached through two connections is
+represented by two real models.
+
+A **virtual model** is the stable name used by business code. It owns the preferred real model,
+fallback order, weights, schedules, user conditions, and temporary switches. Publishing a new
+policy can change the selected registered connection without changing application code.
 
 ## Provider cost
 
@@ -86,19 +97,20 @@ receives analytical projections but never decides whether a request is allowed.
 
 ## Data ownership
 
-| Data                                            | Authority                         |
-| ----------------------------------------------- | --------------------------------- |
-| Model catalog, prices, rates, policies, keys    | PostgreSQL                        |
-| Rating decisions, quota, reservations, journals | PostgreSQL                        |
-| Queue leases and short-lived coordination       | Redis                             |
-| Reports and dashboards                          | ClickHouse                        |
-| Connector retry buffer                          | Local SQLite spool beside LiteLLM |
+| Data                                            | Authority                            |
+| ----------------------------------------------- | ------------------------------------ |
+| Model catalog, prices, rates, policies, keys    | PostgreSQL                           |
+| Rating decisions, quota, reservations, journals | PostgreSQL                           |
+| Queue leases and short-lived coordination       | Redis                                |
+| Reports and dashboards                          | ClickHouse                           |
+| SDK or Connector retry buffer                   | Local SQLite spool beside the caller |
 
 Reports do not fall back to PostgreSQL. A ClickHouse failure is visible as an unavailable report,
 which is safer than returning a different or incomplete number.
 
-TokenPilot does not proxy model traffic. LiteLLM remains in the request path while TokenPilot
-receives usage events and publishes routing, pricing, and AI Unit configuration.
+TokenPilot does not proxy model traffic. The Node/Python SDK can call a registered connection
+directly, while the LiteLLM Connector keeps LiteLLM in the request path. Both send the same event
+contract and receive the same published routing policy.
 
 ## Fresh database rule
 

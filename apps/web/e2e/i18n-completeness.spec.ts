@@ -10,6 +10,7 @@ const pages = [
   "models",
   "models/model-support",
   "virtual-models",
+  "connections",
   "releases",
   "users",
   "user-groups",
@@ -24,6 +25,8 @@ function useEnglishFixtureData(mock: ControlPlaneMock) {
   mock.applications[1]!.name = "Voice assistant";
   mock.models.get("support")![0]!.name = "Fast model";
   mock.models.get("voice")![0]!.name = "Voice model";
+  mock.connections.get("support")![0]!.name = "OpenAI primary";
+  mock.connections.get("voice")![0]!.name = "Voice model connection";
   mock.users.get("support")![0]!.display_user = "Support user";
   mock.users.get("voice")![0]!.display_user = "Voice user";
 }
@@ -107,7 +110,7 @@ test("英文模式覆盖全部应用页面且服务端直接使用已选语言",
     expect(await response?.text()).toContain('<html lang="en"');
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
     if (path === "costs") {
-      await expect(page.getByText("By model", { exact: true })).toBeVisible();
+      await expect(page.getByText("By model identifier", { exact: true })).toBeVisible();
     }
     let issues = await collectEnglishInterfaceIssues(page);
     if (path === "ai-units") {
@@ -138,8 +141,8 @@ test("英文模式覆盖常用筛选器和弹窗", async ({ page }) => {
     .click();
 
   await page.goto("/apps/support/models");
-  await page.getByRole("button", { name: "Add model" }).click();
-  await expect(page.getByRole("dialog", { name: "Add model" })).toBeVisible();
+  await page.getByRole("button", { name: "Add real model" }).click();
+  await expect(page.getByRole("dialog", { name: "Add real model" })).toBeVisible();
   await expectEnglishInterface(page);
 
   await page.keyboard.press("Escape");

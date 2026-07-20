@@ -21,7 +21,7 @@ export interface ReconciliationDimensions {
   readonly bucketSize: "hour" | "day";
   readonly virtualModel: string | null;
   readonly modelId: string | null;
-  readonly modelTag: string | null;
+  readonly requestModel: string | null;
   readonly provider: string | null;
   readonly userId: string | null;
 }

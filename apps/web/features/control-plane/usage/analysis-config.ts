@@ -11,12 +11,18 @@ import type {
   AnalysisOperator,
   AnalysisRange,
   AnalysisSelection,
-  AnalysisValue,
-  SavedReportDefinition,
 } from "./analysis-types";
 
 export type * from "./analysis-types";
 export { analysisFileName, rowsToCsv } from "./analysis-export";
+export {
+  analysisRange,
+  conditionFieldId,
+  reportParameters,
+  selectionForGroupDrill,
+  selectionFromDefinition,
+  selectionToDefinition,
+} from "./analysis-selection";
 
 export const analysisRanges: ReadonlyArray<{ value: AnalysisRange; label: string }> = [
   { value: "24h", label: "最近 24 小时" },
@@ -75,8 +81,10 @@ const commonFields: readonly AnalysisFieldDefinition[] = [
   field("event_id", "事件 ID", "输入事件 ID", "TEXT", equalityOperators, true),
   field("request_id", "请求 ID", "输入请求 ID", "TEXT", equalityOperators, true),
   field("model_id", "模型 ID", "输入模型 ID", "TEXT", equalityOperators, true),
-  field("model_tag", "模型", "搜索 LiteLLM 标签", "TEXT", textOperators),
+  field("request_model", "模型标识", "搜索模型标识", "TEXT", textOperators),
   field("virtual_model", "虚拟模型", "搜索虚拟模型", "TEXT", textOperators),
+  field("connection_id", "调用连接", "选择调用连接", "TEXT", equalityOperators),
+  field("connection_driver", "连接类型", "选择连接类型", "TEXT", equalityOperators),
   field("provider", "服务商", "搜索服务商", "TEXT", textOperators),
   field("route_reason", "调用原因", "输入调用原因", "TEXT", textOperators, true),
   field("user_id", "用户 ID", "搜索用户 ID", "TEXT", textOperators, true),
@@ -124,8 +132,11 @@ export function builtInAnalysisFields(kind: AnalysisKind): readonly AnalysisFiel
 }
 
 export const builtInAnalysisGroups: readonly AnalysisGroup[] = [
-  { kind: "builtin", dimension: "model_tag" },
+  { kind: "builtin", dimension: "model_id" },
+  { kind: "builtin", dimension: "request_model" },
   { kind: "builtin", dimension: "virtual_model" },
+  { kind: "builtin", dimension: "connection_id" },
+  { kind: "builtin", dimension: "connection_driver" },
   { kind: "builtin", dimension: "provider" },
   { kind: "builtin", dimension: "user_id" },
   { kind: "builtin", dimension: "user_tag" },
@@ -141,8 +152,11 @@ export const analysisGrains: ReadonlyArray<{ value: AnalysisGrain; label: string
 ];
 
 const groupLabels: Readonly<Record<AnalysisBuiltInGroup, string>> = {
-  model_tag: "模型",
+  model_id: "真实模型",
+  request_model: "模型标识",
   virtual_model: "虚拟模型",
+  connection_id: "调用连接",
+  connection_driver: "连接类型",
   provider: "服务商",
   user_id: "用户",
   user_tag: "用户标签",
@@ -160,19 +174,13 @@ export function analysisGroupValue(group: AnalysisGroup): string {
     : `builtin:${group.dimension}`;
 }
 
-export function conditionFieldId(condition: AnalysisCondition): string {
-  return condition.kind === "property"
-    ? `property:${condition.scope}:${condition.key}`
-    : `builtin:${condition.field}`;
-}
-
 export function defaultAnalysisSelection(kind: AnalysisKind): AnalysisSelection {
   return {
     range: "7d",
     metric: metricsByKind[kind][0]!.value,
     match: "all",
     conditions: [],
-    group: { kind: "builtin", dimension: kind === "aiu" ? "user_id" : "model_tag" },
+    group: { kind: "builtin", dimension: kind === "aiu" ? "user_id" : "request_model" },
     grain: kind === "aiu" ? "day" : "hour",
   };
 }
@@ -219,179 +227,4 @@ function hydrateCondition(value: unknown, id: string): readonly AnalysisConditio
     return [{ ...item, id, data_type: "TEXT" } as AnalysisCondition];
   }
   return [];
-}
-
-export function analysisRange(range: AnalysisRange, now: Date = new Date()) {
-  const to = new Date(Math.floor(now.getTime() / 60_000) * 60_000);
-  const days = range === "24h" ? 1 : range === "7d" ? 7 : range === "30d" ? 30 : 90;
-  return { from: new Date(to.getTime() - days * 86_400_000).toISOString(), to: to.toISOString() };
-}
-
-function reportCondition(
-  condition: AnalysisCondition,
-): SavedReportDefinition["conditions"][number] {
-  if (condition.kind === "builtin") {
-    return {
-      kind: condition.kind,
-      field: condition.field,
-      operator: condition.operator,
-      values: condition.values,
-    };
-  }
-  return {
-    kind: condition.kind,
-    scope: condition.scope,
-    key: condition.key,
-    operator: condition.operator,
-    values: condition.values,
-  };
-}
-
-export function reportParameters(
-  selection: AnalysisSelection,
-  now: Date = new Date(),
-  includeGroup = true,
-  useTimeGrain = false,
-  pageSize = 100,
-): Readonly<Record<string, string | number | readonly string[] | undefined>> {
-  const dimension =
-    selection.group.kind === "property"
-      ? "property"
-      : useTimeGrain && selection.group.dimension === "time"
-        ? selection.grain
-        : selection.group.dimension;
-  return {
-    ...analysisRange(selection.range, now),
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-    page_size: pageSize,
-    filter_match: selection.match,
-    metric: selection.metric,
-    grain: selection.grain,
-    conditions: JSON.stringify(selection.conditions.map(reportCondition)),
-    ...(includeGroup ? { group_dimension: dimension } : {}),
-    ...(includeGroup && selection.group.kind === "property"
-      ? {
-          group_property: JSON.stringify({
-            scope: selection.group.scope,
-            key: selection.group.key,
-          }),
-        }
-      : {}),
-  };
-}
-
-export function selectionToDefinition(selection: AnalysisSelection): SavedReportDefinition {
-  return {
-    version: 1,
-    range: selection.range,
-    metric: selection.metric,
-    filter_match: selection.match,
-    conditions: selection.conditions.map(reportCondition),
-    group:
-      selection.group.kind === "property"
-        ? { kind: "property", scope: selection.group.scope, key: selection.group.key }
-        : selection.group,
-    grain: selection.grain,
-  };
-}
-
-export function selectionFromDefinition(
-  definition: SavedReportDefinition,
-  propertyFields: readonly AnalysisFieldDefinition[],
-): AnalysisSelection {
-  const conditions: readonly AnalysisCondition[] = definition.conditions.map((condition, index) => {
-    if (condition.kind === "builtin") {
-      return { ...condition, id: `saved-${index}` } satisfies AnalysisCondition;
-    }
-    const field = propertyFields.find(
-      (candidate) => candidate.scope === condition.scope && candidate.key === condition.key,
-    );
-    return {
-      ...condition,
-      id: `saved-${index}`,
-      data_type: field?.data_type ?? "TEXT",
-    } satisfies AnalysisCondition;
-  });
-  const savedGroup = definition.group;
-  const group: AnalysisGroup =
-    savedGroup.kind === "builtin"
-      ? savedGroup
-      : {
-          ...savedGroup,
-          label:
-            propertyFields.find(
-              (field) => field.scope === savedGroup.scope && field.key === savedGroup.key,
-            )?.label ?? savedGroup.key,
-        };
-  return {
-    range: definition.range,
-    metric: definition.metric,
-    match: definition.filter_match,
-    conditions,
-    group,
-    grain: definition.grain,
-  };
-}
-
-export function selectionForGroupDrill(
-  selection: AnalysisSelection,
-  propertyFields: readonly AnalysisFieldDefinition[],
-  key: string,
-): AnalysisSelection | null {
-  if (selection.group.kind === "builtin") {
-    if (selection.group.dimension === "time") return null;
-    const field = selection.group.dimension;
-    const id = `builtin:${field}`;
-    return {
-      ...selection,
-      conditions: [
-        ...selection.conditions.filter((condition) => conditionFieldId(condition) !== id),
-        { id: `drill-${field}`, kind: "builtin", field, operator: "equals", values: [key] },
-      ],
-    };
-  }
-  const group = selection.group;
-  const field = propertyFields.find(
-    (candidate) =>
-      candidate.kind === "property" &&
-      candidate.scope === group.scope &&
-      candidate.key === group.key,
-  );
-  if (
-    field === undefined ||
-    field.searchable === false ||
-    field.sensitive ||
-    field.data_type === "TEXT_LIST"
-  ) {
-    return null;
-  }
-  let value: AnalysisValue = key;
-  if (field.data_type === "NUMBER") {
-    const numeric = Number(key);
-    if (!Number.isFinite(numeric)) return null;
-    value = numeric;
-  } else if (field.data_type === "BOOLEAN") {
-    if (!["0", "1", "false", "true"].includes(key)) return null;
-    value = key === "1" || key === "true";
-  } else if (field.data_type === "DATETIME") {
-    const instant = new Date(key);
-    if (!Number.isFinite(instant.getTime())) return null;
-    value = instant.toISOString();
-  }
-  const id = `property:${group.scope}:${group.key}`;
-  return {
-    ...selection,
-    conditions: [
-      ...selection.conditions.filter((condition) => conditionFieldId(condition) !== id),
-      {
-        id: `drill-${group.key}`,
-        kind: "property",
-        scope: group.scope,
-        key: group.key,
-        data_type: field.data_type,
-        operator: "equals",
-        values: [value],
-      },
-    ],
-  };
 }

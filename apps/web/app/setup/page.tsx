@@ -28,8 +28,7 @@ export default function SetupPage() {
   const router = useRouter();
   const [status, setStatus] = useState<SetupStatus | null>(null);
   const [issued, setIssued] = useState<{
-    ingest: IssuedKey;
-    policy: IssuedKey;
+    access: IssuedKey;
     applicationSlug: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -78,19 +77,18 @@ export default function SetupPage() {
       );
       setCreatingKeys(true);
       const keysPath = `/applications/${initialized.application.slug}/service-api-keys`;
-      const [ingest, policy] = await Promise.all([
-        postJson<IssuedKey>(keysPath, {
-          name: "用量接入",
-          scopes: ["usage:write", "connector:heartbeat"],
-          reason: "首次配置创建用量接入密钥",
-        }),
-        postJson<IssuedKey>(keysPath, {
-          name: "调用策略读取",
-          scopes: ["runtime:read", "runtime:write", "runtime:ack"],
-          reason: "首次配置创建调用策略读取密钥",
-        }),
-      ]);
-      setIssued({ ingest, policy, applicationSlug: initialized.application.slug });
+      const access = await postJson<IssuedKey>(keysPath, {
+        name: "应用接入",
+        scopes: [
+          "usage:write",
+          "connector:heartbeat",
+          "runtime:read",
+          "runtime:write",
+          "runtime:ack",
+        ],
+        reason: "首次配置创建应用接入密钥",
+      });
+      setIssued({ access, applicationSlug: initialized.application.slug });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "初始化失败");
     } finally {
@@ -132,7 +130,9 @@ export default function SetupPage() {
           </div>
           <h1>看清模型花费和 AIU 用量，集中管理调用策略。</h1>
           <p>
-            连接现有 LiteLLM。模型服务密钥始终留在你的环境中；这里负责模型配置、调用策略和用量统计。
+            {
+              "连接现有 LiteLLM，或从应用直接调用模型服务。模型服务密钥始终留在你的环境中；这里负责模型配置、调用策略和用量统计。"
+            }
           </p>
         </div>
         <div className="boundary-note">主数据与分析数据必须同时连接</div>
@@ -209,10 +209,7 @@ export default function SetupPage() {
             </form>
           ) : (
             <div className="form-grid">
-              {[
-                { label: "用量接入密钥", value: issued.ingest.api_key },
-                { label: "策略读取密钥", value: issued.policy.api_key },
-              ].map((item) => (
+              {[{ label: "应用接入密钥", value: issued.access.api_key }].map((item) => (
                 <div className="field" key={item.label}>
                   <Label>
                     <KeyRound size={14} style={{ verticalAlign: "text-bottom", marginRight: 6 }} />
@@ -239,33 +236,31 @@ export default function SetupPage() {
               ))}
               <Alert>
                 <Check />
-                <AlertDescription>管理员和两枚接入密钥已创建。</AlertDescription>
+                <AlertDescription>管理员、应用和接入密钥已创建。</AlertDescription>
               </Alert>
               <div className="note">
-                <strong>1. 安装 LiteLLM 接入组件</strong>
-                <pre className="code" style={{ marginTop: 10 }}>
-                  uv pip install -e connectors/litellm
-                </pre>
+                <strong>1. 保存应用接入密钥</strong>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  密钥只显示这一次。Node.js、Python 和 LiteLLM 均可使用它读取调用策略并上报用量。
+                </p>
               </div>
               <div className="note">
-                <strong>2. 设置接入参数</strong>
+                <strong>2. 在应用服务端设置接入参数</strong>
                 <pre
                   className="code"
                   style={{ marginTop: 10 }}
-                >{`AI_CONTROL_URL=http://api:4000\nAI_CONTROL_API_KEY=${issued.ingest.api_key}\nAI_CONTROL_POLICY_API_KEY=${issued.policy.api_key}\nAI_CONTROL_CONNECTOR_INSTANCE_ID=litellm-primary\nAI_CONTROL_SPOOL_PATH=/var/lib/tokenpilot/litellm-spool.sqlite3`}</pre>
+                >{`TOKENPILOT_URL=http://api:4000\nTOKENPILOT_RUNTIME_KEY=${issued.access.api_key}`}</pre>
               </div>
               <div className="note">
-                <strong>3. 让 LiteLLM 上报用量</strong>
-                <pre
-                  className="code"
-                  style={{ marginTop: 10 }}
-                >{`litellm_settings:\n  callbacks: [ai_control_callback.proxy_handler_instance]\n  turn_off_message_logging: true`}</pre>
-                模型服务密钥继续通过 LiteLLM 环境变量提供，不会提交到这里。
+                <strong>3. 添加调用连接和模型</strong>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  进入应用后，按顺序添加调用连接、真实模型和虚拟模型。模型服务密钥只在应用环境变量或密钥系统中配置，不会提交到这里。
+                </p>
               </div>
               <Alert>
                 <Check />
                 <AlertDescription>
-                  初始化完成。进入应用后，只需录入 LiteLLM 模型名称，再按需创建虚拟模型。
+                  初始化完成。业务代码只使用虚拟模型名称，发布新策略后即可切换实际调用的模型。
                 </AlertDescription>
               </Alert>
               <PipelineReadiness status={storageHealth} />

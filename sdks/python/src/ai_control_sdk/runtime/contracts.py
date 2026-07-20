@@ -65,10 +65,52 @@ class RuntimeDimensionSettings(StrictModel):
         return _unique(value, "expected unique governed dimension keys")
 
 
+class RuntimeCallConnection(StrictModel):
+    id: Annotated[str, Field(pattern=OPAQUE_ID_PATTERN.pattern)]
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+    driver: Literal["litellm", "openai_compatible", "anthropic"]
+    base_url: Annotated[str, Field(min_length=1, max_length=2_048)] | None
+    credential_ref: Annotated[str, Field(min_length=1, max_length=256)] | None
+    timeout_ms: Annotated[int, Field(gt=0, le=600_000)]
+    max_retries: Annotated[int, Field(ge=0, le=10)]
+    api_version: Annotated[str, Field(min_length=1, max_length=64)] | None = None
+
+    @model_validator(mode="after")
+    def connection_is_consistent(self) -> RuntimeCallConnection:
+        if self.driver != "anthropic" and self.base_url is None:
+            raise ValueError("an OpenAI-compatible connection requires base_url")
+        if self.base_url is not None:
+            parsed = re.fullmatch(r"https?://[^\s/#]+(?:/[^\s#]*)?", self.base_url)
+            if parsed is None or "@" in self.base_url.split("//", 1)[1].split("/", 1)[0]:
+                raise ValueError("expected an HTTP(S) base URL without credentials or fragments")
+        if self.credential_ref is not None and (
+            any(character.isspace() for character in self.credential_ref)
+            or any(
+                ord(character) < 32 or ord(character) == 127 for character in self.credential_ref
+            )
+        ):
+            raise ValueError("credential_ref cannot contain whitespace or control characters")
+        return self
+
+
 class RuntimeRouteTarget(StrictModel):
     model_id: Annotated[str, Field(pattern=OPAQUE_ID_PATTERN.pattern)]
-    model_tag: Annotated[str, Field(min_length=1, max_length=256)]
-    provider: Annotated[str, Field(min_length=1, max_length=120)] | None = None
+    connection_id: Annotated[str, Field(pattern=OPAQUE_ID_PATTERN.pattern)]
+    request_model: Annotated[str, Field(min_length=1, max_length=256)]
+    provider: Annotated[str, Field(min_length=1, max_length=120)]
+    task_type: Literal["chat", "embedding", "image", "audio"]
+    capabilities: list[
+        Literal[
+            "streaming",
+            "tools",
+            "structured_output",
+            "image_input",
+            "audio_input",
+            "audio_output",
+            "cache_metering",
+            "reasoning",
+        ]
+    ]
     route_tag: Annotated[str, Field(pattern=r"^cp:[a-z0-9._:-]+$")]
     fallback_order: Annotated[int, Field(ge=0, le=63)]
     weight: Annotated[int | float, Field(gt=0, le=1_000)]
@@ -204,6 +246,9 @@ class RuntimeSnapshot(StrictModel):
     etag: Annotated[str, Field(pattern=ETAG_PATTERN)]
     signature: Annotated[str, Field(pattern=ETAG_PATTERN)]
     expires_at: str
+    connections: dict[
+        Annotated[str, Field(pattern=OPAQUE_ID_PATTERN.pattern)], RuntimeCallConnection
+    ]
     routing: dict[Annotated[str, Field(pattern=VIRTUAL_MODEL_PATTERN)], RuntimeRoutingPlan]
     aiu: RuntimeAiuSettings
     access: RuntimeAccess
@@ -217,6 +262,17 @@ class RuntimeSnapshot(StrictModel):
         versions = {plan.configuration_version for plan in self.routing.values()}
         if len(versions) > 1:
             raise ValueError("all routing plans must belong to one configuration version")
+        for connection_id, connection in self.connections.items():
+            if connection.id != connection_id:
+                raise ValueError("connection record key must match its ID")
+        targets = [
+            target
+            for plan in self.routing.values()
+            for route in (plan.default, *(rule.route for rule in plan.rules))
+            for target in route.targets
+        ]
+        if any(target.connection_id not in self.connections for target in targets):
+            raise ValueError("route target references an unknown connection")
         return self
 
 

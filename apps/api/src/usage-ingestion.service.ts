@@ -200,6 +200,16 @@ export class UsageIngestionService {
         ]);
 
         const reportedModelId = input.event.model.model_id;
+        const reportedConnectionId = input.event.model.connection_id;
+        const connection =
+          reportedConnectionId !== null &&
+          reportedConnectionId !== undefined &&
+          z.string().uuid().safeParse(reportedConnectionId).success
+            ? await transaction.callConnection.findFirst({
+                where: { id: reportedConnectionId, applicationId },
+                select: { id: true, driver: true },
+              })
+            : null;
         const modelDefinition =
           reportedModelId !== null &&
           reportedModelId !== undefined &&
@@ -208,11 +218,26 @@ export class UsageIngestionService {
                 where: {
                   id: reportedModelId,
                   applicationId,
-                  litellmTag: input.event.model.model_tag,
+                  requestModel: input.event.model.request_model,
+                  ...(connection === null ? {} : { connectionId: connection.id }),
                 },
-                select: { id: true },
+                select: { id: true, connectionId: true, connection: { select: { driver: true } } },
               })
-            : null;
+            : connection === null
+              ? null
+              : await transaction.modelDefinition.findFirst({
+                  where: {
+                    applicationId,
+                    connectionId: connection.id,
+                    requestModel: input.event.model.request_model,
+                    enabled: true,
+                  },
+                  select: {
+                    id: true,
+                    connectionId: true,
+                    connection: { select: { driver: true } },
+                  },
+                });
 
         await transaction.usageEventRegistry.create({
           data: {
@@ -228,13 +253,21 @@ export class UsageIngestionService {
             applicationUserId: applicationUser.id,
             virtualModel: input.event.model.virtual_model ?? null,
             realModelId: modelDefinition?.id ?? null,
-            modelTag: input.event.model.model_tag,
+            requestModel: input.event.model.request_model,
+            connectionId: modelDefinition?.connectionId ?? connection?.id ?? null,
+            connectionDriver:
+              modelDefinition?.connection.driver.toLowerCase() ??
+              connection?.driver.toLowerCase() ??
+              input.event.model.connection_driver ??
+              null,
             reservationId: input.event.request.reservation_id ?? null,
             eventId: input.event.event_id,
             schemaVersion: input.event.schema_version,
             payloadHash: input.payloadHash,
             requestId: input.event.request.request_id,
             attemptId: input.event.request.attempt_id,
+            attemptIndex: input.event.request.attempt_index,
+            isFinalAttempt: input.event.request.is_final_attempt,
             operationId: input.event.request.operation_id,
             instanceId: input.event.source.instance_id,
             provider: input.event.model.provider ?? null,

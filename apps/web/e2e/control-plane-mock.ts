@@ -1,18 +1,21 @@
 import { type Page, type Route } from "@playwright/test";
 
 import { bodyOf, json, objectBody, problem } from "./control-plane-mock-http";
+import { handleMockConnection } from "./control-plane-mock-connections";
 import { handleMockModel } from "./control-plane-mock-models";
 import { handleMockReport } from "./control-plane-mock-reports";
 import { ControlPlaneMockResources } from "./control-plane-mock-resources";
 import { handleMockRuntimeConfiguration } from "./control-plane-mock-runtime";
 import {
   initialMockApplications,
+  initialMockConnections,
   initialMockModels,
   initialMockUsers,
   mockNow,
   mockSlug,
   newMockUser,
   type MockApplication,
+  type MockConnection,
   type MockModel,
   type MockOptions,
   type MockUser,
@@ -25,6 +28,7 @@ export class ControlPlaneMock {
   readonly calls: RecordedCall[] = [];
   readonly applications: MockApplication[] = initialMockApplications();
   readonly models: Map<string, MockModel[]> = initialMockModels();
+  readonly connections: Map<string, MockConnection[]> = initialMockConnections();
   readonly users: Map<string, MockUser[]> = initialMockUsers();
   setupRequired: boolean;
   datastoreReady: boolean;
@@ -119,8 +123,26 @@ export class ControlPlaneMock {
       return this.applicationMember(route, method, slug, suffix, body);
     if (suffix.startsWith("/reports/"))
       return handleMockReport(route, method, slug, suffix, body, this);
+    if (suffix.startsWith("/connections"))
+      return handleMockConnection(
+        route,
+        method,
+        slug,
+        suffix,
+        body,
+        this.connections.get(slug)!,
+        this.models.get(slug)!,
+      );
     if (suffix.startsWith("/models"))
-      return handleMockModel(route, method, slug, suffix, body, this.models.get(slug)!);
+      return handleMockModel(
+        route,
+        method,
+        slug,
+        suffix,
+        body,
+        this.models.get(slug)!,
+        this.connections.get(slug)!,
+      );
     if (suffix.startsWith("/virtual-models"))
       return this.resources.virtualModel(route, method, slug, suffix, body);
     if (suffix.startsWith("/runtime-configurations"))
@@ -191,6 +213,7 @@ export class ControlPlaneMock {
       archived_at: null,
     });
     this.models.set(slug, []);
+    this.connections.set(slug, []);
     this.users.set(slug, []);
     this.members.set(slug, []);
     this.setupRequired = false;
@@ -216,6 +239,7 @@ export class ControlPlaneMock {
     };
     this.applications.push(application);
     this.models.set(application.slug, []);
+    this.connections.set(application.slug, []);
     this.users.set(application.slug, []);
     this.members.set(application.slug, [
       {

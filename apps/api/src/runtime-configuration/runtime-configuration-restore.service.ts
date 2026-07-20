@@ -111,6 +111,7 @@ export class RuntimeConfigurationRestoreService {
       application_id: applicationId,
       version: `runtime-${applicationSlug}-${version}`,
       expires_at: new Date(now.getTime() + 10 * 365 * 86_400_000).toISOString(),
+      connections: source.connections,
       routing,
       aiu: {
         enabled: settings?.featureAiu ?? false,

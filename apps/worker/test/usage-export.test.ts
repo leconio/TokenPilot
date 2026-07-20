@@ -37,7 +37,7 @@ describe("usage export", () => {
             trace_id: "trace-1",
             virtual_model: "text.fast",
             model_id: "model-id",
-            model_tag: "+formula-model",
+            request_model: "+formula-model",
             provider: "provider",
             result_status: "success",
             provider_cost_status: "official",

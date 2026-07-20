@@ -41,7 +41,7 @@ describe("report condition matching", () => {
         conditions: [
           {
             kind: "builtin",
-            field: "model_tag",
+            field: "request_model",
             operator: "one_of",
             values: ["model-a", "model-b"],
           },
@@ -83,7 +83,7 @@ describe("report condition matching", () => {
         conditions: [
           {
             kind: "builtin",
-            field: "model_tag",
+            field: "request_model",
             operator: "one_of",
             values: ["model-a", "model-b"],
           },
@@ -103,6 +103,29 @@ describe("report condition matching", () => {
     expect(second).toBeGreaterThan(first);
     expect(filter.sql.slice(first, second)).toContain(" OR ");
     expect(filter.sql.slice(second)).toContain(" AND ");
+  });
+
+  it("filters and groups every execution path by its call connection", () => {
+    const filter = clickHouseFilters(
+      parseReportQuery({
+        ...range,
+        group_dimension: "connection_id",
+        conditions: [
+          {
+            kind: "builtin",
+            field: "connection_driver",
+            operator: "one_of",
+            values: ["litellm", "anthropic"],
+          },
+        ],
+      }),
+    );
+
+    expect(filter.sql).toContain("event.connection_driver");
+    expect(filter.params).toMatchObject({
+      filter_0_value_0: "litellm",
+      filter_0_value_1: "anthropic",
+    });
   });
 
   it("rejects operators and values that do not match built-in field types", () => {

@@ -32,7 +32,9 @@ _CP_KEYS = frozenset(
         "reservation_id",
         "virtual_model",
         "model_id",
-        "model_tag",
+        "connection_id",
+        "connection_driver",
+        "request_model",
         "configuration_version",
     }
 )
@@ -58,7 +60,9 @@ class ContextProjection:
     reservation_id: str | None
     virtual_model: str | None
     model_id: str | None
-    model_tag: str | None
+    connection_id: str | None
+    connection_driver: str | None
+    request_model: str | None
     configuration_version: str | None
 
 
@@ -143,7 +147,9 @@ def project_context(cp: Mapping[str, object] | None) -> ContextProjection:
         reservation_id=None,
         virtual_model=None,
         model_id=None,
-        model_tag=None,
+        connection_id=None,
+        connection_driver=None,
+        request_model=None,
         configuration_version=None,
     )
     if cp is None:
@@ -168,7 +174,9 @@ def project_context(cp: Mapping[str, object] | None) -> ContextProjection:
     reservation_id = _identifier(cp.get("reservation_id"))
     virtual_model = _bounded_text(cp.get("virtual_model"), 120)
     model_id = _identifier(cp.get("model_id"))
-    model_tag = _bounded_text(cp.get("model_tag"), 256)
+    connection_id = _identifier(cp.get("connection_id"))
+    connection_driver = _bounded_text(cp.get("connection_driver"), 64)
+    request_model = _bounded_text(cp.get("request_model"), 256)
     configuration_version = _bounded_text(cp.get("configuration_version"), 64)
 
     return ContextProjection(
@@ -188,6 +196,8 @@ def project_context(cp: Mapping[str, object] | None) -> ContextProjection:
         reservation_id=reservation_id,
         virtual_model=virtual_model,
         model_id=model_id,
-        model_tag=model_tag,
+        connection_id=connection_id,
+        connection_driver=connection_driver,
+        request_model=request_model,
         configuration_version=configuration_version,
     )

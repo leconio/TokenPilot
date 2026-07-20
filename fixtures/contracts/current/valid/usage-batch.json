@@ -20,6 +20,8 @@
       "request": {
         "request_id": "req_01JTEST",
         "attempt_id": "att_01JTEST",
+        "attempt_index": 0,
+        "is_final_attempt": true,
         "operation_id": null,
         "parent_request_id": null,
         "session_id": null,
@@ -27,7 +29,7 @@
         "trace_id": null
       },
       "model": {
-        "model_tag": "test/model",
+        "request_model": "test/model",
         "provider": null
       },
       "route": null,

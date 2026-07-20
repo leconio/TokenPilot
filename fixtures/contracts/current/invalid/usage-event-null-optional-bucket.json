@@ -11,6 +11,8 @@
   "request": {
     "request_id": "req_null_bucket",
     "attempt_id": "att_null_bucket",
+    "attempt_index": 0,
+    "is_final_attempt": true,
     "operation_id": null,
     "parent_request_id": null,
     "session_id": null,
@@ -18,7 +20,7 @@
     "trace_id": null
   },
   "model": {
-    "model_tag": "test/model",
+    "request_model": "test/model",
     "provider": null
   },
   "route": null,

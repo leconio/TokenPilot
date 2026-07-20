@@ -153,8 +153,14 @@ export function UsagePage() {
     {
       key: "model",
       label: "模型",
-      cell: (row) => row.virtual_model || row.model_tag,
-      exportValue: (row) => row.virtual_model || row.model_tag,
+      cell: (row) => row.virtual_model || row.request_model,
+      exportValue: (row) => row.virtual_model || row.request_model,
+    },
+    {
+      key: "attempt",
+      label: "尝试",
+      cell: (row) => `${row.attempt_index + 1}${row.is_final_attempt ? "（最终）" : ""}`,
+      exportValue: (row) => String(row.attempt_index + 1),
     },
     { key: "status", label: "结果", cell: (row) => <StatusBadge value={row.status} /> },
     {

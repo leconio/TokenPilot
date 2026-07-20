@@ -15,6 +15,12 @@ import { usageCost, type UsageRow } from "./usage-row";
 
 interface RequestAttemptEvidence {
   readonly attempt_id: string;
+  readonly attempt_index: number;
+  readonly is_final_attempt: boolean;
+  readonly connection_id: string | null;
+  readonly connection_driver: string | null;
+  readonly request_model: string;
+  readonly status: string;
   readonly raw_event: {
     readonly event_id: string;
     readonly processing_status: string | null;
@@ -40,6 +46,13 @@ interface RequestAttemptEvidence {
 
 interface RequestEvidence {
   readonly attempts: readonly RequestAttemptEvidence[];
+}
+
+function connectionDriver(value: string | null): string {
+  if (value === "litellm") return "LiteLLM";
+  if (value === "openai_compatible") return "OpenAI 兼容接口";
+  if (value === "anthropic") return "Anthropic 接口";
+  return value ?? "-";
 }
 
 function token(value: string): string {
@@ -117,10 +130,14 @@ export function UsageDetailSheet({
               <Definition label="请求 ID" value={row.request_id} />
               <Definition label="事件 ID" value={row.event_id} />
               <Definition label="尝试 ID" value={row.attempt_id} />
+              <Definition label="尝试顺序" value={row.attempt_index + 1} />
+              <Definition label="最终尝试" value={row.is_final_attempt ? "是" : "否"} />
               <Definition label="操作 ID" value={row.operation_id ?? "-"} />
               <Definition label="虚拟模型" value={row.virtual_model ?? "-"} />
-              <Definition label="模型" value={row.model_tag} />
+              <Definition label="模型" value={row.request_model} />
               <Definition label="模型 ID" value={row.model_id ?? "-"} />
+              <Definition label="调用连接" value={row.connection_id ?? "-"} />
+              <Definition label="连接类型" value={connectionDriver(row.connection_driver)} />
               <Definition label="模型服务" value={row.provider ?? "-"} />
               <Definition label="调用结果" value={<StatusBadge value={row.status} />} />
               <Definition label="调用原因" value={row.route_reason ?? "-"} />
@@ -135,6 +152,34 @@ export function UsageDetailSheet({
             </dl>
           </CardContent>
         </Card>
+        {details.data && details.data.attempts.length > 1 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>模型切换过程</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="grid gap-2">
+                {[...details.data.attempts]
+                  .sort((left, right) => left.attempt_index - right.attempt_index)
+                  .map((attempt) => (
+                    <li
+                      className="grid gap-1 rounded-lg border px-3 py-2 text-sm sm:grid-cols-[3rem_1fr_auto] sm:items-center"
+                      key={attempt.attempt_id}
+                    >
+                      <span className="text-muted-foreground">#{attempt.attempt_index + 1}</span>
+                      <span>
+                        {attempt.request_model}
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {connectionDriver(attempt.connection_driver)}
+                        </span>
+                      </span>
+                      <StatusBadge value={attempt.status} />
+                    </li>
+                  ))}
+              </ol>
+            </CardContent>
+          </Card>
+        ) : null}
         <Card>
           <CardHeader>
             <CardTitle>Token</CardTitle>

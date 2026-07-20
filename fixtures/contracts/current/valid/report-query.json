@@ -7,12 +7,12 @@
   "conditions": [
     {
       "kind": "builtin",
-      "field": "model_tag",
+      "field": "request_model",
       "operator": "equals",
       "values": ["openai/gpt-5-mini"]
     }
   ],
   "metric": "requests",
   "grain": "day",
-  "group_dimension": "model_tag"
+  "group_dimension": "request_model"
 }

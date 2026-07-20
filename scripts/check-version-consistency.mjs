@@ -61,18 +61,24 @@ for (const file of await collectPackageFiles(root)) {
   }
 }
 
-for (const pyproject of ["connectors/litellm/pyproject.toml", "sdks/python/pyproject.toml"]) {
+for (const [pyproject, lockFile] of [
+  ["connectors/litellm/pyproject.toml", "connectors/litellm/uv.lock"],
+  ["sdks/python/pyproject.toml", "sdks/python/uv.lock"],
+]) {
   const text = await readFile(join(root, pyproject), "utf8");
+  const name = requireMatch(text, /^name\s*=\s*"([^"]+)"/m, `${pyproject} project name`);
   const version = requireMatch(text, /^version\s*=\s*"([^"]+)"/m, `${pyproject} version`);
   if (version !== releaseVersion)
     failures.push(`${pyproject} has ${version}; expected ${releaseVersion}`);
-}
-
-for (const lockFile of ["connectors/litellm/uv.lock", "sdks/python/uv.lock"]) {
-  const text = await readFile(join(root, lockFile), "utf8");
-  const version = requireMatch(text, /^version\s*=\s*"([^"]+)"/m, `${lockFile} project version`);
-  if (version !== releaseVersion) {
-    failures.push(`${lockFile} has ${version}; expected ${releaseVersion}`);
+  const lockText = await readFile(join(root, lockFile), "utf8");
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const lockedVersion = requireMatch(
+    lockText,
+    new RegExp(`^name = "${escapedName}"\\nversion = "([^"]+)"`, "mu"),
+    `${lockFile} project version`,
+  );
+  if (lockedVersion !== releaseVersion) {
+    failures.push(`${lockFile} has ${lockedVersion}; expected ${releaseVersion}`);
   }
 }
 

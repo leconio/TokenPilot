@@ -1,13 +1,5 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { createHash } from "node:crypto";
-
-import {
-  runtimeConfigurationAcknowledgementSchema,
-  type RuntimeSnapshot,
-} from "@tokenpilot/contracts";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { runtimeConfigurationAcknowledgementSchema } from "@tokenpilot/contracts";
+import { describe, expect, it } from "vitest";
 
 import {
   AiControlSdkError,
@@ -18,128 +10,9 @@ import {
   withAiuReservation,
 } from "../src/index.js";
 
-const now = new Date("2026-07-16T13:00:00.000Z");
+import { now, signedSnapshot, baseSnapshot, json, client, lkgPath } from "./runtime-testkit.js";
 
-function canonical(value: unknown): string {
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${canonical(record[key])}`)
-    .join(",")}}`;
-}
-
-function signedSnapshot(
-  value: Omit<RuntimeSnapshot, "etag" | "signature"> | RuntimeSnapshot,
-): RuntimeSnapshot {
-  const unsigned = { ...value } as Partial<RuntimeSnapshot>;
-  delete unsigned.etag;
-  delete unsigned.signature;
-  const etag = `sha256:${createHash("sha256").update(canonical(unsigned)).digest("hex")}`;
-  return {
-    ...(unsigned as Omit<RuntimeSnapshot, "etag" | "signature">),
-    etag,
-    signature: `sha256:${createHash("sha256")
-      .update(canonical({ application_id: unsigned.application_id, etag }))
-      .digest("hex")}`,
-  };
-}
-
-const baseSnapshot = signedSnapshot({
-  schema_version: "2.0",
-  application_id: "00000000-0000-4000-8000-000000000042",
-  version: "runtime-v42",
-  expires_at: "2026-07-16T14:00:00.000Z",
-  routing: {
-    "text.fast": {
-      virtual_model_id: "virtual-fast",
-      configuration_version: 81,
-      configuration_etag: `sha256:${"8".repeat(64)}`,
-      published_at: "2026-07-16T12:00:00.000Z",
-      timezone: "UTC",
-      default: {
-        route_tag: "cp:text.fast:default",
-        selection_mode: "ordered",
-        targets: [
-          {
-            model_id: "model-primary",
-            model_tag: "litellm-primary",
-            provider: "openai",
-            route_tag: "cp:text.fast:default",
-            fallback_order: 0,
-            weight: 1,
-          },
-          {
-            model_id: "model-fallback",
-            model_tag: "litellm-fallback",
-            provider: "anthropic",
-            route_tag: "cp:text.fast:default",
-            fallback_order: 1,
-            weight: 1,
-          },
-        ],
-      },
-      rules: [],
-    },
-  },
-  aiu: { enabled: true, mode: "observe", unrated_model_policy: "alert_only" },
-  access: { application_enabled: true, blocked_user_ids: [] },
-  dimensions: {
-    analytics_allowed_keys: ["client", "region"],
-  },
-});
-
-let directory: string;
-let lkgPath: string;
-
-beforeEach(async () => {
-  directory = await mkdtemp(join(tmpdir(), "tokenpilot-node-"));
-  lkgPath = join(directory, "runtime.json");
-});
-
-afterEach(async () => {
-  await rm(directory, { recursive: true, force: true });
-});
-
-function json(value: unknown, status = 200): Response {
-  return new Response(JSON.stringify(value), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
-
-function client(
-  fetchImplementation: typeof fetch,
-  snapshot = baseSnapshot,
-  acknowledgements: unknown[] = [],
-) {
-  let served = false;
-  return createAiRuntimeClient({
-    controlPlaneUrl: "http://control.test",
-    apiKey: "node-sdk-runtime-key-0000001",
-    lkgPath,
-    fetch: async (input, init) => {
-      if (String(input).endsWith("/runtime/snapshot")) {
-        if (served && new Headers(init?.headers).has("if-none-match")) {
-          return new Response(null, { status: 304 });
-        }
-        served = true;
-        return json(snapshot);
-      }
-      if (String(input).endsWith("/runtime/configuration-acknowledgements")) {
-        acknowledgements.push(
-          runtimeConfigurationAcknowledgementSchema.parse(JSON.parse(String(init?.body))),
-        );
-        return json({ status: "accepted", duplicate: false }, 202);
-      }
-      return fetchImplementation(input, init);
-    },
-    now: () => now,
-  });
-}
-
-describe("Node runtime SDK", () => {
+describe("Node runtime SDK core", () => {
   it("propagates isolated async context and automatically creates operation/request/trace IDs", async () => {
     expect(currentAiContext()).toBeNull();
     await withAiContext({ userId: "user-1", callSource: "receipt_parse" }, async () => {
@@ -220,11 +93,20 @@ describe("Node runtime SDK", () => {
           virtual_model: "text.fast",
           route_tag: "cp:text.fast:default",
           model_id: "model-primary",
-          model_tag: "litellm-primary",
+          connection_id: "connection-litellm",
+          request_model: "litellm-primary",
           configuration_version: 81,
           candidate_models: [
-            { model_id: "model-primary", model_tag: "litellm-primary" },
-            { model_id: "model-fallback", model_tag: "litellm-fallback" },
+            {
+              model_id: "model-primary",
+              connection_id: "connection-litellm",
+              request_model: "litellm-primary",
+            },
+            {
+              model_id: "model-fallback",
+              connection_id: "connection-litellm",
+              request_model: "litellm-fallback",
+            },
           ],
         },
       },
@@ -284,6 +166,41 @@ describe("Node runtime SDK", () => {
       applied_at: null,
       error: { code: "SDK_RUNTIME_SNAPSHOT_REJECTED" },
     });
+  });
+
+  it("refreshes a newly published route in the background after start", async () => {
+    const changed = structuredClone(baseSnapshot);
+    changed.version = "runtime-v43";
+    changed.routing["text.fast"]!.configuration_version = 82;
+    changed.routing["text.fast"]!.default.targets = [
+      changed.routing["text.fast"]!.default.targets[1]!,
+      changed.routing["text.fast"]!.default.targets[0]!,
+    ].map((target, index) => ({ ...target, fallback_order: index }));
+    const snapshots = [baseSnapshot, signedSnapshot(changed)];
+    let reads = 0;
+    const runtime = createAiRuntimeClient({
+      controlPlaneUrl: "http://control.test",
+      apiKey: "node-sdk-runtime-key-0000001",
+      lkgPath,
+      refreshIntervalMs: 1_000,
+      fetch: async (input) => {
+        const url = String(input);
+        if (url.endsWith("/runtime/snapshot")) {
+          return json(snapshots[Math.min(reads++, snapshots.length - 1)]);
+        }
+        if (url.endsWith("/runtime/configuration-acknowledgements")) return json({}, 202);
+        throw new Error(`Unexpected request: ${url}`);
+      },
+      now: () => now,
+    });
+    try {
+      await runtime.start();
+      expect(runtime.selectRoute("text.fast").primary.model_id).toBe("model-primary");
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 1_100));
+      expect(runtime.selectRoute("text.fast").primary.model_id).toBe("model-fallback");
+    } finally {
+      runtime.close();
+    }
   });
 
   it("rejects a Runtime Snapshot whose signature is bound to another application", async () => {

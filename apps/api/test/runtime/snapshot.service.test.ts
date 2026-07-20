@@ -8,6 +8,7 @@ import { signRuntimeSnapshot } from "../../src/runtime-configuration/runtime-sna
 import { RuntimeSnapshotService } from "../../src/runtime/snapshot.service.js";
 
 const applicationId = "00000000-0000-4000-8000-000000000411";
+const connectionId = "00000000-0000-4000-8000-000000000414";
 
 function publishedSnapshot() {
   return signRuntimeSnapshot({
@@ -15,6 +16,17 @@ function publishedSnapshot() {
     application_id: applicationId,
     version: "runtime-demo-3",
     expires_at: "2036-07-16T12:00:00.000Z",
+    connections: {
+      [connectionId]: {
+        id: connectionId,
+        name: "OpenAI",
+        driver: "openai_compatible",
+        base_url: "https://api.openai.com/v1",
+        credential_ref: "OPENAI_API_KEY",
+        timeout_ms: 60_000,
+        max_retries: 2,
+      },
+    },
     routing: {
       "text.fast": {
         virtual_model_id: "00000000-0000-4000-8000-000000000412",
@@ -28,8 +40,11 @@ function publishedSnapshot() {
           targets: [
             {
               model_id: "00000000-0000-4000-8000-000000000413",
-              model_tag: "openai/gpt-4.1",
+              connection_id: connectionId,
+              request_model: "openai/gpt-4.1",
               provider: "openai",
+              task_type: "chat",
+              capabilities: ["streaming", "tools"],
               route_tag: "cp:virtual:text.fast:default",
               fallback_order: 0,
               weight: 1,

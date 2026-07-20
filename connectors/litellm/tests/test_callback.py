@@ -84,9 +84,7 @@ def test_router_fallback_attempts_with_one_call_id_are_not_deduplicated(tmp_path
 
     events = spool.lease(10, 30)
     assert len(events) == 2
-    attempts = {
-        cast(dict[str, object], event.payload["request"])["attempt_id"] for event in events
-    }
+    attempts = {cast(dict[str, object], event.payload["request"])["attempt_id"] for event in events}
     assert attempts == {
         "provider-primary-attempt",
         "provider-fallback-attempt",

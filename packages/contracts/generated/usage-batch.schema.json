@@ -293,6 +293,14 @@
         "attempt_id": {
           "$ref": "#/$defs/__schema1"
         },
+        "attempt_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "is_final_attempt": {
+          "type": "boolean"
+        },
         "operation_id": {
           "anyOf": [
             {
@@ -357,6 +365,8 @@
       "required": [
         "request_id",
         "attempt_id",
+        "attempt_index",
+        "is_final_attempt",
         "operation_id",
         "parent_request_id",
         "session_id",
@@ -390,7 +400,27 @@
             }
           ]
         },
-        "model_tag": {
+        "connection_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/__schema1"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "connection_driver": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CallConnectionDriver"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "request_model": {
           "type": "string",
           "minLength": 1,
           "maxLength": 256
@@ -400,9 +430,17 @@
         }
       },
       "required": [
-        "model_tag"
+        "request_model"
       ],
       "additionalProperties": false
+    },
+    "CallConnectionDriver": {
+      "type": "string",
+      "enum": [
+        "litellm",
+        "openai_compatible",
+        "anthropic"
+      ]
     },
     "__schema21": {
       "anyOf": [

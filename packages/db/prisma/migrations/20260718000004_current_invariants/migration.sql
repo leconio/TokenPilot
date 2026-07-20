@@ -31,8 +31,16 @@ ALTER TABLE "application_members"
   );
 
 ALTER TABLE "model_definitions"
-  ADD CONSTRAINT "model_definitions_tag_check"
-  CHECK (length(btrim("litellm_tag")) BETWEEN 1 AND 256);
+  ADD CONSTRAINT "model_definitions_request_model_check"
+  CHECK (length(btrim("request_model")) BETWEEN 1 AND 256);
+
+ALTER TABLE "call_connections"
+  ADD CONSTRAINT "call_connections_name_check"
+  CHECK (length(btrim("name")) BETWEEN 1 AND 120),
+  ADD CONSTRAINT "call_connections_credential_ref_check"
+  CHECK ("credential_ref" IS NULL OR length(btrim("credential_ref")) BETWEEN 1 AND 256),
+  ADD CONSTRAINT "call_connections_driver_url_check"
+  CHECK ("driver" <> 'openai_compatible' OR "base_url" IS NOT NULL);
 
 ALTER TABLE "virtual_model_targets"
   ADD CONSTRAINT "virtual_model_targets_priority_check" CHECK ("priority" >= 0),
@@ -125,8 +133,8 @@ ALTER TABLE "application_usage_ratings"
 ALTER TABLE "usage_event_registry"
   ADD CONSTRAINT "usage_event_registry_user_id_check"
   CHECK (length(btrim("external_user_id")) BETWEEN 1 AND 256),
-  ADD CONSTRAINT "usage_event_registry_model_tag_check"
-  CHECK (length(btrim("model_tag")) BETWEEN 1 AND 256);
+  ADD CONSTRAINT "usage_event_registry_request_model_check"
+  CHECK (length(btrim("request_model")) BETWEEN 1 AND 256);
 
 ALTER TABLE "pipeline_outbox"
   ADD CONSTRAINT "pipeline_outbox_idempotency_key_check"

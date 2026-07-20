@@ -44,8 +44,8 @@ export function handleMockReport(
         unmapped_events: 0,
         groups: [
           {
-            dimension: "model_tag",
-            key: state.models.get(slug)?.[0]?.litellm_tag ?? "",
+            dimension: "request_model",
+            key: state.models.get(slug)?.[0]?.request_model ?? "",
             aiu_micros: "2500000",
           },
         ],
@@ -64,8 +64,8 @@ export function handleMockReport(
         unpriced_events: 0,
         groups: [
           {
-            dimension: "model_tag",
-            key: state.models.get(slug)?.[0]?.litellm_tag ?? "",
+            dimension: "request_model",
+            key: state.models.get(slug)?.[0]?.request_model ?? "",
             currency: "USD",
             amount: "1.25",
           },
@@ -87,7 +87,7 @@ export function handleMockReport(
             display_user: user.display_user,
             virtual_model: "assistant",
             model_id: state.models.get(slug)?.[0]?.id ?? null,
-            model_tag: state.models.get(slug)?.[0]?.litellm_tag ?? "unknown",
+            request_model: state.models.get(slug)?.[0]?.request_model ?? "unknown",
             provider: "openai",
             status: "success",
             route_reason: "default",

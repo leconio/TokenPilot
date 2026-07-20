@@ -72,10 +72,18 @@ export function ModelDetailPage() {
     <main className="page">
       <PageHeading
         title={<span data-i18n-skip>{rates.data.model.name}</span>}
-        description={text(
-          `LiteLLM 模型名称：${rates.data.model.litellm_tag}`,
-          `LiteLLM model name: ${rates.data.model.litellm_tag}`,
-        )}
+        description={
+          <>
+            {text("模型标识：", "Model identifier: ")}
+            <span data-i18n-skip>{rates.data.model.request_model}</span>
+            {details.data?.connection ? (
+              <>
+                {text("，调用连接：", ", connection: ")}
+                <span data-i18n-skip>{details.data.connection.name}</span>
+              </>
+            ) : null}
+          </>
+        }
         actions={
           <div className="flex flex-wrap gap-2">
             {details.data === undefined ? null : (

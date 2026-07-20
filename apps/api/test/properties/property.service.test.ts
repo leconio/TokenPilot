@@ -78,7 +78,7 @@ describe("PropertyService", () => {
 
   it("rejects built-in keys and enum fields without choices", async () => {
     const value = fixture();
-    for (const key of ["user_id", "model_tag", "input_tokens", "quota_status"]) {
+    for (const key of ["user_id", "request_model", "input_tokens", "quota_status"]) {
       await expect(
         value.service.create({
           key,

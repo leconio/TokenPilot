@@ -16,7 +16,12 @@ describe("grouped report scalability", () => {
       {
         ...range,
         conditions: [
-          { kind: "builtin", field: "model_tag", operator: "equals", values: ["provider/model"] },
+          {
+            kind: "builtin",
+            field: "request_model",
+            operator: "equals",
+            values: ["provider/model"],
+          },
         ],
         group_dimension: "provider",
         page_size: "1",

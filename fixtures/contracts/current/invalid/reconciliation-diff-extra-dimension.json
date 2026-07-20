@@ -9,7 +9,7 @@
     "time_bucket": "2026-07-15T12:00:00.000Z",
     "virtual_model": "text.fast",
     "model_id": "model-a",
-    "model_tag": "openai-prod-a",
+    "request_model": "openai-prod-a",
     "provider": "openai",
     "user_id": null,
     "environment": "production"

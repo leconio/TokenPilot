@@ -135,7 +135,7 @@ export class ReconciliationRunner {
         applicationId: "secret-validation",
         virtualModel: null,
         modelId: null,
-        modelTag: null,
+        requestModel: null,
         provider: null,
         userId: "secret-validation",
       },

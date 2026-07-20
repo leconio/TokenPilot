@@ -103,7 +103,7 @@ const builtInColumns: readonly Readonly<{
   { header: "链路 ID", value: (item) => item.trace_id },
   { header: "虚拟模型", value: (item) => item.virtual_model },
   { header: "模型 ID", value: (item) => item.model_id },
-  { header: "模型", value: (item) => item.model_tag },
+  { header: "模型", value: (item) => item.request_model },
   { header: "模型服务", value: (item) => item.provider },
   { header: "结果", value: (item) => item.status },
   { header: "调用原因", value: (item) => item.route_reason },

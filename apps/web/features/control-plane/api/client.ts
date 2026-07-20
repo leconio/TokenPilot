@@ -56,6 +56,7 @@ export async function controlDownload(
       response.status,
       diagnostic,
       code,
+      payload,
     );
   }
   const url = URL.createObjectURL(await response.blob());

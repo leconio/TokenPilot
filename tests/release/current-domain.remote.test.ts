@@ -30,7 +30,7 @@ describe.skipIf(!enabled).sequential("remote application acceptance", () => {
     const virtualModel = record(routing["acceptance.chat"], "acceptance virtual model");
     const defaultRoute = record(virtualModel.default, "default route");
     const targets = records(defaultRoute.targets, "default route targets");
-    expect(targets.map((target) => target.model_tag)).toEqual([
+    expect(targets.map((target) => target.request_model)).toEqual([
       "text.fast.demo-primary",
       "text.fast.demo-fallback",
     ]);

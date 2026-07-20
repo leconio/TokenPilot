@@ -184,6 +184,19 @@ export const expandedTranslationsB = {
   进入控制台: "Open console",
   "连接现有 LiteLLM。模型服务密钥始终留在你的环境中；这里负责模型配置、调用策略和用量统计。":
     "Connect your existing LiteLLM. Model service keys stay in your environment; TokenPilot manages models, routing, and usage reports.",
+  "连接现有 LiteLLM，或从应用直接调用模型服务。模型服务密钥始终留在你的环境中；这里负责模型配置、调用策略和用量统计。":
+    "Connect LiteLLM or call model services directly from your application. Provider credentials stay in your environment; TokenPilot manages models, routing, and usage reports.",
+  "密钥只显示这一次。Node.js、Python 和 LiteLLM 均可使用它读取调用策略并上报用量。":
+    "This key is shown only once. Node.js, Python, and LiteLLM can use it to read routing policies and report usage.",
+  应用接入: "Application access",
+  应用接入密钥: "Application access key",
+  首次配置创建应用接入密钥: "Create the initial application access key",
+  "管理员、应用和接入密钥已创建。":
+    "The administrator, application, and access key have been created.",
+  "进入应用后，按顺序添加调用连接、真实模型和虚拟模型。模型服务密钥只在应用环境变量或密钥系统中配置，不会提交到这里。":
+    "In the application, add a connection, real model, and virtual model in that order. Provider credentials stay in application environment variables or a secret manager and are never submitted here.",
+  "初始化完成。业务代码只使用虚拟模型名称，发布新策略后即可切换实际调用的模型。":
+    "Setup is complete. Application code uses only the virtual model name, and publishing a policy can switch the model used for future calls.",
   "选择时间、分组和筛选条件即可查询。": "Choose a time range, group, and filters to query.",
   "选择用途后，系统会自动授予完成该用途所需的权限。":
     "Choose a purpose and the required permissions are assigned automatically.",
@@ -230,12 +243,11 @@ export const expandedTranslationsB = {
   请输入应用名称: "Enter an application name",
   "还没有可访问的应用。": "There are no accessible applications yet.",
   选择应用: "Select application",
-  "LiteLLM 模型名称": "LiteLLM model name",
   "先添加一个模型。": "Add a model to get started.",
-  "只填写显示名称和 LiteLLM 模型名称即可。":
-    "Only a display name and LiteLLM model name are required.",
-  "录入 LiteLLM 中实际使用的模型名称，并在详情中配置花费和 AIU。":
-    "Add the model names used in LiteLLM, then configure cost and AIU in model details.",
+  "只填写显示名称、模型标识和调用连接即可。":
+    "Only a display name, model identifier, and connection are required.",
+  "录入模型服务实际使用的模型标识，并在详情中配置花费和 AIU。":
+    "Add the model identifier used by the model service, then configure cost and AIU in model details.",
   "正在添加…": "Adding…",
   自动识别: "Detected automatically",
   虚拟模型: "Virtual models",

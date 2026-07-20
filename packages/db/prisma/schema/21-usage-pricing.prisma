@@ -18,6 +18,7 @@ model ConnectorInstance {
   createdAt                DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
   heartbeatReceipts        ConnectorHeartbeatReceipt[]
+  callConnections          CallConnection[]
   application              Application                 @relation(fields: [applicationId], references: [id], onDelete: Restrict)
 
   @@unique([applicationId, instanceId], map: "connector_instances_application_instance_key")

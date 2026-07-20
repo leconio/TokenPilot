@@ -1,8 +1,11 @@
 import type { ReportQuery } from "./query.js";
 
 const denormalizedFilterFields = new Set([
-  "model_tag",
+  "model_id",
+  "request_model",
   "virtual_model",
+  "connection_id",
+  "connection_driver",
   "provider",
   "route_reason",
 ]);
@@ -13,7 +16,9 @@ const aggregateEventProjection = `
     application_id,
     virtual_model,
     model_id,
-    model_tag,
+    connection_id,
+    connection_driver,
+    request_model,
     provider,
     status,
     route_reason,

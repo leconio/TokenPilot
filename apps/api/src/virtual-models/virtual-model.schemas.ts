@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { virtualModelRouteMatchSchema } from "@tokenpilot/contracts";
+import { modelTaskTypeSchema, virtualModelRouteMatchSchema } from "@tokenpilot/contracts";
 
 const stableName = z
   .string()
@@ -12,6 +12,7 @@ const stableName = z
 export const createVirtualModelSchema = z.strictObject({
   name: stableName,
   display_name: z.string().trim().min(1).max(120).optional(),
+  task_type: modelTaskTypeSchema,
   default_model_id: z.string().uuid().nullable().optional(),
 });
 
@@ -19,6 +20,7 @@ export const updateVirtualModelSchema = z
   .strictObject({
     display_name: z.string().trim().min(1).max(120).optional(),
     description: z.string().trim().max(2_000).nullable().optional(),
+    task_type: modelTaskTypeSchema.optional(),
     default_model_id: z.string().uuid().nullable().optional(),
     enabled: z.boolean().optional(),
   })

@@ -10,6 +10,7 @@ import {
 } from "../../scripts/performance/report-validation.mjs";
 import {
   collectPerformanceStages,
+  performanceModelFromSnapshot,
   performanceFailureDiagnostic,
   runPerformanceStage,
 } from "../../scripts/performance/remote-acceptance-runner.mjs";
@@ -100,6 +101,54 @@ function measuredReport() {
 }
 
 describe("remote capacity baseline", () => {
+  it("resolves the real model driver from the published connection map", () => {
+    expect(
+      performanceModelFromSnapshot({
+        connections: {
+          "connection-id": { driver: "litellm" },
+        },
+        routing: {
+          "acceptance.chat": {
+            default: {
+              targets: [
+                {
+                  model_id: "model-id",
+                  connection_id: "connection-id",
+                  request_model: "text.fast.demo-fallback",
+                  provider: "openai",
+                },
+              ],
+            },
+          },
+        },
+      }),
+    ).toEqual({
+      id: "model-id",
+      connection_id: "connection-id",
+      connection_driver: "litellm",
+      request_model: "text.fast.demo-fallback",
+      provider: "openai",
+    });
+    expect(() =>
+      performanceModelFromSnapshot({
+        connections: {},
+        routing: {
+          "acceptance.chat": {
+            default: {
+              targets: [
+                {
+                  model_id: "model-id",
+                  connection_id: "missing-connection",
+                  request_model: "text.fast.demo-fallback",
+                },
+              ],
+            },
+          },
+        },
+      }),
+    ).toThrow("Performance model is unavailable");
+  });
+
   it("uses only current application-scoped workload paths and bounded batches", async () => {
     const source = await readFile(
       new URL("../../scripts/performance/remote-acceptance-runner.mjs", import.meta.url),

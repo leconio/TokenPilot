@@ -211,7 +211,7 @@ export function parseReportQuery(
     conditions: filterConditions(query.conditions),
     metric: text(query, "metric") ?? "requests",
     grain: text(query, "grain") ?? "day",
-    group_dimension: text(query, "group_dimension") ?? "model_tag",
+    group_dimension: text(query, "group_dimension") ?? "request_model",
     group_property: jsonValue(query.group_property, "report group field"),
   });
   if (!result.success) {

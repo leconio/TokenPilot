@@ -3,6 +3,11 @@ import { z } from "zod";
 import { routeTagSchema, virtualModelNameSchema } from "./common.js";
 import { runtimeRouteMatchSchema } from "./policy.js";
 import {
+  modelCapabilitiesSchema,
+  modelTaskTypeSchema,
+  runtimeCallConnectionSchema,
+} from "./model-runtime.js";
+import {
   aiuModeSchema,
   boundedUnicodeStringSchema,
   dimensionKeySchema,
@@ -18,8 +23,11 @@ const governedKeysSchema = z
 
 export const runtimeRouteTargetSchema = z.strictObject({
   model_id: opaqueIdSchema,
-  model_tag: boundedUnicodeStringSchema({ minLength: 1, maxLength: 256 }),
-  provider: boundedUnicodeStringSchema({ minLength: 1, maxLength: 120 }).optional(),
+  connection_id: opaqueIdSchema,
+  request_model: boundedUnicodeStringSchema({ minLength: 1, maxLength: 256 }),
+  provider: boundedUnicodeStringSchema({ minLength: 1, maxLength: 120 }),
+  task_type: modelTaskTypeSchema,
+  capabilities: modelCapabilitiesSchema,
   route_tag: routeTagSchema,
   fallback_order: z.number().int().safe().min(0).max(63),
   weight: z.union([
@@ -104,6 +112,7 @@ export const runtimeSnapshotSchema = z
     etag: sha256FingerprintSchema,
     signature: sha256FingerprintSchema,
     expires_at: utcTimestampSchema,
+    connections: z.record(opaqueIdSchema, runtimeCallConnectionSchema),
     routing: z.record(virtualModelNameSchema, runtimeRoutingPlanSchema),
     aiu: z.strictObject({
       enabled: z.boolean(),
@@ -127,6 +136,30 @@ export const runtimeSnapshotSchema = z
     }),
   })
   .superRefine((snapshot, context) => {
+    for (const [connectionId, connection] of Object.entries(snapshot.connections)) {
+      if (connection.id !== connectionId) {
+        context.addIssue({
+          code: "custom",
+          path: ["connections", connectionId, "id"],
+          message: "Connection record key must match its ID",
+        });
+      }
+    }
+    for (const [virtualModel, plan] of Object.entries(snapshot.routing)) {
+      const targets = [
+        ...plan.default.targets,
+        ...plan.rules.flatMap((rule) => rule.route.targets),
+      ];
+      targets.forEach((target, index) => {
+        if (snapshot.connections[target.connection_id] === undefined) {
+          context.addIssue({
+            code: "custom",
+            path: ["routing", virtualModel, "targets", index, "connection_id"],
+            message: "Route target references an unknown connection",
+          });
+        }
+      });
+    }
     const configurationVersions = new Set(
       Object.values(snapshot.routing).map((plan) => plan.configuration_version),
     );

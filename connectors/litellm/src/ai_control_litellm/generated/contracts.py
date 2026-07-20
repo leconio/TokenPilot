@@ -351,6 +351,8 @@ class Request(BaseModel):
     )
     request_id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
     attempt_id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
+    attempt_index: Annotated[JsonInteger, Field(ge=0, le=63)]
+    is_final_attempt: StrictBool
     operation_id: OperationId | None
     parent_request_id: ParentRequestId | None
     session_id: SessionId | None
@@ -367,6 +369,15 @@ type VirtualModel = Annotated[
 type ModelId = Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
 
 
+type ConnectionId = Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
+
+
+class ConnectionDriver(StrEnum):
+    LITELLM = "litellm"
+    OPENAI_COMPATIBLE = "openai_compatible"
+    ANTHROPIC = "anthropic"
+
+
 type Provider = Annotated[StrictStr, Field(max_length=256, min_length=1)]
 
 
@@ -376,7 +387,9 @@ class Model(BaseModel):
     )
     virtual_model: VirtualModel | None = MISSING
     model_id: ModelId | None = MISSING
-    model_tag: Annotated[StrictStr, Field(max_length=256, min_length=1)]
+    connection_id: ConnectionId | None = MISSING
+    connection_driver: ConnectionDriver | None = MISSING
+    request_model: Annotated[StrictStr, Field(max_length=256, min_length=1)]
     provider: Provider | None = MISSING
 
 
@@ -643,6 +656,8 @@ class Request1(BaseModel):
     )
     request_id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
     attempt_id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
+    attempt_index: Annotated[JsonInteger, Field(ge=0, le=63)]
+    is_final_attempt: StrictBool
     operation_id: OperationId | None
     parent_request_id: ParentRequestId | None
     session_id: SessionId | None
@@ -657,7 +672,9 @@ class Model1(BaseModel):
     )
     virtual_model: VirtualModel | None = MISSING
     model_id: ModelId | None = MISSING
-    model_tag: Annotated[StrictStr, Field(max_length=256, min_length=1)]
+    connection_id: ConnectionId | None = MISSING
+    connection_driver: ConnectionDriver | None = MISSING
+    request_model: Annotated[StrictStr, Field(max_length=256, min_length=1)]
     provider: Provider | None = MISSING
 
 
@@ -872,6 +889,8 @@ class Request2(BaseModel):
     )
     request_id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
     attempt_id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
+    attempt_index: Annotated[JsonInteger, Field(ge=0, le=63)]
+    is_final_attempt: StrictBool
     operation_id: OperationId | None
     parent_request_id: ParentRequestId | None
     session_id: SessionId | None
@@ -886,7 +905,9 @@ class Model2(BaseModel):
     )
     virtual_model: VirtualModel | None = MISSING
     model_id: ModelId | None = MISSING
-    model_tag: Annotated[StrictStr, Field(max_length=256, min_length=1)]
+    connection_id: ConnectionId | None = MISSING
+    connection_driver: ConnectionDriver | None = MISSING
+    request_model: Annotated[StrictStr, Field(max_length=256, min_length=1)]
     provider: Provider | None = MISSING
 
 
@@ -1221,9 +1242,76 @@ type VirtualModelRouteMatch = (
 )
 
 
+type CredentialRef = Annotated[StrictStr, Field(max_length=256, min_length=1)]
+
+
+class Connections(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
+    name: Annotated[StrictStr, Field(max_length=120, min_length=1)]
+    credential_ref: CredentialRef | None
+    timeout_ms: Annotated[JsonInteger, Field(gt=0, le=600000)]
+    max_retries: Annotated[JsonInteger, Field(ge=0, le=10)]
+    driver: Literal["litellm"]
+    base_url: Annotated[StrictStr, Field(max_length=2048, min_length=1)]
+
+
+class Connections1(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
+    name: Annotated[StrictStr, Field(max_length=120, min_length=1)]
+    credential_ref: CredentialRef | None
+    timeout_ms: Annotated[JsonInteger, Field(gt=0, le=600000)]
+    max_retries: Annotated[JsonInteger, Field(ge=0, le=10)]
+    driver: Literal["openai_compatible"]
+    base_url: Annotated[StrictStr, Field(max_length=2048, min_length=1)]
+
+
+type BaseUrl = Annotated[StrictStr, Field(max_length=2048, min_length=1)]
+
+
+type ApiVersion = Annotated[StrictStr, Field(max_length=64, min_length=1)]
+
+
+class Connections2(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
+    name: Annotated[StrictStr, Field(max_length=120, min_length=1)]
+    credential_ref: CredentialRef | None
+    timeout_ms: Annotated[JsonInteger, Field(gt=0, le=600000)]
+    max_retries: Annotated[JsonInteger, Field(ge=0, le=10)]
+    driver: Literal["anthropic"]
+    base_url: BaseUrl | None
+    api_version: ApiVersion | None
+
+
 class SelectionMode(StrEnum):
     ORDERED = "ordered"
     WEIGHTED = "weighted"
+
+
+class TaskType(StrEnum):
+    CHAT = "chat"
+    EMBEDDING = "embedding"
+    IMAGE = "image"
+    AUDIO = "audio"
+
+
+class Capability(StrEnum):
+    STREAMING = "streaming"
+    TOOLS = "tools"
+    STRUCTURED_OUTPUT = "structured_output"
+    IMAGE_INPUT = "image_input"
+    AUDIO_INPUT = "audio_input"
+    AUDIO_OUTPUT = "audio_output"
+    CACHE_METERING = "cache_metering"
+    REASONING = "reasoning"
 
 
 type Weight = Annotated[JsonInteger, Field(gt=0, le=1000)]
@@ -1237,8 +1325,11 @@ class Target(BaseModel):
         extra="forbid",
     )
     model_id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
-    model_tag: Annotated[StrictStr, Field(max_length=256, min_length=1)]
-    provider: Annotated[StrictStr, Field(max_length=120, min_length=1)] = MISSING
+    connection_id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
+    request_model: Annotated[StrictStr, Field(max_length=256, min_length=1)]
+    provider: Annotated[StrictStr, Field(max_length=120, min_length=1)]
+    task_type: TaskType
+    capabilities: Annotated[list[Capability], Field(max_length=8)]
     route_tag: Annotated[
         StrictStr,
         Field(max_length=200, pattern="^cp:[a-z0-9][a-z0-9._-]*(?::[a-z0-9][a-z0-9._-]*)+$"),
@@ -1336,8 +1427,11 @@ class Target1(BaseModel):
         extra="forbid",
     )
     model_id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
-    model_tag: Annotated[StrictStr, Field(max_length=256, min_length=1)]
-    provider: Annotated[StrictStr, Field(max_length=120, min_length=1)] = MISSING
+    connection_id: Annotated[StrictStr, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$")]
+    request_model: Annotated[StrictStr, Field(max_length=256, min_length=1)]
+    provider: Annotated[StrictStr, Field(max_length=120, min_length=1)]
+    task_type: TaskType
+    capabilities: Annotated[list[Capability], Field(max_length=8)]
     route_tag: Annotated[
         StrictStr,
         Field(max_length=200, pattern="^cp:[a-z0-9][a-z0-9._-]*(?::[a-z0-9][a-z0-9._-]*)+$"),
@@ -1445,6 +1539,12 @@ class RuntimeSnapshot(BaseModel):
     expires_at: Annotated[
         StrictStr,
         Field(pattern="^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?Z$"),
+    ]
+    connections: dict[
+        Annotated[
+            str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$", strict=True)
+        ],
+        Connections | Connections1 | Connections2,
     ]
     routing: dict[
         Annotated[
@@ -1573,7 +1673,9 @@ class FieldModel(StrEnum):
     CONFIG_VERSION = "config_version"
     VIRTUAL_MODEL = "virtual_model"
     MODEL_ID = "model_id"
-    MODEL_TAG = "model_tag"
+    CONNECTION_ID = "connection_id"
+    CONNECTION_DRIVER = "connection_driver"
+    REQUEST_MODEL = "request_model"
     PROVIDER = "provider"
     STATUS = "status"
     SCHEMA_VERSION = "schema_version"
@@ -1657,8 +1759,11 @@ class Grain(StrEnum):
 
 
 class GroupDimension(StrEnum):
-    MODEL_TAG = "model_tag"
+    MODEL_ID = "model_id"
+    REQUEST_MODEL = "request_model"
     VIRTUAL_MODEL = "virtual_model"
+    CONNECTION_ID = "connection_id"
+    CONNECTION_DRIVER = "connection_driver"
     USER_ID = "user_id"
     USER_TAG = "user_tag"
     PROVIDER = "provider"
@@ -1703,7 +1808,7 @@ class ReportQuery(BaseModel):
     ] = []
     metric: Metric = Metric.REQUESTS
     grain: Grain = Grain.DAY
-    group_dimension: GroupDimension = GroupDimension.MODEL_TAG
+    group_dimension: GroupDimension = GroupDimension.REQUEST_MODEL
     group_property: GroupProperty = MISSING
 
 
@@ -1912,7 +2017,7 @@ class Granularity(StrEnum):
 type VirtualModel3 = Annotated[StrictStr, Field(max_length=120, min_length=1)]
 
 
-type ModelTag = Annotated[StrictStr, Field(max_length=256, min_length=1)]
+type RequestModel = Annotated[StrictStr, Field(max_length=256, min_length=1)]
 
 
 type Provider3 = Annotated[StrictStr, Field(max_length=120, min_length=1)]
@@ -1933,7 +2038,7 @@ class Dimensions1(BaseModel):
     ]
     virtual_model: VirtualModel3 | None
     model_id: ModelId | None
-    model_tag: ModelTag | None
+    request_model: RequestModel | None
     provider: Provider3 | None
     user_id: UserId | None
 

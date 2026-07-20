@@ -48,7 +48,7 @@ def test_example_reports_required_user_and_typed_fields() -> None:
     assert cp["user_properties"] == {"parse_context": "native-mac", "voice_type": "text"}
 
 
-def test_real_provider_configuration_keeps_native_litellm_model_tags(monkeypatch) -> None:
+def test_real_provider_configuration_keeps_native_litellm_request_models(monkeypatch) -> None:
     monkeypatch.setenv("TOKENPILOT_USE_FAKE_PROVIDER", "false")
     assert environment_flag("TOKENPILOT_USE_FAKE_PROVIDER", True) is False
     entry = model_entry("local.primary", "anthropic/claude-sonnet-4-5", None, None)

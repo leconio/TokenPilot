@@ -30,9 +30,13 @@ const REPORT_FILTER_QUERY: readonly ContractParameter[] = [
 const REPORT_GROUP = query("group_dimension", {
   type: "string",
   enum: [
-    "model_tag",
+    "model_id",
+    "request_model",
     "virtual_model",
+    "connection_id",
+    "connection_driver",
     "user_id",
+    "user_tag",
     "provider",
     "route_reason",
     "time",

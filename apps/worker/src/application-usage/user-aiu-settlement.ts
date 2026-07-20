@@ -20,10 +20,55 @@ export async function applyUserAiu(
     });
     if (reservation === null) throw new TypeError("Usage event AIU reservation is invalid");
     if (reservation.status === AiuReservationStatus.SETTLED) {
-      if (reservation.settledAiuMicros !== (actual ?? 0n)) {
-        throw new TypeError("Usage event AIU reservation was settled with another amount");
+      const settled = actual ?? 0n;
+      if (reservation.settledAiuMicros === settled) {
+        return { consumed: reservation.settledAiuMicros, decision: "allow" };
       }
-      return { consumed: reservation.settledAiuMicros, decision: "allow" };
+      const delta = settled - reservation.settledAiuMicros;
+      const reservationChanged = await transaction.userAiuReservation.updateMany({
+        where: {
+          applicationId,
+          id: reservation.id,
+          status: AiuReservationStatus.SETTLED,
+          lockVersion: reservation.lockVersion,
+        },
+        data: {
+          settledAiuMicros: settled,
+          lockVersion: { increment: 1 },
+        },
+      });
+      const quotaChanged = await transaction.userAiuQuota.updateMany({
+        where: {
+          applicationId,
+          id: reservation.quotaId,
+          lockVersion: reservation.quota.lockVersion,
+        },
+        data: {
+          consumedAiuMicros: { increment: delta },
+          lockVersion: { increment: 1 },
+        },
+      });
+      if (reservationChanged.count !== 1 || quotaChanged.count !== 1) {
+        throw Object.assign(new Error("AIU reservation changed concurrently"), { code: "P2034" });
+      }
+      await transaction.userAiuLedgerEntry.create({
+        data: {
+          applicationId,
+          userId,
+          quotaId: reservation.quotaId,
+          entryType: AiuLedgerEntryType.SETTLEMENT_DELTA,
+          consumedDeltaMicros: delta,
+          reservedDeltaMicros: 0n,
+          consumedAfterMicros: reservation.quota.consumedAiuMicros + delta,
+          reservedAfterMicros: reservation.quota.reservedAiuMicros,
+          limitAfterMicros: reservation.quota.limitAiuMicros,
+          sourceEventId: eventId,
+          sourceReservationId: reservation.id,
+          idempotencyKey: `user-usage:${eventId}:settle-reconciliation`,
+          reason: "Reconciled reserved estimate with rated model AIU",
+        },
+      });
+      return { consumed: settled, decision: "allow" };
     }
     if (reservation.status !== AiuReservationStatus.RESERVED) {
       throw new TypeError("Usage event AIU reservation is already closed");

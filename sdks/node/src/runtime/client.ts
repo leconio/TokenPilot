@@ -1,23 +1,32 @@
-import { resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import {
   runtimeUserReservationRequestSchema,
   runtimeUserReservationResponseSchema,
+  type RuntimeCallConnection,
+  type UsageEvent,
   type RuntimeSnapshot,
   type RuntimeUserReservationRequest,
   type RuntimeUserReservationResponse,
 } from "@tokenpilot/contracts";
 
-import { readLkg, writeLkgAtomically } from "../lkg.js";
-import { RuntimeAcknowledgementQueue } from "./acknowledgements.js";
 import {
   resolveRuntimeRoute,
   type RuntimeRouteContext,
   type RuntimeRouteSelection,
 } from "./routing.js";
-import { parseVerifiedRuntimeSnapshot } from "./snapshot-validation.js";
 import { AiControlSdkError } from "../errors.js";
+import { executeChat, executeChatStream } from "./chat.js";
+import { requireAiContext } from "./context.js";
+import { allowedDimensions, buildManualUsageEvent } from "./manual-usage.js";
+import { RuntimeUsageReporter } from "./runtime-usage-reporter.js";
+import { RuntimeSnapshotManager } from "./runtime-snapshot-manager.js";
 import type {
+  AiChatInput,
+  AiChatResult,
+  AiChatStream,
+  AiProviderAdapter,
+  RecordUsageInput,
   ResolvedAiRuntimeContext,
   RuntimeClientOptions,
   RuntimeRefreshResult,
@@ -37,36 +46,27 @@ function errorValue(value: unknown): Error {
   return value instanceof Error ? value : new Error("Unknown runtime SDK failure");
 }
 
-function allowedDimensions(
-  values: Readonly<Record<string, string | number | boolean>>,
-  allowed: readonly string[],
-): Readonly<Record<string, string | number | boolean>> {
-  const allowedKeys = new Set(allowed);
-  const output: Record<string, string | number | boolean> = {};
-  for (const [key, value] of Object.entries(values)) {
-    if (!allowedKeys.has(key)) {
-      throw new AiControlSdkError(
-        "SDK_DIMENSION_NOT_ALLOWED",
-        `Analytics dimension ${key} is not allowed by the Runtime Snapshot.`,
-      );
-    }
-    output[key] = value;
-  }
-  return Object.freeze(output);
-}
-
 export class AiRuntimeClient {
   readonly #controlPlaneUrl: string;
   readonly #apiKey: string;
-  readonly #acknowledgements: RuntimeAcknowledgementQueue;
-  readonly #lkgPath: string;
   readonly #failMode: "fail_open" | "fail_closed";
   readonly #fetch: typeof fetch;
+  readonly #providerFetch: typeof fetch;
+  readonly #credentials: Readonly<Record<string, string>>;
+  readonly #credentialResolver:
+    | ((reference: string, connection: RuntimeCallConnection) => string | Promise<string>)
+    | undefined;
   readonly #now: () => Date;
   readonly #sdkVersion: string;
   readonly #onError: (error: Error) => void;
-  #snapshot: RuntimeSnapshot | null = null;
-  #source: "remote" | "lkg" = "lkg";
+  readonly #usageReporter: RuntimeUsageReporter;
+  readonly #refreshIntervalMs: number;
+  readonly #instanceId: string;
+  readonly #providerAdapters: Map<RuntimeCallConnection["driver"], AiProviderAdapter>;
+  readonly #connectionAdapters: Map<string, AiProviderAdapter>;
+  readonly #runtimeState: RuntimeSnapshotManager;
+  #refreshTimer: ReturnType<typeof setInterval> | null = null;
+  #backgroundRefresh: Promise<unknown> | null = null;
 
   public constructor(options: RuntimeClientOptions) {
     if (options.apiKey.length < 16) {
@@ -74,112 +74,97 @@ export class AiRuntimeClient {
     }
     this.#controlPlaneUrl = normalizedUrl(options.controlPlaneUrl);
     this.#apiKey = options.apiKey;
-    this.#lkgPath = resolve(options.lkgPath ?? ".tokenpilot/runtime-snapshot.json");
+    const lkgPath = resolve(options.lkgPath ?? ".tokenpilot/runtime-snapshot.json");
+    const usageSpoolPath = resolve(
+      options.usageSpoolPath ?? join(dirname(lkgPath), "usage-spool.sqlite3"),
+    );
+    const usageSpoolMaxBytes = options.usageSpoolMaxBytes ?? 64 * 1024 * 1024;
+    const usageBatchSize = options.usageBatchSize ?? 100;
+    if (!Number.isSafeInteger(usageBatchSize) || usageBatchSize < 1 || usageBatchSize > 1_000) {
+      throw new AiControlSdkError(
+        "SDK_INVALID_CONFIGURATION",
+        "usageBatchSize must be an integer between 1 and 1000.",
+      );
+    }
+    this.#refreshIntervalMs = options.refreshIntervalMs ?? 30_000;
+    if (
+      !Number.isSafeInteger(this.#refreshIntervalMs) ||
+      this.#refreshIntervalMs < 0 ||
+      (this.#refreshIntervalMs > 0 && this.#refreshIntervalMs < 1_000)
+    ) {
+      throw new AiControlSdkError(
+        "SDK_INVALID_CONFIGURATION",
+        "refreshIntervalMs must be 0 or an integer of at least 1000 milliseconds.",
+      );
+    }
     this.#failMode = options.failMode ?? "fail_open";
     this.#fetch = options.fetch ?? globalThis.fetch;
+    this.#providerFetch = options.providerFetch ?? globalThis.fetch;
+    this.#credentials = Object.freeze({ ...(options.credentials ?? {}) });
+    this.#credentialResolver = options.credentialResolver;
+    this.#providerAdapters = new Map(
+      Object.entries(options.providerAdapters ?? {}) as Array<
+        [RuntimeCallConnection["driver"], AiProviderAdapter]
+      >,
+    );
+    this.#connectionAdapters = new Map(Object.entries(options.connectionAdapters ?? {}));
     this.#now = options.now ?? (() => new Date());
     this.#sdkVersion = options.sdkVersion ?? "0.2.0";
+    this.#instanceId = options.instanceId ?? "node-sdk";
     this.#onError = options.onError ?? (() => undefined);
-    this.#acknowledgements = new RuntimeAcknowledgementQueue({
+    this.#usageReporter = new RuntimeUsageReporter({
+      path: usageSpoolPath,
+      maxBytes: usageSpoolMaxBytes,
+      batchSize: usageBatchSize,
+      request: (path, body) => this.request(path, body),
+      now: this.#now,
+      onError: this.#onError,
+    });
+    this.#runtimeState = new RuntimeSnapshotManager({
       controlPlaneUrl: this.#controlPlaneUrl,
       apiKey: this.#apiKey,
-      identity: {
-        instanceId: options.instanceId ?? "node-sdk",
-        version: options.sdkVersion ?? "0.2.0",
-      },
+      lkgPath,
+      failMode: this.#failMode,
       fetch: this.#fetch,
       now: this.#now,
       onError: this.#onError,
+      afterRefresh: () => this.#usageReporter.flushQuietly(),
+      instanceId: this.#instanceId,
+      sdkVersion: this.#sdkVersion,
     });
   }
 
   public get snapshot(): RuntimeSnapshot | null {
-    return this.#snapshot === null ? null : structuredClone(this.#snapshot);
+    return this.#runtimeState.snapshot;
   }
 
   public get snapshotSource(): "remote" | "lkg" {
-    return this.#source;
+    return this.#runtimeState.source;
   }
 
   public async loadLkg(): Promise<boolean> {
-    const candidate = await readLkg(this.#lkgPath);
-    if (candidate === null) return false;
-    this.#snapshot = parseVerifiedRuntimeSnapshot(candidate, this.#now(), { allowExpired: true });
-    this.#source = "lkg";
-    return true;
+    return this.#runtimeState.loadLkg();
+  }
+
+  /** Load current configuration and keep future requests current without restarting the app. */
+  public async start(): Promise<RuntimeRefreshResult> {
+    const result = await this.refresh();
+    if (this.#refreshIntervalMs > 0 && this.#refreshTimer === null) {
+      this.#refreshTimer = setInterval(() => {
+        if (this.#backgroundRefresh !== null) return;
+        this.#backgroundRefresh = this.refresh()
+          .catch((error: unknown) => this.#onError(errorValue(error)))
+          .finally(() => {
+            this.#backgroundRefresh = null;
+          });
+      }, this.#refreshIntervalMs);
+      this.#refreshTimer.unref?.();
+    }
+    return result;
   }
 
   public async refresh(): Promise<RuntimeRefreshResult> {
-    try {
-      await this.#acknowledgements.flush(true);
-      const headers: Record<string, string> = { authorization: `Bearer ${this.#apiKey}` };
-      if (this.#snapshot !== null) headers["if-none-match"] = `"${this.#snapshot.etag}"`;
-      const response = await this.#fetch(`${this.#controlPlaneUrl}/runtime/snapshot`, {
-        method: "GET",
-        headers,
-      });
-      if (response.status === 304) {
-        if (this.#snapshot === null) {
-          throw new AiControlSdkError(
-            "SDK_UNEXPECTED_NOT_MODIFIED",
-            "Control Plane returned 304 without a Runtime Snapshot.",
-          );
-        }
-        parseVerifiedRuntimeSnapshot(this.#snapshot, this.#now(), { allowExpired: false });
-        this.#source = "remote";
-        return this.refreshResult("not_modified");
-      }
-      if (!response.ok) {
-        throw new AiControlSdkError(
-          "SDK_RUNTIME_FETCH_FAILED",
-          `Control Plane returned HTTP ${response.status}.`,
-        );
-      }
-      const rawCandidate: unknown = await response.json();
-      let candidate: RuntimeSnapshot;
-      try {
-        candidate = parseVerifiedRuntimeSnapshot(rawCandidate, this.#now(), {
-          allowExpired: false,
-        });
-        if (
-          this.#snapshot !== null &&
-          candidate.version === this.#snapshot.version &&
-          candidate.etag !== this.#snapshot.etag
-        ) {
-          throw new AiControlSdkError(
-            "SDK_RUNTIME_VERSION_COLLISION",
-            "Runtime Snapshot version was reused with another ETag.",
-          );
-        }
-      } catch (error) {
-        const failure = errorValue(error);
-        this.#acknowledgements.queue(rawCandidate, "rejected", failure);
-        await this.#acknowledgements.flush(false);
-        throw failure;
-      }
-      this.#acknowledgements.queue(candidate, "received");
-      await this.#acknowledgements.flush(true);
-      try {
-        await writeLkgAtomically(this.#lkgPath, candidate);
-        this.#snapshot = candidate;
-      } catch (error) {
-        const failure = errorValue(error);
-        this.#acknowledgements.queue(candidate, "rejected", failure);
-        await this.#acknowledgements.flush(false);
-        throw failure;
-      }
-      this.#source = "remote";
-      this.#acknowledgements.queue(candidate, "applied");
-      await this.#acknowledgements.flush(false);
-      return this.refreshResult("updated");
-    } catch (error) {
-      const failure = errorValue(error);
-      this.#onError(failure);
-      if (this.#snapshot === null) await this.loadLkg();
-      if (this.#snapshot === null) throw failure;
-      this.#source = "lkg";
-      return this.refreshResult("lkg");
-    }
+    return this.#runtimeState.refresh();
   }
 
   public createMetadataEnvelope(context: ResolvedAiRuntimeContext): SdkMetadataEnvelope {
@@ -223,6 +208,78 @@ export class AiRuntimeClient {
     return resolveRuntimeRoute(this.requireUsableSnapshot(), virtualModel, now, context);
   }
 
+  public async chat<T = unknown>(input: AiChatInput): Promise<AiChatResult<T>> {
+    return executeChat<T>(input, {
+      snapshot: this.requireUsableSnapshot(),
+      selectRoute: (virtualModel, context) => this.selectRoute(virtualModel, context),
+      providerFetch: this.#providerFetch,
+      resolveCredential: (connection) => this.resolveCredential(connection),
+      adapterFor: (connection) => this.adapterFor(connection),
+      reserve: (reservation) => this.reserveUserAiu(reservation),
+      release: (token, reason) => this.releaseUserAiuReservation(token, reason),
+      settle: (token, amount) => this.settleUserAiuReservation(token, amount),
+      report: (events) => this.reportUsage(events),
+      onError: this.#onError,
+      sdkVersion: this.#sdkVersion,
+      instanceId: this.#instanceId,
+      now: this.#now,
+    });
+  }
+
+  public chatStream<T = unknown>(input: AiChatInput): AiChatStream<T> {
+    return executeChatStream<T>(input, {
+      snapshot: this.requireUsableSnapshot(),
+      selectRoute: (virtualModel, context) => this.selectRoute(virtualModel, context),
+      providerFetch: this.#providerFetch,
+      resolveCredential: (connection) => this.resolveCredential(connection),
+      adapterFor: (connection) => this.adapterFor(connection),
+      reserve: (reservation) => this.reserveUserAiu(reservation),
+      release: (token, reason) => this.releaseUserAiuReservation(token, reason),
+      settle: (token, amount) => this.settleUserAiuReservation(token, amount),
+      report: (events) => this.reportUsage(events),
+      onError: this.#onError,
+      sdkVersion: this.#sdkVersion,
+      instanceId: this.#instanceId,
+      now: this.#now,
+    });
+  }
+
+  public registerProviderAdapter(
+    driver: RuntimeCallConnection["driver"],
+    adapter: AiProviderAdapter,
+  ): this {
+    this.#providerAdapters.set(driver, adapter);
+    return this;
+  }
+
+  public registerConnectionAdapter(connectionId: string, adapter: AiProviderAdapter): this {
+    if (connectionId.trim().length === 0) throw new TypeError("connectionId is required");
+    this.#connectionAdapters.set(connectionId, adapter);
+    return this;
+  }
+
+  public async recordUsage(input: RecordUsageInput): Promise<UsageEvent> {
+    const context = requireAiContext();
+    const snapshot = this.requireUsableSnapshot();
+    const route = this.selectRoute(input.model, {
+      userId: context.userId,
+      userProperties: context.userProperties,
+      selectionKey: context.requestId,
+      ...(context.callSource === null ? {} : { callSource: context.callSource }),
+    });
+    const event = buildManualUsageEvent({
+      value: input,
+      context,
+      snapshot,
+      route,
+      now: this.#now(),
+      sdkVersion: this.#sdkVersion,
+      instanceId: this.#instanceId,
+    });
+    await this.#usageReporter.report([event]);
+    return event;
+  }
+
   public async reserveUserAiu(input: RuntimeUserReservationRequest): Promise<SdkReservationResult> {
     const snapshot = this.requireUsableSnapshot();
     if (snapshot.aiu.mode !== "hard_limit") {
@@ -263,34 +320,46 @@ export class AiRuntimeClient {
     });
   }
 
+  public async flushUsage(): Promise<number> {
+    return this.#usageReporter.flush();
+  }
+
+  public close(): void {
+    if (this.#refreshTimer !== null) clearInterval(this.#refreshTimer);
+    this.#refreshTimer = null;
+    this.#usageReporter.close();
+  }
+
   private requireUsableSnapshot(): RuntimeSnapshot {
-    if (this.#snapshot === null) {
-      throw new AiControlSdkError("SDK_RUNTIME_UNAVAILABLE", "No Runtime Snapshot is loaded.");
-    }
-    if (
-      Date.parse(this.#snapshot.expires_at) <= this.#now().getTime() &&
-      this.#failMode === "fail_closed"
-    ) {
-      throw new AiControlSdkError("SDK_RUNTIME_EXPIRED", "Runtime Snapshot has expired.");
-    }
-    return this.#snapshot;
+    return this.#runtimeState.requireUsable();
   }
 
-  private refreshResult(status: RuntimeRefreshResult["status"]): RuntimeRefreshResult {
-    const snapshot = this.requireSnapshot();
-    return {
-      status,
-      version: snapshot.version,
-      etag: snapshot.etag,
-      expired: Date.parse(snapshot.expires_at) <= this.#now().getTime(),
-    };
+  private async resolveCredential(connection: RuntimeCallConnection): Promise<string> {
+    const reference = connection.credential_ref;
+    if (reference === null) return "";
+    const configured = this.#credentials[reference];
+    const resolved =
+      configured ??
+      (this.#credentialResolver === undefined
+        ? process.env[reference]
+        : await this.#credentialResolver(reference, connection));
+    if (typeof resolved !== "string" || resolved.length === 0) {
+      throw new AiControlSdkError(
+        "SDK_CONNECTION_CREDENTIAL_MISSING",
+        `Credential ${reference} is not configured for connection ${connection.name}.`,
+      );
+    }
+    return resolved;
   }
 
-  private requireSnapshot(): RuntimeSnapshot {
-    if (this.#snapshot === null) {
-      throw new AiControlSdkError("SDK_RUNTIME_UNAVAILABLE", "No Runtime Snapshot is loaded.");
-    }
-    return this.#snapshot;
+  private adapterFor(connection: RuntimeCallConnection): AiProviderAdapter | undefined {
+    return (
+      this.#connectionAdapters.get(connection.id) ?? this.#providerAdapters.get(connection.driver)
+    );
+  }
+
+  private async reportUsage(events: readonly UsageEvent[]): Promise<void> {
+    await this.#usageReporter.report(events);
   }
 
   private async request(

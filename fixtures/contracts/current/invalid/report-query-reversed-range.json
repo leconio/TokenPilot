@@ -7,5 +7,5 @@
   "conditions": [],
   "metric": "requests",
   "grain": "day",
-  "group_dimension": "model_tag"
+  "group_dimension": "request_model"
 }

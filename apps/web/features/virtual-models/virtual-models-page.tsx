@@ -16,12 +16,21 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DataTable, type DataColumn } from "@/features/shared/components/data-table";
 import { PageHeading } from "@/features/shared/components/page-heading";
 import { PageState } from "@/features/shared/components/page-state";
 import { StatusBadge } from "@/features/shared/components/status-badge";
 import { useLocale } from "@/i18n/locale-provider";
 import { controlApi } from "@/lib/api";
+import { PublicationError } from "@/features/control-plane/release/publication-error";
+import { ModelSectionNav } from "@/features/models/model-section-nav";
 import { VirtualModelStrategyDialog } from "./virtual-model-strategy-dialog";
 import type { ModelItem, VirtualModelItem } from "./types";
 
@@ -73,6 +82,7 @@ export function VirtualModelsPage() {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [taskType, setTaskType] = useState<"chat" | "embedding" | "image" | "audio">("chat");
   const [selected, setSelected] = useState<VirtualModelItem | null>(null);
   const models = useQuery({
     queryKey: ["models", slug],
@@ -97,12 +107,13 @@ export function VirtualModelsPage() {
     mutationFn: () =>
       controlApi<VirtualModelItem>(`${base}/virtual-models`, {
         method: "POST",
-        body: JSON.stringify({ name, display_name: displayName || name }),
+        body: JSON.stringify({ name, display_name: displayName || name, task_type: taskType }),
       }),
     onSuccess: async () => {
       setCreating(false);
       setName("");
       setDisplayName("");
+      setTaskType("chat");
       await refresh();
     },
   });
@@ -122,8 +133,8 @@ export function VirtualModelsPage() {
   return (
     <main className="page">
       <PageHeading
-        title="虚拟模型"
-        description="为业务提供稳定名称，并选择实际调用的模型和备用顺序。"
+        title="模型"
+        description="配置应用可调用的服务、真实模型和自动分流。"
         actions={
           <>
             <Button variant="outline" disabled={publish.isPending} onClick={() => publish.mutate()}>
@@ -137,6 +148,7 @@ export function VirtualModelsPage() {
           </>
         }
       />
+      <ModelSectionNav />
       {loading ? (
         <PageState state="loading" />
       ) : error ? (
@@ -152,7 +164,7 @@ export function VirtualModelsPage() {
       {publish.data ? (
         <p className="text-sm text-muted-foreground">配置 {publish.data.version} 已发布。</p>
       ) : null}
-      {publish.error ? <p className="text-sm text-destructive">{publish.error.message}</p> : null}
+      <PublicationError error={publish.error} />
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent>
           <DialogHeader>
@@ -167,6 +179,25 @@ export function VirtualModelsPage() {
                 value={name}
                 onChange={(event) => setName(event.target.value)}
               />
+            </div>
+            <div className="field">
+              <Label htmlFor="virtual-task">用途</Label>
+              <Select
+                value={taskType}
+                onValueChange={(value: "chat" | "embedding" | "image" | "audio") =>
+                  setTaskType(value)
+                }
+              >
+                <SelectTrigger className="w-full" id="virtual-task">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="chat">对话</SelectItem>
+                  <SelectItem value="embedding">向量</SelectItem>
+                  <SelectItem value="image">图片</SelectItem>
+                  <SelectItem value="audio">语音</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="field">
               <Label htmlFor="virtual-display">显示名称（可选）</Label>

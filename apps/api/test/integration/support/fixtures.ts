@@ -21,6 +21,8 @@ export const usageFixture = usageEventSchema.parse({
   request: {
     request_id: "request-fixture",
     attempt_id: "attempt-fixture",
+    attempt_index: 0,
+    is_final_attempt: true,
     operation_id: null,
     parent_request_id: null,
     session_id: null,
@@ -29,7 +31,7 @@ export const usageFixture = usageEventSchema.parse({
   },
   model: {
     virtual_model: "text.fast",
-    model_tag: "openai/model-test",
+    request_model: "openai/model-test",
     provider: "openai",
   },
   route: null,

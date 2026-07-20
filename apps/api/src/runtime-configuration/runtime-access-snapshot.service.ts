@@ -106,6 +106,7 @@ export class RuntimeAccessSnapshotService {
       application_id: input.applicationId,
       version: `runtime-${application.slug}-${version}`,
       expires_at: new Date(now.getTime() + 10 * 365 * 86_400_000).toISOString(),
+      connections: source.connections,
       routing,
       aiu: source.aiu,
       access: {

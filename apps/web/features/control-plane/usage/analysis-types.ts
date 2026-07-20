@@ -35,8 +35,10 @@ export type AnalysisBuiltInField =
   | "display_user"
   | "user_tag"
   | "user_group"
-  | "model_tag"
+  | "request_model"
   | "virtual_model"
+  | "connection_id"
+  | "connection_driver"
   | "provider"
   | "route_reason"
   | "status"
@@ -44,7 +46,16 @@ export type AnalysisBuiltInField =
   | "aiu_status"
   | "latency_ms";
 export type AnalysisBuiltInGroup =
-  "model_tag" | "virtual_model" | "provider" | "user_id" | "user_tag" | "route_reason" | "time";
+  | "model_id"
+  | "request_model"
+  | "virtual_model"
+  | "connection_id"
+  | "connection_driver"
+  | "provider"
+  | "user_id"
+  | "user_tag"
+  | "route_reason"
+  | "time";
 
 export type AnalysisCondition =
   | Readonly<{

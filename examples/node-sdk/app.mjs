@@ -1,10 +1,6 @@
 #!/usr/bin/env node
 
-import {
-  applyAiContextToOpenAiRequest,
-  createAiRuntimeClient,
-  withAiContext,
-} from "../../sdks/node/dist/index.js";
+import { createAiRuntimeClient, withAiContext } from "../../sdks/node/dist/index.js";
 
 function requiredEnvironment(name) {
   const value = process.env[name];
@@ -19,36 +15,35 @@ const client = createAiRuntimeClient({
   lkgPath,
 });
 
-const refresh = await client.refresh();
-const decorated = await withAiContext(
-  {
-    userId: "example-user",
-    displayUser: "Example User",
-    operationId: "example-operation",
-    callSource: "node-example",
-    userProperties: { member_level: "gold" },
-    analyticsDimensions: { client: "node" },
-  },
-  async () =>
-    applyAiContextToOpenAiRequest(
-      client,
-      {
-        model: "text.fast",
-        messages: [
-          { role: "user", content: "This content goes to LiteLLM, never the Control Plane." },
-        ],
-        metadata: { cp: { forged: true }, feature: "node-example" },
-      },
-      { headers: { "x-litellm-tags": "caller-visible,cp:untrusted" } },
-    ),
-);
+try {
+  const refresh = await client.refresh();
+  const result = await withAiContext(
+    {
+      userId: "example-user",
+      displayUser: "Example User",
+      applicationVersion: "node-example-1.0.0",
+      callSource: "node-example",
+      eventProperties: { voice_enabled: false, next_action: "confirm" },
+      userProperties: { member_level: "gold" },
+      analyticsDimensions: { client: "node" },
+    },
+    () =>
+      client.chat({
+        model: "customer-support",
+        messages: [{ role: "user", content: "This content stays in the application request." }],
+      }),
+  );
 
-process.stdout.write(
-  `${JSON.stringify({
-    refresh_status: refresh.status,
-    runtime_version: refresh.version,
-    sanitized_tags: decorated.options.headers["x-litellm-tags"],
-    governed_context: decorated.body.metadata?.cp !== undefined,
-    lkg_path: lkgPath,
-  })}\n`,
-);
+  process.stdout.write(
+    `${JSON.stringify({
+      refresh_status: refresh.status,
+      runtime_version: refresh.version,
+      virtual_model: result.virtualModel,
+      real_model: result.target.request_model,
+      attempt_count: result.attempts.length,
+      lkg_path: lkgPath,
+    })}\n`,
+  );
+} finally {
+  client.close();
+}

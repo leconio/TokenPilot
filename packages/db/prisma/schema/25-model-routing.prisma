@@ -1,15 +1,44 @@
+model CallConnection {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId       String               @map("application_id") @db.Uuid
+  name                String               @db.VarChar(120)
+  driver              CallConnectionDriver
+  baseUrl             String?              @map("base_url") @db.VarChar(2048)
+  credentialRef       String?              @map("credential_ref") @db.VarChar(256)
+  publicConfigJson    Json                 @default("{}") @map("public_config_json")
+  enabled             Boolean              @default(true)
+  connectorInstanceId String?              @map("connector_instance_id") @db.Uuid
+  lastSeenAt          DateTime?            @map("last_seen_at") @db.Timestamptz(6)
+  status              CallConnectionStatus @default(UNVERIFIED)
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application         Application          @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  connectorInstance   ConnectorInstance?   @relation(fields: [applicationId, connectorInstanceId], references: [applicationId, id], onDelete: Restrict)
+  models              ModelDefinition[]
+  usageEvents         UsageEventRegistry[]
+
+  @@unique([applicationId, name], map: "call_connections_application_name_key")
+  @@unique([applicationId, id], map: "call_connections_application_id_key")
+  @@index([applicationId, enabled, driver], map: "call_connections_application_driver_idx")
+  @@index([applicationId, status, updatedAt], map: "call_connections_application_status_idx")
+  @@map("call_connections")
+}
+
 model ModelDefinition {
   id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   applicationId    String                   @map("application_id") @db.Uuid
+  connectionId     String                   @map("connection_id") @db.Uuid
   name             String                   @db.VarChar(120)
-  litellmTag       String                   @map("litellm_tag") @db.VarChar(256)
-  provider         String?                  @db.VarChar(120)
+  requestModel     String                   @map("request_model") @db.VarChar(256)
+  provider         String                   @db.VarChar(120)
+  taskType         ModelTaskType            @default(CHAT) @map("task_type")
   capabilitiesJson Json                     @default("[]") @map("capabilities_json")
   notes            String?                  @db.Text
   enabled          Boolean                  @default(true)
   createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
   application      Application              @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  connection       CallConnection           @relation(fields: [applicationId, connectionId], references: [applicationId, id], onDelete: Restrict)
   defaultFor       VirtualModel[]           @relation("VirtualModelDefault")
   routeTargets     VirtualModelTarget[]
   ruleTargets      VirtualModelRule[]
@@ -18,9 +47,10 @@ model ModelDefinition {
   usageEvents      UsageEventRegistry[]
   usageRatings     ApplicationUsageRating[]
 
-  @@unique([applicationId, litellmTag], map: "model_definitions_application_tag_key")
+  @@unique([applicationId, connectionId, requestModel], map: "model_definitions_application_connection_model_key")
   @@unique([applicationId, id], map: "model_definitions_application_id_key")
   @@index([applicationId, enabled, updatedAt], map: "model_definitions_application_enabled_idx")
+  @@index([applicationId, provider, taskType], map: "model_definitions_application_provider_task_idx")
   @@map("model_definitions")
 }
 
@@ -29,6 +59,7 @@ model VirtualModel {
   applicationId        String               @map("application_id") @db.Uuid
   name                 String               @db.VarChar(120)
   displayName          String               @map("display_name") @db.VarChar(120)
+  taskType             ModelTaskType        @default(CHAT) @map("task_type")
   enabled              Boolean              @default(false)
   defaultModelId       String?              @map("default_model_id") @db.Uuid
   description          String?              @db.Text

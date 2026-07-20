@@ -30,9 +30,9 @@ export class RequestDetailsService {
       where: { applicationId, requestId },
       orderBy: [{ eventTime: "asc" }, { attemptId: "asc" }],
       include: {
-        realModel: { select: { id: true, name: true, litellmTag: true } },
+        realModel: { select: { id: true, name: true, requestModel: true } },
         applicationRating: {
-          include: { model: { select: { id: true, name: true, litellmTag: true } } },
+          include: { model: { select: { id: true, name: true, requestModel: true } } },
         },
         inbox: {
           select: {
@@ -99,13 +99,17 @@ export class RequestDetailsService {
         return {
           request_id: event.requestId,
           attempt_id: event.attemptId,
+          attempt_index: event.attemptIndex,
+          is_final_attempt: event.isFinalAttempt,
           operation_id: event.operationId,
           user_id: event.externalUserId,
           display_user: event.userName,
           virtual_model: event.virtualModel,
           model_id: rating?.modelId ?? event.realModelId,
+          connection_id: event.connectionId,
+          connection_driver: event.connectionDriver?.toLowerCase() ?? null,
           model_name: model?.name ?? null,
-          model_tag: model?.litellmTag ?? event.modelTag,
+          request_model: model?.requestModel ?? event.requestModel,
           provider: event.provider,
           route_reason: event.routeReason,
           fallback_from: event.fallbackFrom,
@@ -146,7 +150,7 @@ export class RequestDetailsService {
           model_resolution: {
             status: model === null ? "unmapped" : "matched",
             model_id: rating?.modelId ?? event.realModelId,
-            model_tag: model?.litellmTag ?? event.modelTag,
+            request_model: model?.requestModel ?? event.requestModel,
           },
           usage: {
             input_tokens: rating?.inputTokens.toString() ?? "0",

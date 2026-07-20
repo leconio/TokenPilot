@@ -1,7 +1,22 @@
 import type { Route } from "@playwright/test";
 
 import { json, objectBody, problem } from "./control-plane-mock-http";
-import { mockNow, type MockModel } from "./control-plane-mock-state";
+import { mockNow, type MockConnection, type MockModel } from "./control-plane-mock-state";
+
+function present(model: MockModel, connections: readonly MockConnection[]) {
+  const connection = connections.find((item) => item.id === model.connection_id);
+  if (connection === undefined) throw new Error(`Missing mock connection ${model.connection_id}`);
+  return {
+    ...model,
+    connection: {
+      id: connection.id,
+      name: connection.name,
+      driver: connection.driver,
+      enabled: connection.enabled,
+      status: connection.status,
+    },
+  };
+}
 
 function references(modelId: string) {
   return modelId === "model-support"
@@ -24,20 +39,28 @@ export function handleMockModel(
   suffix: string,
   value: unknown,
   items: MockModel[],
+  connections: readonly MockConnection[],
 ) {
-  if (suffix === "/models" && method === "GET") return json(route, { models: items });
+  if (suffix === "/models" && method === "GET") {
+    return json(route, { models: items.map((model) => present(model, connections)) });
+  }
   if (suffix === "/models" && method === "POST") {
     const input = objectBody(value);
-    const tag = String(input.litellm_tag);
-    const model = {
+    const requestModel = String(input.request_model);
+    const model: MockModel = {
       id: `model-${slug}-${items.length + 1}`,
       name: String(input.name),
-      litellm_tag: tag,
-      provider: tag.split("/")[0] ?? null,
+      request_model: requestModel,
+      provider: String(input.provider),
+      connection_id: String(input.connection_id),
+      task_type: (input.task_type ?? "chat") as MockModel["task_type"],
+      capabilities: Array.isArray(input.capabilities)
+        ? input.capabilities.map((item) => String(item))
+        : [],
       enabled: true,
     };
     items.push(model);
-    return json(route, model, 201);
+    return json(route, present(model, connections), 201);
   }
   const itemMatch = suffix.match(/^\/models\/([^/]+)$/u);
   if (itemMatch !== null) {
@@ -46,11 +69,11 @@ export function handleMockModel(
     if (method === "PATCH") {
       const input = objectBody(value);
       if (typeof input.enabled === "boolean") model.enabled = input.enabled;
-      return json(route, model);
+      return json(route, present(model, connections));
     }
     if (method !== "GET") return problem(route, 405, "Method not allowed");
     return json(route, {
-      ...model,
+      ...present(model, connections),
       metrics: {
         calls: 12,
         tokens: "3456",
@@ -69,7 +92,7 @@ export function handleMockModel(
     if (!model) return problem(route, 404, "Model not found");
     const virtualModels = references(model.id);
     return json(route, {
-      model,
+      model: present(model, connections),
       virtual_models: virtualModels,
       reference_count: virtualModels.length,
       affects_routing: virtualModels.length > 0,
@@ -80,7 +103,7 @@ export function handleMockModel(
   const model = items.find((item) => item.id === match[1]);
   if (!model) return problem(route, 404, "Model not found");
   const rates = {
-    model,
+    model: present(model, connections),
     cost: {
       version: 1,
       currency: "USD",

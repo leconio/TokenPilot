@@ -3,19 +3,20 @@ import { expect, test } from "@playwright/test";
 import { ControlPlaneMock, expectUsableLayout } from "./control-plane-mock";
 
 const pages = [
-  ["dashboard", "首页"],
-  ["ai-units", "AIU 分析"],
-  ["costs", "模型花费"],
-  ["reports", "报表"],
-  ["models", "模型"],
-  ["virtual-models", "虚拟模型"],
-  ["releases", "配置发布"],
-  ["users", "用户"],
-  ["user-groups", "用户组"],
-  ["properties", "自定义字段"],
-  ["connectors", "服务连接"],
-  ["audit", "操作记录"],
-  ["settings", "设置"],
+  ["dashboard", "首页", "首页"],
+  ["ai-units", "AIU 分析", "AIU 分析"],
+  ["costs", "模型花费", "模型花费"],
+  ["reports", "报表", "报表"],
+  ["models", "模型", "真实模型"],
+  ["virtual-models", "模型", "虚拟模型"],
+  ["connections", "模型", "调用连接"],
+  ["releases", "配置发布", "发布记录"],
+  ["users", "用户", "用户列表"],
+  ["user-groups", "用户组", "用户组"],
+  ["properties", "自定义字段", "自定义字段"],
+  ["connectors", "服务连接", "运行状态"],
+  ["audit", "操作记录", "操作记录"],
+  ["settings", "设置", "设置"],
 ] as const;
 
 test.beforeEach(async ({ page }) => {
@@ -24,7 +25,7 @@ test.beforeEach(async ({ page }) => {
 
 test("每个应用页面保留应用路径并在桌面和窄屏可用", async ({ page }, testInfo) => {
   const narrow = testInfo.project.name.includes("narrow");
-  for (const [path, heading] of pages) {
+  for (const [path, heading, breadcrumbLabel] of pages) {
     await page.goto(`/apps/support/${path}`);
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     if (narrow) {
@@ -32,9 +33,7 @@ test("每个应用页面保留应用路径并在桌面和窄屏可用", async ({
     } else {
       const breadcrumb = page.getByRole("navigation", { name: "breadcrumb" });
       await expect(breadcrumb.getByRole("link", { name: "客服助手" })).toBeVisible();
-      await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText(
-        path === "releases" ? "发布中心" : heading,
-      );
+      await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText(breadcrumbLabel);
     }
     await expect(page).toHaveURL(new RegExp(`/apps/support/${path}`));
     await expectUsableLayout(page);

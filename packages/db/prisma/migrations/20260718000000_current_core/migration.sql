@@ -41,6 +41,15 @@ CREATE TYPE "background_job_status" AS ENUM ('queued', 'running', 'completed', '
 CREATE TYPE "connector_status" AS ENUM ('healthy', 'degraded', 'stale');
 
 -- CreateEnum
+CREATE TYPE "call_connection_driver" AS ENUM ('litellm', 'openai_compatible', 'anthropic');
+
+-- CreateEnum
+CREATE TYPE "call_connection_status" AS ENUM ('unverified', 'available', 'degraded', 'offline');
+
+-- CreateEnum
+CREATE TYPE "model_task_type" AS ENUM ('chat', 'embedding', 'image', 'audio');
+
+-- CreateEnum
 CREATE TYPE "publication_status" AS ENUM ('draft', 'published', 'retired', 'unknown');
 
 -- CreateEnum
@@ -203,6 +212,25 @@ CREATE TABLE "connector_heartbeat_receipts" (
 );
 
 -- CreateTable
+CREATE TABLE "call_connections" (
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "application_id" UUID NOT NULL,
+    "name" VARCHAR(120) NOT NULL,
+    "driver" "call_connection_driver" NOT NULL,
+    "base_url" VARCHAR(2048),
+    "credential_ref" VARCHAR(256),
+    "public_config_json" JSONB NOT NULL DEFAULT '{}',
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "connector_instance_id" UUID,
+    "last_seen_at" TIMESTAMPTZ(6),
+    "status" "call_connection_status" NOT NULL DEFAULT 'unverified',
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) NOT NULL,
+
+    CONSTRAINT "call_connections_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "audit_logs" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "application_id" UUID,
@@ -312,9 +340,11 @@ CREATE TABLE "rate_limit" (
 CREATE TABLE "model_definitions" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "application_id" UUID NOT NULL,
+    "connection_id" UUID NOT NULL,
     "name" VARCHAR(120) NOT NULL,
-    "litellm_tag" VARCHAR(256) NOT NULL,
-    "provider" VARCHAR(120),
+    "request_model" VARCHAR(256) NOT NULL,
+    "provider" VARCHAR(120) NOT NULL,
+    "task_type" "model_task_type" NOT NULL DEFAULT 'chat',
     "capabilities_json" JSONB NOT NULL DEFAULT '[]',
     "notes" TEXT,
     "enabled" BOOLEAN NOT NULL DEFAULT true,
@@ -330,6 +360,7 @@ CREATE TABLE "virtual_models" (
     "application_id" UUID NOT NULL,
     "name" VARCHAR(120) NOT NULL,
     "display_name" VARCHAR(120) NOT NULL,
+    "task_type" "model_task_type" NOT NULL DEFAULT 'chat',
     "enabled" BOOLEAN NOT NULL DEFAULT false,
     "default_model_id" UUID,
     "description" TEXT,

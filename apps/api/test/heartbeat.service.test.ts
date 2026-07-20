@@ -121,7 +121,13 @@ function databaseFixture() {
       },
     ),
   };
-  const transaction = { connectorInstance, connectorHeartbeatReceipt, auditLog: {} };
+  const callConnection = { updateMany: vi.fn().mockResolvedValue({ count: 1 }) };
+  const transaction = {
+    connectorInstance,
+    connectorHeartbeatReceipt,
+    callConnection,
+    auditLog: {},
+  };
   const database = {
     connectorHeartbeatReceipt: { findUnique: connectorHeartbeatReceipt.findUnique },
     $transaction: vi.fn(async (callback: (client: typeof transaction) => unknown) =>
@@ -130,7 +136,7 @@ function databaseFixture() {
   } as unknown as DatabaseClient;
   const audit = { record: vi.fn().mockResolvedValue(undefined) } as unknown as AuditService;
   const context = contextFor(applicationId);
-  return { database, audit, context, connectors, receipts };
+  return { database, audit, context, connectors, receipts, callConnection };
 }
 
 const capabilityHeaders = {
@@ -164,6 +170,10 @@ describe("HeartbeatService", () => {
       expect.objectContaining({ action: "connector.registered" }),
       expect.anything(),
     );
+    expect(fixture.callConnection.updateMany).toHaveBeenCalledWith({
+      where: { applicationId, connectorInstanceId: "connector-1" },
+      data: expect.objectContaining({ status: "AVAILABLE", lastSeenAt: expect.any(Date) }),
+    });
   });
 
   it("returns a duplicate for the same immutable heartbeat payload", async () => {

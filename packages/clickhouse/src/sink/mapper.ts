@@ -57,6 +57,8 @@ function usageBase(
       event_id: string(normalized.event_id, "normalized.event_id"),
       request_id: string(request.request_id, "normalized.request.request_id"),
       attempt_id: string(request.attempt_id, "normalized.request.attempt_id"),
+      attempt_index: numeric(request.attempt_index, "normalized.request.attempt_index") ?? 0,
+      is_final_attempt: Number(boolean(request.is_final_attempt)),
       operation_id: optionalString(request.operation_id, "normalized.request.operation_id") ?? "",
       session_id: optionalString(request.session_id, "normalized.request.session_id") ?? "",
       conversation_id:
@@ -76,7 +78,10 @@ function usageBase(
         optionalString(resolution.modelId, "resolution.modelId") ??
         optionalString(model.model_id, "normalized.model.model_id") ??
         "",
-      model_tag: string(model.model_tag, "normalized.model.model_tag"),
+      connection_id: optionalString(model.connection_id, "normalized.model.connection_id") ?? "",
+      connection_driver:
+        optionalString(model.connection_driver, "normalized.model.connection_driver") ?? "",
+      request_model: string(model.request_model, "normalized.model.request_model"),
       provider: optionalString(model.provider, "normalized.model.provider") ?? "",
       status: string(result.status, "normalized.result.status"),
       route_reason: route === null ? "" : (optionalString(route.reason, "route.reason") ?? ""),

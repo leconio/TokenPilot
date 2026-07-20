@@ -16,16 +16,41 @@ function request(method: "GET" | "POST" | "PATCH" | "PUT", path: string, payload
 }
 
 export function registerAdministrationCases(): void {
-  it("manages an application model, its independent rates, and application users", async () => {
+  it("manages a connection, its model, independent rates, and application users", async () => {
+    const connection = await request("POST", "/connections", {
+      name: "Integration provider",
+      driver: "openai_compatible",
+      base_url: "https://models.example.test/api",
+      credential_ref: "INTEGRATION_MODEL_API_KEY",
+      public_config: { timeout_ms: 30_000, max_retries: 1 },
+    });
+    expect(connection.statusCode).toBe(201);
+    expect(connection.json()).toMatchObject({
+      name: "Integration provider",
+      driver: "openai_compatible",
+      model_count: 0,
+    });
+
     const created = await request("POST", "/models", {
       name: "Integration model",
-      litellm_tag: "openai/integration-model",
+      connection_id: connection.json().id,
+      request_model: "openai/integration-model",
+      provider: "openai",
+      task_type: "chat",
+      capabilities: ["streaming", "tools"],
     });
     expect(created.statusCode).toBe(201);
     expect(created.json()).toMatchObject({
       name: "Integration model",
-      litellm_tag: "openai/integration-model",
+      request_model: "openai/integration-model",
       provider: "openai",
+      task_type: "chat",
+      capabilities: ["streaming", "tools"],
+      connection: {
+        id: connection.json().id,
+        name: "Integration provider",
+        driver: "openai_compatible",
+      },
     });
     const modelId = created.json().id as string;
 
@@ -73,7 +98,8 @@ export function registerAdministrationCases(): void {
         include: { application: true },
       }),
     ).resolves.toMatchObject({
-      litellmTag: "openai/integration-model",
+      requestModel: "openai/integration-model",
+      connectionId: connection.json().id,
       application: { slug: applicationSlug },
     });
   });
@@ -85,6 +111,7 @@ export function registerAdministrationCases(): void {
     const created = await request("POST", "/virtual-models", {
       name: "assistant",
       display_name: "Assistant",
+      task_type: "chat",
       default_model_id: model.id,
     });
     expect(created.statusCode).toBe(201);

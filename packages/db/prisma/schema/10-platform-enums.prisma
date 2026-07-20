@@ -104,6 +104,32 @@ enum ConnectorStatus {
   @@map("connector_status")
 }
 
+enum CallConnectionDriver {
+  LITELLM           @map("litellm")
+  OPENAI_COMPATIBLE @map("openai_compatible")
+  ANTHROPIC         @map("anthropic")
+
+  @@map("call_connection_driver")
+}
+
+enum CallConnectionStatus {
+  UNVERIFIED @map("unverified")
+  AVAILABLE  @map("available")
+  DEGRADED   @map("degraded")
+  OFFLINE    @map("offline")
+
+  @@map("call_connection_status")
+}
+
+enum ModelTaskType {
+  CHAT      @map("chat")
+  EMBEDDING @map("embedding")
+  IMAGE     @map("image")
+  AUDIO     @map("audio")
+
+  @@map("model_task_type")
+}
+
 enum PublicationStatus {
   DRAFT     @map("draft")
   PUBLISHED @map("published")

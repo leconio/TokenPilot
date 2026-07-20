@@ -1,8 +1,17 @@
 export interface ModelDefinition {
   readonly id: string;
   readonly name: string;
-  readonly litellm_tag: string;
+  readonly request_model: string;
   readonly provider: string | null;
+  readonly task_type?: "chat" | "embedding" | "image" | "audio";
+  readonly capabilities?: readonly string[];
+  readonly connection?: {
+    readonly id: string;
+    readonly name: string;
+    readonly driver: string;
+    readonly enabled: boolean;
+    readonly status: string;
+  };
   readonly enabled: boolean;
   readonly metrics?: ModelMetrics | undefined;
   readonly virtual_model_references?: readonly VirtualModelReference[] | undefined;
@@ -34,14 +43,14 @@ export interface ModelIssue {
 }
 
 export interface ModelDisableImpact {
-  readonly model: Pick<ModelDefinition, "id" | "name" | "litellm_tag">;
+  readonly model: Pick<ModelDefinition, "id" | "name" | "request_model">;
   readonly virtual_models: readonly VirtualModelReference[];
   readonly reference_count: number;
   readonly affects_routing: boolean;
 }
 
 export interface ModelRates {
-  readonly model: Pick<ModelDefinition, "id" | "name" | "litellm_tag">;
+  readonly model: Pick<ModelDefinition, "id" | "name" | "request_model">;
   readonly cost: {
     readonly version: number;
     readonly currency: string;

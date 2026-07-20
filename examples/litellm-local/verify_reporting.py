@@ -127,7 +127,7 @@ def main() -> None:
                     .replace("+00:00", "Z"),
                     "timezone": "UTC",
                     "page_size": 20,
-                    "group_dimension": "model_tag",
+                    "group_dimension": "request_model",
                     "conditions": json.dumps(conditions, separators=(",", ":")),
                 },
             )
@@ -147,7 +147,7 @@ def main() -> None:
         "application": slug,
         "events": [item.get("event_id") for item in items],
         "users": sorted({str(item.get("user_id")) for item in items}),
-        "models": sorted({str(item.get("model_tag")) for item in items}),
+        "models": sorted({str(item.get("request_model")) for item in items}),
         "tokens": [
             {
                 "input": item.get("input_tokens"),

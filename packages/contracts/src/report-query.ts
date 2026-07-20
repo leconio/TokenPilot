@@ -4,8 +4,11 @@ import { compareUtcDateTimes } from "./common.js";
 import { boundedUnicodeStringSchema, utcTimestampSchema } from "./primitives.js";
 
 export const reportGroupDimensionValues = [
-  "model_tag",
+  "model_id",
+  "request_model",
   "virtual_model",
+  "connection_id",
+  "connection_driver",
   "user_id",
   "user_tag",
   "provider",
@@ -49,7 +52,9 @@ export const reportBuiltInFieldValues = [
   "config_version",
   "virtual_model",
   "model_id",
-  "model_tag",
+  "connection_id",
+  "connection_driver",
+  "request_model",
   "provider",
   "status",
   "schema_version",
@@ -235,7 +240,7 @@ export const reportQuerySchema = z
     conditions: z.array(reportFilterConditionSchema).max(64).default([]),
     metric: reportMetricSchema.default("requests"),
     grain: reportTimeGrainSchema.default("day"),
-    group_dimension: reportGroupDimensionSchema.default("model_tag"),
+    group_dimension: reportGroupDimensionSchema.default("request_model"),
     group_property: reportPropertyGroupSchema.optional(),
   })
   .superRefine((query, context) => {

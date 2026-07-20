@@ -5,6 +5,17 @@
   "etag": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "signature": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "expires_at": "2026-07-19T14:00:00.000Z",
+  "connections": {
+    "00000000-0000-4000-8000-000000000102": {
+      "id": "00000000-0000-4000-8000-000000000102",
+      "name": "OpenAI",
+      "driver": "openai_compatible",
+      "base_url": "https://api.openai.com/v1",
+      "credential_ref": "OPENAI_API_KEY",
+      "timeout_ms": 60000,
+      "max_retries": 2
+    }
+  },
   "routing": {
     "assistant": {
       "virtual_model_id": "00000000-0000-4000-8000-000000000100",
@@ -18,8 +29,11 @@
         "targets": [
           {
             "model_id": "00000000-0000-4000-8000-000000000101",
-            "model_tag": "openai/gpt-5-mini",
+            "connection_id": "00000000-0000-4000-8000-000000000102",
+            "request_model": "openai/gpt-5-mini",
             "provider": "openai",
+            "task_type": "chat",
+            "capabilities": ["streaming", "tools"],
             "route_tag": "cp:assistant:default",
             "fallback_order": 0,
             "weight": 1

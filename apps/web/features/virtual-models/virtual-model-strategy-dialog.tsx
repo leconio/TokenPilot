@@ -122,7 +122,9 @@ export function VirtualModelStrategyDialog({
   const currentModel = model;
   const available = models.filter(
     (candidate) =>
-      candidate.enabled && !model.targets.some((target) => target.model.id === candidate.id),
+      candidate.enabled &&
+      candidate.task_type === model.task_type &&
+      !model.targets.some((target) => target.model.id === candidate.id),
   );
   const error =
     addCandidate.error ??

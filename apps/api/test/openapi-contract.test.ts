@@ -253,7 +253,7 @@ describe("current OpenAPI contract", () => {
     expect(attempt.properties).not.toHaveProperty("aiu_rating");
 
     const modelResolution = asSchema(attempt.properties?.model_resolution);
-    expect(modelResolution.required).toEqual(["status", "model_id", "model_tag"]);
+    expect(modelResolution.required).toEqual(["status", "model_id", "request_model"]);
     const rawEvent = asSchema(attempt.properties?.raw_event);
     expect(rawEvent.required).toContain("error");
     expect(rawEvent.properties).not.toHaveProperty("error_code");

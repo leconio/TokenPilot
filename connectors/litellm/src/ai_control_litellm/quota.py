@@ -102,7 +102,7 @@ class UserQuotaClient:
         )
         if reservation_id is not None:
             cp["reservation_id"] = reservation_id
-        for key in ("virtual_model", "model_id", "model_tag", "configuration_version"):
+        for key in ("virtual_model", "model_id", "request_model", "configuration_version"):
             value = route.get(key)
             if isinstance(value, str | int):
                 cp[key] = str(value)

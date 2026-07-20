@@ -12,6 +12,7 @@ import { PageState } from "@/features/shared/components/page-state";
 import { PermissionBoundary } from "@/features/shared/components/permission-boundary";
 import { StatusBadge } from "@/features/shared/components/status-badge";
 import { controlApi } from "@/lib/api";
+import { PublicationError } from "./publication-error";
 
 interface ConfigurationVersion {
   readonly id: string;
@@ -136,7 +137,7 @@ export function ReleaseCenterPage() {
             配置 #{publish.data.version} 已发布，等待服务确认。
           </p>
         ) : null}
-        {publish.error ? <p className="text-sm text-destructive">{publish.error.message}</p> : null}
+        <PublicationError error={publish.error} />
         {restore.data ? (
           <p className="text-sm text-muted-foreground">
             已从配置 #{restore.data.restored_from_version} 创建新配置 #{restore.data.version}

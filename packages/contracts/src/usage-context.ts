@@ -9,7 +9,7 @@ export const reservedDimensionKeys = [
   "user_id",
   "virtual_model",
   "model",
-  "model_tag",
+  "request_model",
   "provider",
   "route_reason",
   "operation_id",

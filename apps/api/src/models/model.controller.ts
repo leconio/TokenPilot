@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
 
 import { ApiKeyScopeGuard, RequireMachineScope } from "../auth.js";
 import { ModelService } from "./model.service.js";
@@ -10,8 +21,8 @@ export class ModelController {
 
   @Get()
   @RequireMachineScope("model:read")
-  list() {
-    return this.models.list();
+  list(@Query() query: Record<string, string | undefined>) {
+    return this.models.list(query);
   }
 
   @Post()
@@ -36,5 +47,11 @@ export class ModelController {
   @RequireMachineScope("model:write")
   update(@Param("id") id: string, @Body() body: unknown) {
     return this.models.update(id, body);
+  }
+
+  @Delete(":id")
+  @RequireMachineScope("model:write")
+  delete(@Param("id") id: string) {
+    return this.models.delete(id);
   }
 }

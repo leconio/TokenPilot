@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { routeTagSchema, virtualModelNameSchema } from "./common.js";
 import { analyticsDimensionsSchema } from "./usage-context.js";
+import { callConnectionDriverSchema } from "./model-runtime.js";
 import {
   boundedUnicodeStringSchema,
   currencyCodeSchema,
@@ -77,6 +78,8 @@ const usageSourceSchema = z.strictObject({
 const usageRequestSchema = z.strictObject({
   request_id: opaqueIdSchema,
   attempt_id: opaqueIdSchema,
+  attempt_index: z.number().int().safe().min(0).max(63),
+  is_final_attempt: z.boolean(),
   operation_id: opaqueIdSchema.nullable(),
   parent_request_id: opaqueIdSchema.nullable(),
   session_id: opaqueIdSchema.nullable(),
@@ -88,7 +91,9 @@ const usageRequestSchema = z.strictObject({
 const usageModelSchema = z.strictObject({
   virtual_model: virtualModelNameSchema.nullable().optional(),
   model_id: opaqueIdSchema.nullable().optional(),
-  model_tag: boundedUnicodeStringSchema({ minLength: 1, maxLength: 256 }),
+  connection_id: opaqueIdSchema.nullable().optional(),
+  connection_driver: callConnectionDriverSchema.nullable().optional(),
+  request_model: boundedUnicodeStringSchema({ minLength: 1, maxLength: 256 }),
   provider: nullableBoundedStringSchema.optional(),
 });
 

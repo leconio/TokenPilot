@@ -83,7 +83,7 @@ export interface UserAnalytics {
     readonly aiu_micros: string;
   }[];
   readonly models: readonly {
-    readonly model_tag: string;
+    readonly request_model: string;
     readonly virtual_model: string;
     readonly calls: number;
     readonly tokens: string;
@@ -96,7 +96,7 @@ export interface UserAnalytics {
     readonly request_id: string;
     readonly event_time: string;
     readonly virtual_model: string;
-    readonly model_tag: string;
+    readonly request_model: string;
     readonly status: string;
   }[];
   readonly operations: readonly {

@@ -15,10 +15,14 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run test",
+    "test:coverage": "vitest run test --coverage.enabled --coverage.provider=v8 --coverage.reporter=text --coverage.thresholds.lines=85 --coverage.thresholds.functions=90 --coverage.thresholds.statements=80 --coverage.thresholds.branches=65",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@tokenpilot/contracts": "workspace:*",
     "ulid": "3.0.2"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "4.1.10"
   }
 }

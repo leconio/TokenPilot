@@ -86,7 +86,7 @@ export class WorkerPlatformMetrics {
     this.aiuUnrated = counter(OPERATIONAL_METRICS.aiuUnrated, "AIU outcomes without a rate.");
     this.modelUnmapped = counter(
       OPERATIONAL_METRICS.modelUnmapped,
-      "Events whose LiteLLM model tag is not configured.",
+      "Events whose real-model request identifier is not configured.",
     );
     this.clickhouseHealth = gauge(OPERATIONAL_METRICS.clickhouseHealth, "ClickHouse health state.");
     this.clickhouseRows = counter(

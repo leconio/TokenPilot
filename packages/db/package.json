@@ -21,6 +21,7 @@
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "db:seed:example": "tsx prisma/seed-example.ts",
     "feature-flags": "tsx src/feature-flags-cli.ts",
     "generate": "prisma generate",
     "test:integration": "vitest run --configLoader runner test/current-schema.integration.test.ts",

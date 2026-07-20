@@ -30,7 +30,7 @@ function usageRow(eventId: string, eventTime: string) {
     trace_id: "trace-1",
     virtual_model: "text.fast",
     model_id: "model-1",
-    model_tag: "provider/model",
+    request_model: "provider/model",
     provider: "provider",
     status: "success",
     route_reason: "primary",
@@ -153,7 +153,7 @@ describe("analytics query scalability", () => {
     const query = parseReportQuery({
       ...range,
       conditions: [
-        { kind: "builtin", field: "model_tag", operator: "equals", values: ["provider/model"] },
+        { kind: "builtin", field: "request_model", operator: "equals", values: ["provider/model"] },
       ],
     });
     const where = clickHouseFilters(query).sql;

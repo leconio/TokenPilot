@@ -17,7 +17,7 @@ interface SnapshotDatabaseRow {
   readonly bucket_start: Date;
   readonly virtual_model: string | null;
   readonly model_id: string | null;
-  readonly model_tag: string | null;
+  readonly request_model: string | null;
   readonly provider: string | null;
   readonly user_id: string | null;
   readonly event_count: bigint;
@@ -100,7 +100,7 @@ function identityFingerprint(dimensions: ReconciliationDimensions): string {
         dimensions.applicationId,
         dimensions.virtualModel,
         dimensions.modelId,
-        dimensions.modelTag,
+        dimensions.requestModel,
         dimensions.provider,
       ]),
       "utf8",
@@ -136,7 +136,7 @@ function dimensions(row: SnapshotDatabaseRow | ClickHouseSnapshotRow, bucketSize
     bucketSize,
     virtualModel: nullableText(row.virtual_model),
     modelId: nullableText(row.model_id),
-    modelTag: nullableText(row.model_tag),
+    requestModel: nullableText(row.request_model),
     provider: nullableText(row.provider),
     userId: nullableText(row.user_id),
   } satisfies ReconciliationDimensions;
@@ -201,7 +201,7 @@ export class DualStoreReconciliationSnapshotSource implements ReconciliationSnap
     );
     const rows = await this.database.$queryRaw<SnapshotDatabaseRow[]>(Prisma.sql`
       SELECT registry.application_id::text AS application_id, ${bucket} AS bucket_start,
-        registry.virtual_model, registry.model_id::text AS model_id, registry.model_tag,
+        registry.virtual_model, registry.model_id::text AS model_id, registry.request_model,
         registry.provider, registry.external_user_id AS user_id,
         COUNT(DISTINCT registry.event_id)::bigint AS event_count,
         COALESCE(SUM(rating.input_tokens), 0)::decimal(38,9) AS input_tokens,
@@ -237,9 +237,9 @@ export class DualStoreReconciliationSnapshotSource implements ReconciliationSnap
       ) AS delivery ON TRUE
       WHERE ${postgresWhere(plan)}
       GROUP BY registry.application_id, bucket_start, registry.virtual_model,
-        registry.model_id, registry.model_tag, registry.provider, registry.external_user_id
+        registry.model_id, registry.request_model, registry.provider, registry.external_user_id
       ORDER BY registry.application_id, bucket_start, registry.virtual_model,
-        registry.model_id, registry.model_tag, registry.provider, registry.external_user_id
+        registry.model_id, registry.request_model, registry.provider, registry.external_user_id
     `);
     return rows.map((row) => postgresSnapshot(row, bucketSize));
   }

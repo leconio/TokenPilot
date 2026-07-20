@@ -49,7 +49,7 @@ export function clickHouseSnapshotQuery(
       toString(${bucketFunction}(event.event_time, 'UTC')) AS bucket_start,
       nullIf(event.virtual_model, '') AS virtual_model,
       nullIf(event.model_id, '') AS model_id,
-      nullIf(event.model_tag, '') AS model_tag,
+      nullIf(event.request_model, '') AS request_model,
       nullIf(event.provider, '') AS provider,
       event.user_id AS user_id,
       uniqExact(event.event_id) AS event_count,
@@ -73,8 +73,8 @@ export function clickHouseSnapshotQuery(
       ON rating.application_id = event.application_id AND rating.event_id = event.event_id
     WHERE ${conditions.join(" AND ")}
     GROUP BY event.application_id, bucket_start, virtual_model, model_id,
-             model_tag, provider, event.user_id
+             request_model, provider, event.user_id
     ORDER BY event.application_id, bucket_start, virtual_model, model_id,
-             model_tag, provider, event.user_id
+             request_model, provider, event.user_id
   `;
 }

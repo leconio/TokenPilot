@@ -49,7 +49,7 @@ export const normalized = {
   model: {
     virtual_model: "assistant",
     model_id: "base-model-1",
-    model_tag: "provider/model",
+    request_model: "provider/model",
     provider: "provider",
   },
   route: {

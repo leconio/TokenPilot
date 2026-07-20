@@ -60,7 +60,7 @@ interface UsageProbe {
   readonly found: boolean;
   readonly userId: string | null;
   readonly displayUser: string | null;
-  readonly modelTag: string | null;
+  readonly requestModel: string | null;
   readonly providerCostAmount: string | null;
   readonly aiuMicros: string | null;
   readonly eventProperties: Record<string, unknown> | null;
@@ -90,7 +90,7 @@ async function probeUsage(page: Page, applicationSlug: string, requestId: string
           found: false,
           userId: null,
           displayUser: null,
-          modelTag: null,
+          requestModel: null,
           providerCostAmount: null,
           aiuMicros: null,
           eventProperties: null,
@@ -108,7 +108,7 @@ async function probeUsage(page: Page, applicationSlug: string, requestId: string
         found: item !== undefined,
         userId: typeof item?.user_id === "string" ? item.user_id : null,
         displayUser: typeof item?.display_user === "string" ? item.display_user : null,
-        modelTag: typeof item?.model_tag === "string" ? item.model_tag : null,
+        requestModel: typeof item?.request_model === "string" ? item.request_model : null,
         providerCostAmount:
           typeof item?.provider_cost_amount === "string" ? item.provider_cost_amount : null,
         aiuMicros: typeof item?.aiu_micros === "string" ? item.aiu_micros : null,
@@ -141,7 +141,7 @@ export async function verifyReportedUsage(
       found: true,
       userId: acceptanceUserId,
       displayUser: acceptanceDisplayUser,
-      modelTag: "text.fast.demo-fallback",
+      requestModel: "text.fast.demo-fallback",
       providerCostAmount: expect.any(String),
       aiuMicros: expect.any(String),
       eventProperties: { next_action: "complete" },
@@ -167,6 +167,10 @@ export async function verifyApplicationPages(page: Page, applicationSlug: string
   await expect(page.getByText("Acceptance primary", { exact: true })).toBeVisible();
 
   await page.goto(`/apps/${applicationSlug}/virtual-models`);
-  await expect(page.getByRole("heading", { name: "虚拟模型", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "模型", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "虚拟模型", exact: true })).toHaveAttribute(
+    "data-state",
+    "active",
+  );
   await expect(page.getByText("Acceptance chat", { exact: true })).toBeVisible();
 }

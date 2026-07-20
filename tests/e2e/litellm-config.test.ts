@@ -236,9 +236,18 @@ describe("LiteLLM production and key-free demo configuration", () => {
     expect(realStackVerification).toContain("request_id: requestId");
     expect(realStackVerification).toContain("trace_id: traceId");
     expect(realStackVerification).not.toContain("business_request_id");
-    expect(setupPage).toContain("AI_CONTROL_API_KEY=${issued.ingest.api_key}");
-    expect(setupPage).toContain("AI_CONTROL_POLICY_API_KEY=${issued.policy.api_key}");
-    expect(setupPage).toContain('scopes: ["usage:write", "connector:heartbeat"]');
-    expect(setupPage).toContain('scopes: ["runtime:read", "runtime:write", "runtime:ack"]');
+    expect(setupPage).toContain("TOKENPILOT_RUNTIME_KEY=${issued.access.api_key}");
+    expect(setupPage).toContain("setIssued({ access");
+    for (const scope of [
+      "usage:write",
+      "connector:heartbeat",
+      "runtime:read",
+      "runtime:write",
+      "runtime:ack",
+    ]) {
+      expect(setupPage).toContain(`"${scope}"`);
+    }
+    expect(setupPage).not.toContain("issued.ingest");
+    expect(setupPage).not.toContain("issued.policy");
   });
 });

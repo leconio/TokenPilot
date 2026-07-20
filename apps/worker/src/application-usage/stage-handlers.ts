@@ -32,30 +32,51 @@ export class ApplicationUsageStageHandlers implements PipelineStageHandlers {
     normalized: NormalizedUsage,
   ): Promise<PipelineResolutionArtifact> {
     const modelId = normalized.model.model_id ?? null;
-    const modelTag = normalized.model.model_tag;
+    const connectionId = normalized.model.connection_id ?? null;
+    const requestModel = normalized.model.request_model;
+    const hasModelId = modelId !== null && UUID.test(modelId);
+    const hasConnectionId = connectionId !== null && UUID.test(connectionId);
+    if (!hasModelId && !hasConnectionId) {
+      return {
+        status: "unmapped",
+        modelId: null,
+        mappingFingerprint: fingerprint(applicationId, modelId, requestModel),
+        evidence: { model_id: modelId, connection_id: connectionId, request_model: requestModel },
+      };
+    }
     const model = await this.database.modelDefinition.findFirst({
       where: {
         applicationId,
         enabled: true,
-        ...(modelId !== null && UUID.test(modelId)
-          ? { id: modelId, litellmTag: modelTag }
-          : { litellmTag: modelTag }),
+        ...(hasModelId
+          ? {
+              id: modelId,
+              requestModel,
+              ...(hasConnectionId ? { connectionId } : {}),
+            }
+          : hasConnectionId
+            ? { connectionId, requestModel }
+            : {}),
       },
-      select: { id: true, litellmTag: true },
+      select: { id: true, connectionId: true, requestModel: true },
     });
     if (model === null) {
       return {
         status: "unmapped",
         modelId: null,
-        mappingFingerprint: fingerprint(applicationId, modelId, modelTag),
-        evidence: { model_id: modelId, model_tag: modelTag },
+        mappingFingerprint: fingerprint(applicationId, modelId, requestModel),
+        evidence: { model_id: modelId, connection_id: connectionId, request_model: requestModel },
       };
     }
     return {
       status: "matched",
       modelId: model.id,
-      mappingFingerprint: fingerprint(applicationId, model.id, model.litellmTag),
-      evidence: { model_id: model.id, model_tag: model.litellmTag },
+      mappingFingerprint: fingerprint(applicationId, model.id, model.requestModel),
+      evidence: {
+        model_id: model.id,
+        connection_id: model.connectionId,
+        request_model: model.requestModel,
+      },
     };
   }
 

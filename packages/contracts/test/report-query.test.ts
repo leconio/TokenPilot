@@ -14,7 +14,7 @@ describe("ReportQuery", () => {
       page_size: 50,
       filter_match: "all",
       conditions: [],
-      group_dimension: "model_tag",
+      group_dimension: "request_model",
     });
   });
 
@@ -35,7 +35,7 @@ describe("ReportQuery", () => {
         conditions: [
           {
             kind: "builtin",
-            field: "model_tag",
+            field: "request_model",
             operator: "one_of",
             values: ["openai/gpt-4.1-mini", "anthropic/claude-sonnet-4"],
           },
@@ -43,7 +43,7 @@ describe("ReportQuery", () => {
       }),
     ).toMatchObject({
       filter_match: "any",
-      conditions: [expect.objectContaining({ field: "model_tag", operator: "one_of" })],
+      conditions: [expect.objectContaining({ field: "request_model", operator: "one_of" })],
     });
   });
 

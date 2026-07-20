@@ -3,8 +3,8 @@
 [中文](api.zh-CN.md)
 
 TokenPilot exposes a strict HTTP API for usage ingestion, application administration, reports, and
-trusted LiteLLM runtime configuration. Model traffic still goes directly to LiteLLM; TokenPilot
-does not implement a model-completion endpoint.
+trusted runtime configuration. Model traffic goes directly from the Node SDK, Python SDK, or
+LiteLLM to the configured model service; TokenPilot does not implement a model-completion endpoint.
 
 ## Authentication and application binding
 
@@ -27,9 +27,9 @@ The Web console uses an authenticated cookie session plus CSRF protection for mu
 inside the key's application. The same `user_id` in another application is an independent user.
 
 The event includes time, request and attempt identifiers, source and application versions, the
-LiteLLM model name, optional virtual model, token and multimodal quantities, result fields, and
-typed custom properties. Prompts, responses, messages, tool arguments, cookies, authorization
-headers, and Provider credentials are rejected or removed before durable intake.
+connection, real-model request name, optional virtual model, token and multimodal quantities,
+result fields, and typed custom properties. Prompts, responses, messages, tool arguments, cookies,
+authorization headers, and Provider credentials are rejected or removed before durable intake.
 
 Idempotency is scoped by `application_id + event_id`:
 
@@ -44,6 +44,7 @@ The following families are bound to `/applications/:applicationSlug`:
 | Area           | Routes                                                                 |
 | -------------- | ---------------------------------------------------------------------- |
 | Applications   | `GET/POST /applications`, `GET/PATCH /applications/:applicationSlug`   |
+| Connections    | `/connections`, `/connections/:id`, and `/connections/:id/check`       |
 | Models         | `/models`, `/models/:id`, `/models/:id/cost`, `/models/:id/aiu`        |
 | Virtual models | `/virtual-models`, candidate routes, rules, reorder, and simulation    |
 | Typed fields   | `/properties`                                                          |

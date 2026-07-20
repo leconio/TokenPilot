@@ -1,6 +1,6 @@
 # TokenPilot
 
-**面向 LiteLLM AI 应用的自托管用量分析、成本控制、额度管理与模型路由平台。**
+**用于统计 Token、控制模型分流并帮助开发者设计 AI Unit 计费的自托管工具。**
 
 [English](README.md) · [中文文档](docs/README.zh-CN.md) · [参与贡献](CONTRIBUTING.md) · [Apache-2.0](LICENSE)
 
@@ -9,7 +9,7 @@
 
 ## 为什么需要 TokenPilot
 
-接入一个大模型并不难，困难的是长期管理多个用户、模型、服务商和应用。LiteLLM 解决了模型访问问题，但产品团队仍需要回答：
+接入一个大模型并不难，困难的是长期管理多个用户、模型服务和应用。产品团队仍需要回答：
 
 - 哪些用户、功能和模型消耗了最多 Token 与服务商成本？
 - 不同模型定价方式不同，怎样形成稳定、可解释的产品用量单位？
@@ -17,18 +17,18 @@
 - 怎样把产品使用的稳定模型名映射到真实模型、时间策略和 fallback？
 - 控制面暂时不可用时，怎样保证用量事件不丢失且不拖慢模型响应？
 
-TokenPilot 为这些问题提供一套自托管控制面。它接收 LiteLLM 产生的、不含模型内容的用量事件，计算服务商成本与产品自定义的 **AI Unit**，维护用户额度，并将运行时路由策略下发给 LiteLLM Connector 和可信 SDK。
+TokenPilot 为这些问题提供一套自托管控制面。Node、Python SDK 和可选的 LiteLLM Connector 都把不含模型内容的用量事件送入同一条链路。TokenPilot 计算服务商成本与产品自定义的 **AI Unit**、维护用户额度，并把路由策略下发给应用；业务代码使用的虚拟模型名不需要改变。
 
-TokenPilot **不会**替代 LiteLLM，不代理模型流量，也不需要模型服务商 API Key。提示词、模型回复、工具参数和服务商凭据始终留在你的 LiteLLM 环境中。
+TokenPilot **不代理**模型流量，也不需要模型服务商 API Key。提示词、模型回复、工具参数和服务商凭据始终留在你的应用或 LiteLLM 环境中。
 
 ## 它提供什么
 
 - 按应用、用户、模型、服务商、功能和自定义属性分析用量。
 - Token、请求数、延迟、错误、服务商成本和 AI Unit 仪表盘。
-- 模型目录，以及相互独立的服务商成本与 AI Unit 换算率。
+- LiteLLM、OpenAI 兼容服务和 Anthropic 调用连接，以及相互独立的真实模型、服务商成本与 AI Unit 换算率。
 - 虚拟模型、候选模型、失败顺序、时间条件、匹配规则和临时切换。
 - 用户额度，以及预留、结算、释放、重置和严格限制模式。
-- LiteLLM Callback Connector，带可靠的本地 SQLite 队列和后台重试。
+- Node、Python 可信 SDK 和可选的 LiteLLM Connector；三种路径都使用可靠的本地 SQLite 队列和后台重试。
 - 带校验、ETag 轮询、应用确认和最后可用版本恢复的运行时策略。
 - Node、Python SDK，以及支持中英文的管理控制台。
 
@@ -36,18 +36,21 @@ TokenPilot **不会**替代 LiteLLM，不代理模型流量，也不需要模型
 
 ```mermaid
 flowchart LR
-  APP["你的应用"] --> LLM["LiteLLM"]
-  POLICY["TokenPilot 运行策略"] -. "路由与额度决策" .-> LLM
-  LLM --> PROVIDER["模型服务商"]
-  LLM -. "不含内容的用量事件" .-> CONNECTOR["LiteLLM Connector\nSQLite 队列"]
-  CONNECTOR --> API["TokenPilot API"]
+  APP["你的应用"] --> SDK["TokenPilot SDK"]
+  APP --> LLM["LiteLLM 与 Connector"]
+  POLICY["已发布的虚拟模型策略"] -. "分流与额度" .-> SDK
+  POLICY -. "分流与额度" .-> LLM
+  SDK --> PROVIDER["模型服务"]
+  LLM --> PROVIDER
+  SDK -. "不含内容的用量" .-> API["TokenPilot API"]
+  LLM -. "不含内容的用量" .-> API
   API --> PG["PostgreSQL"]
   PG --> WORKER["标准化、计价、结算"]
   WORKER --> CH["ClickHouse 分析"]
   WEB["管理控制台"] --> API
 ```
 
-模型调用前，Connector 可以把虚拟模型转换为选中的 LiteLLM 模型和 fallback 顺序，并按需预留 AI Unit。每次服务商调用成功或失败后，Connector 只提取白名单内的用量字段，先写入本地 SQLite WAL 队列，再异步批量上传。API 负责可靠接收，Worker 在模型响应链路之外完成计价、额度结算和分析数据投递。
+模型调用前，SDK 或 Connector 会把虚拟模型转换为真实模型和调用连接，并执行额度判断。只要连接已经在应用中注册，发布策略后就能在 LiteLLM 与直连模型之间切换或降级，无需重新部署应用。每次真实模型调用后只提取白名单内的用量字段，先写入本地 SQLite WAL 队列，再上传给 API。Worker 在模型响应链路之外按实际用量计价、校准额度并写入统计。
 
 PostgreSQL 保存配置、用户、额度和计价决策；Redis 协调任务与短期运行状态；ClickHouse 提供统计与报表查询。当前部署需要同时运行这三个数据组件。
 
@@ -79,20 +82,19 @@ docker compose up -d --build --wait
 
 接下来：
 
-1. 在 LiteLLM 环境中安装 TokenPilot Connector。
-2. 配置用量接入密钥和运行策略密钥。
-3. 录入应用实际使用的 LiteLLM 模型名称。
-4. 定义服务商成本和 AI Unit 换算率。
-5. 创建并发布虚拟模型路由策略。
-6. 发起一次模型请求，确认仪表盘收到用量事件。
+1. 新增调用连接，可选择 LiteLLM、OpenAI 兼容服务或 Anthropic。
+2. 新增真实模型，并配置服务商成本和 AI Unit 换算率。
+3. 创建 `customer-support` 这样的虚拟模型，排列首选与备用模型并发布。
+4. 复制首次配置页提供的 Node、Python 或 LiteLLM 示例，在应用环境中配置所引用的凭据。
+5. 调用虚拟模型，确认用量、AI Cost、AIU 和应用用户都已出现。
 
 默认入口只监听回环地址。配置 TLS、防火墙、可信代理、安全 Cookie 和访问控制前，不要把它直接暴露到公网。默认 Compose 项目不会开放 PostgreSQL、Redis 或 ClickHouse。共享环境部署前请阅读[部署指南](docs/deployment.zh-CN.md)。
 
-## 接入 LiteLLM
+## 接入应用
 
-TokenPilot 以自定义 Callback 的方式接入 LiteLLM。同一个 Callback 在调用前参与策略和额度决策，在成功与失败回调中采集用量。模型服务商凭据仍然只从 LiteLLM 进程环境读取。
+新应用优先使用 Node 或 Python SDK：业务只调用虚拟模型名，凭据或已有模型 Client 留在应用本地。只要新连接已经注册，之后发布策略即可无感切换模型。LiteLLM 用户也可以安装自定义 Connector，在调用前执行分流与额度判断，并通过成功、失败回调采集每次真实尝试。
 
-完整配置见 [LiteLLM 与 SDK 接入指南](docs/integration.zh-CN.md)。仓库附带不需要真实 Provider Key 的本地假服务示例，可用于验证完整采集链路。
+Node、Python、LiteLLM 和手动上报示例见[接入指南](docs/integration.zh-CN.md)。仓库附带不需要真实服务商密钥的假服务，可用于验证完整链路。
 
 ## AI Unit
 

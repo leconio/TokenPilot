@@ -129,13 +129,13 @@ export const productTranslations = {
   新建应用: "New application",
   选择是或否: "Select yes or no",
   重置用户额度: "Reset user quota",
-  "LiteLLM 模型名称：": "LiteLLM model name: ",
+  "真实模型标识：": "Real model identifier: ",
   下一步操作: "Next action",
   "个 ·": "items ·",
   事件: "Event",
   保存并生效: "Save and apply",
-  "初始化完成。进入应用后，只需录入 LiteLLM 模型名称，再按需创建虚拟模型。":
-    "Setup is complete. Add LiteLLM model names in the application, then create virtual models as needed.",
+  "初始化完成。进入应用后，添加调用连接和真实模型，再创建虚拟模型。":
+    "Setup is complete. Add a connection and real model, then create a virtual model.",
   删除时段: "Delete schedule",
   "发布中…": "Publishing…",
   发布分流配置: "Publish routing configuration",
@@ -306,7 +306,7 @@ export const productTranslations = {
   输入条件值: "Enter a condition value",
   "选择 AIU 状态": "Select AIU status",
   选择用户组: "Select a user group",
-  "搜索 LiteLLM 标签": "Search LiteLLM tags",
+  搜索真实模型: "Search real models",
   "搜索用户 ID": "Search user IDs",
   搜索用户名: "Search user names",
   用户名: "User name",
@@ -317,8 +317,8 @@ export const productTranslations = {
   "优先补齐价格或检查模型名称。": "Add missing rates or check the model name first.",
   "例如 tool_call": "For example, tool_call",
   "停用前请确认这些调用关系。": "Review these routing references before disabling.",
-  "停用后，新调用不会再把这个 LiteLLM 模型名称识别为可用模型。":
-    "After disabling, new calls will no longer recognize this LiteLLM model name as available.",
+  "停用后，新调用不会再选择这个真实模型。":
+    "After disabling, new calls will no longer select this real model.",
   停用模型: "Disable model",
   "其他用量（每单位）": "Other usage (per unit)",
   删除自定义单位: "Remove custom unit",

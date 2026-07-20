@@ -126,10 +126,10 @@ export function UserDetail({
                 analytics.models.map((model) => (
                   <div
                     className="grid gap-1 border-b py-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:gap-4"
-                    key={`${model.virtual_model}:${model.model_tag}`}
+                    key={`${model.virtual_model}:${model.request_model}`}
                   >
                     <span>
-                      <strong>{model.model_tag}</strong>
+                      <strong>{model.request_model}</strong>
                       {model.virtual_model ? (
                         <small className="ml-2 text-muted-foreground">{model.virtual_model}</small>
                       ) : null}
@@ -159,7 +159,7 @@ export function UserDetail({
                     key={call.event_id}
                   >
                     <span>
-                      <strong>{call.virtual_model || call.model_tag}</strong>
+                      <strong>{call.virtual_model || call.request_model}</strong>
                       <small className="ml-2 text-muted-foreground">
                         {dateTime(call.event_time, timezone, locale)}
                       </small>

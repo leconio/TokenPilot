@@ -35,6 +35,18 @@ CREATE INDEX "connector_heartbeat_receipts_application_instance_sent_idx" ON "co
 CREATE UNIQUE INDEX "connector_heartbeat_receipts_application_heartbeat_key" ON "connector_heartbeat_receipts"("application_id", "heartbeat_id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "call_connections_application_name_key" ON "call_connections"("application_id", "name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "call_connections_application_id_key" ON "call_connections"("application_id", "id");
+
+-- CreateIndex
+CREATE INDEX "call_connections_application_driver_idx" ON "call_connections"("application_id", "enabled", "driver");
+
+-- CreateIndex
+CREATE INDEX "call_connections_application_status_idx" ON "call_connections"("application_id", "status", "updated_at");
+
+-- CreateIndex
 CREATE INDEX "audit_logs_application_created_idx" ON "audit_logs"("application_id", "created_at" DESC);
 
 -- CreateIndex
@@ -86,10 +98,13 @@ CREATE UNIQUE INDEX "rate_limit_key_key" ON "rate_limit"("key");
 CREATE INDEX "model_definitions_application_enabled_idx" ON "model_definitions"("application_id", "enabled", "updated_at");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "model_definitions_application_tag_key" ON "model_definitions"("application_id", "litellm_tag");
+CREATE UNIQUE INDEX "model_definitions_application_connection_model_key" ON "model_definitions"("application_id", "connection_id", "request_model");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "model_definitions_application_id_key" ON "model_definitions"("application_id", "id");
+
+-- CreateIndex
+CREATE INDEX "model_definitions_application_provider_task_idx" ON "model_definitions"("application_id", "provider", "task_type");
 
 -- CreateIndex
 CREATE INDEX "virtual_models_application_enabled_idx" ON "virtual_models"("application_id", "enabled", "updated_at");
@@ -293,7 +308,10 @@ CREATE INDEX "usage_event_registry_stage_received_idx" ON "usage_event_registry"
 CREATE INDEX "usage_event_registry_event_time_idx" ON "usage_event_registry"("event_time", "event_id");
 
 -- CreateIndex
-CREATE INDEX "usage_event_registry_application_model_idx" ON "usage_event_registry"("application_id", "model_tag", "event_time");
+CREATE INDEX "usage_event_registry_application_model_idx" ON "usage_event_registry"("application_id", "request_model", "event_time");
+
+-- CreateIndex
+CREATE INDEX "usage_event_registry_application_connection_idx" ON "usage_event_registry"("application_id", "connection_id", "event_time");
 
 -- CreateIndex
 CREATE INDEX "usage_event_registry_status_time_idx" ON "usage_event_registry"("result_status", "event_time");

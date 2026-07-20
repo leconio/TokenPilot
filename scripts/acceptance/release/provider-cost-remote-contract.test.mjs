@@ -26,6 +26,9 @@ test("Web-session preparation uses the same-origin control proxy", () => {
 test("remote model pricing acceptance rates the model that actually served the request", () => {
   assert.match(preparation, /text\.fast\.demo-primary/u);
   assert.match(preparation, /text\.fast\.demo-fallback/u);
+  assert.match(preparation, /driver: "litellm"/u);
+  assert.match(preparation, /request_model: "text\.fast\.demo-primary"/u);
+  assert.match(preparation, /connection_id: connection\.id/u);
   assert.match(preparation, /models\/\$\{model\.id\}\/cost/u);
   assert.match(preparation, /input_per_million: "1000"/u);
   assert.match(preparation, /output_per_million: "2000"/u);
@@ -34,7 +37,7 @@ test("remote model pricing acceptance rates the model that actually served the r
     verification,
     /candidate\.request_id === target && candidate\.status === "success"/u,
   );
-  assert.match(verification, /modelTag: "text\.fast\.demo-fallback"/u);
+  assert.match(verification, /requestModel: "text\.fast\.demo-fallback"/u);
   assert.match(verification, /provider_cost_amount/u);
   assert.match(verification, /Number\(usage\.providerCostAmount\)/u);
   assert.match(verification, /BigInt\(usage\.aiuMicros/u);

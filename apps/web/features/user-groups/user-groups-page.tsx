@@ -93,7 +93,7 @@ export function UserGroupsPage() {
       to: to.toISOString(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
       page_size: "200",
-      group_dimension: "model_tag",
+      group_dimension: "request_model",
       conditions: JSON.stringify([
         { kind: "builtin", field: "user_group", operator: "equals", values: [selected?.id ?? ""] },
       ]),

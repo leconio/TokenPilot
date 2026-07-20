@@ -25,17 +25,17 @@
     {
       "name": "UsageEvent",
       "file": "usage-event.schema.json",
-      "sha256": "82b857963d49993bc95f5418c250edc53e342454e7bbd153100d98eb80dffbfa"
+      "sha256": "0dd4d02a1f63fb906df14bc411cb727c35d0da9d1ae22200cff74643a112ab4a"
     },
     {
       "name": "UsageBatch",
       "file": "usage-batch.schema.json",
-      "sha256": "29ed5ec19fa8596a0cd0caa2ac915bfe30f898a02cf99b7487109e9883d08dba"
+      "sha256": "7928bcc4e03056fc637310740c2f53964c10bc58251509aec56243c4b08d484a"
     },
     {
       "name": "NormalizedUsage",
       "file": "normalized-usage.schema.json",
-      "sha256": "ecbcd24ea049b9f1630f804cdc7e889475d2f2a586f0c8376d736511aece52f9"
+      "sha256": "584476de6663d71a7893747014e26ce74d0cf9c8d777bb4a5ab1a5f745c6845b"
     },
     {
       "name": "UsageType",
@@ -60,7 +60,7 @@
     {
       "name": "RuntimeSnapshot",
       "file": "runtime-snapshot.schema.json",
-      "sha256": "ef249c2889e957f77608c7315537912998c7367e9c782819cddc5407238fed3b"
+      "sha256": "378a9e9297f756924529d4275c245fa7aff3e7130ee19cddc3fb242f887f6e0e"
     },
     {
       "name": "RuntimeUserReservationRequest",
@@ -85,7 +85,7 @@
     {
       "name": "ReportQuery",
       "file": "report-query.schema.json",
-      "sha256": "41281ca1426ef95c822b581df69c948f9f43469cd9f27393cd06bc02facd52fa"
+      "sha256": "83ad3e0081a24d955f26fa1e15a8bbb4ae8b4c1867fa4b697fd986d26d874e41"
     },
     {
       "name": "ReportEnvelope",
@@ -100,7 +100,7 @@
     {
       "name": "ReconciliationDiff",
       "file": "reconciliation-diff.schema.json",
-      "sha256": "d0bd394012f671dc76885b000ae1549c4226a69be984e62c75ba168b3233753d"
+      "sha256": "9f5a49547574230f7aaddba54814b9996b4a69c08ea7c0444d7c1075b9534940"
     }
   ]
 }

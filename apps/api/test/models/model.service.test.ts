@@ -8,19 +8,33 @@ import { ModelService } from "../../src/models/model.service.js";
 
 const applicationId = "00000000-0000-4000-8000-000000000211";
 const now = new Date("2026-07-17T12:00:00.000Z");
+const connectionId = "00000000-0000-4000-8000-000000000210";
+
+function connection() {
+  return {
+    id: connectionId,
+    name: "Primary service",
+    driver: "OPENAI_COMPATIBLE",
+    enabled: true,
+    status: "AVAILABLE",
+  };
+}
 
 function row(overrides: Record<string, unknown> = {}) {
   return {
     id: "00000000-0000-4000-8000-000000000212",
     applicationId,
     name: "Main chat",
-    litellmTag: "openai/gpt-4.1",
+    connectionId,
+    requestModel: "openai/gpt-4.1",
     provider: "openai",
+    taskType: "CHAT",
     capabilitiesJson: [],
     notes: null,
     enabled: true,
     createdAt: now,
     updatedAt: now,
+    connection: connection(),
     ...overrides,
   };
 }
@@ -35,6 +49,10 @@ function fixture() {
       }),
       create: vi.fn().mockImplementation(({ data }) => row(data)),
       update: vi.fn().mockImplementation(({ data }) => row(data)),
+      delete: vi.fn().mockResolvedValue({}),
+    },
+    callConnection: {
+      findFirst: vi.fn().mockResolvedValue({ id: connectionId }),
     },
     applicationUsageRating: {
       aggregate: vi.fn().mockResolvedValue({
@@ -88,26 +106,35 @@ describe("ModelService", () => {
   it("always lists models inside the authenticated application", async () => {
     const value = fixture();
     await expect(value.service.list()).resolves.toMatchObject({
-      models: [{ name: "Main chat", litellm_tag: "openai/gpt-4.1" }],
+      models: [{ name: "Main chat", request_model: "openai/gpt-4.1" }],
     });
     expect(value.database.modelDefinition.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { applicationId } }),
     );
   });
 
-  it("creates a model with only a name and LiteLLM tag", async () => {
+  it("creates a model on an application-owned connection", async () => {
     const value = fixture();
     await expect(
-      value.service.create({ name: "Main chat", litellm_tag: "openai/gpt-4.1" }),
-    ).resolves.toMatchObject({ provider: "openai", enabled: true });
-    expect(value.database.modelDefinition.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        applicationId,
+      value.service.create({
         name: "Main chat",
-        litellmTag: "openai/gpt-4.1",
+        connection_id: connectionId,
+        request_model: "openai/gpt-4.1",
         provider: "openai",
+        task_type: "chat",
       }),
-    });
+    ).resolves.toMatchObject({ provider: "openai", enabled: true });
+    expect(value.database.modelDefinition.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          applicationId,
+          connectionId,
+          name: "Main chat",
+          requestModel: "openai/gpt-4.1",
+          provider: "openai",
+        }),
+      }),
+    );
   });
 
   it("rejects cross-application lookup results", async () => {
@@ -116,7 +143,12 @@ describe("ModelService", () => {
     await expect(value.service.get("another-model")).rejects.toMatchObject({ status: 404 });
     expect(value.database.modelDefinition.findFirst).toHaveBeenCalledWith({
       where: { id: "another-model", applicationId },
-      include: { application: { select: { baseCurrency: true } } },
+      include: {
+        application: { select: { baseCurrency: true } },
+        connection: {
+          select: { id: true, name: true, driver: true, enabled: true, status: true },
+        },
+      },
     });
   });
 
@@ -144,7 +176,7 @@ describe("ModelService", () => {
     );
     expect(value.database.usageEventRegistry.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { applicationId, modelTag: "openai/gpt-4.1", realModelId: null },
+        where: { applicationId, requestModel: "openai/gpt-4.1", realModelId: null },
       }),
     );
     expect(value.database.virtualModel.findMany).toHaveBeenCalledWith(
@@ -162,5 +194,25 @@ describe("ModelService", () => {
     expect(value.database.virtualModel.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ applicationId }) }),
     );
+  });
+
+  it("returns reference counts instead of leaking a database error on delete", async () => {
+    const value = fixture();
+    value.database.modelDefinition.findFirst = vi.fn().mockResolvedValue({
+      ...row(),
+      _count: { defaultFor: 1, routeTargets: 2, ruleTargets: 1 },
+    });
+    await expect(value.service.delete(row().id)).rejects.toMatchObject({ status: 409 });
+    expect(value.database.modelDefinition.delete).not.toHaveBeenCalled();
+  });
+
+  it("deletes an unreferenced model inside the active application", async () => {
+    const value = fixture();
+    value.database.modelDefinition.findFirst = vi.fn().mockResolvedValue({
+      ...row(),
+      _count: { defaultFor: 0, routeTargets: 0, ruleTargets: 0 },
+    });
+    await expect(value.service.delete(row().id)).resolves.toEqual({ deleted: true });
+    expect(value.database.modelDefinition.delete).toHaveBeenCalledWith({ where: { id: row().id } });
   });
 });

@@ -31,7 +31,7 @@ describe("activity metric reports", () => {
       ];
     };
     const query = parseReportQuery(
-      { ...range, metric: "tokens", group_dimension: "model_tag", page_size: "2" },
+      { ...range, metric: "tokens", group_dimension: "request_model", page_size: "2" },
       new Date("2028-01-03T00:00:00.000Z"),
       "activity",
       "application-a",
@@ -51,7 +51,7 @@ describe("activity metric reports", () => {
     });
     expect(result.trend).toHaveLength(2);
     expect(result.next_cursor).not.toBeNull();
-    expect(decodeGroupCursor(result.next_cursor!, "activity", "model_tag")).toMatchObject({
+    expect(decodeGroupCursor(result.next_cursor!, "activity", "request_model")).toMatchObject({
       groupKey: "company/fast",
       position: 2,
     });
@@ -60,7 +60,7 @@ describe("activity metric reports", () => {
     expect(statements.some((sql) => sql.includes("sum(ifNull(usage.total_tokens"))).toBe(true);
   });
 
-  it("calculates success rate from distinct successful requests", async () => {
+  it("calculates success rate from distinct successful operations across fallback attempts", async () => {
     const statements: string[] = [];
     const execute: ClickHouseExecute = async (statement) => {
       statements.push(statement("1 = 1"));
@@ -74,7 +74,12 @@ describe("activity metric reports", () => {
 
     await queryAnalyticsActivity(execute, query);
 
-    expect(statements.some((sql) => sql.includes("uniqExactIf(event.request_id"))).toBe(true);
+    expect(statements.some((sql) => sql.includes("uniqExactIf(event.operation_key"))).toBe(true);
+    expect(
+      statements.some((sql) =>
+        sql.includes("if(empty(event.operation_id), event.request_id, event.operation_id)"),
+      ),
+    ).toBe(true);
     expect(statements.every((sql) => !sql.includes("current_rating_events"))).toBe(true);
   });
 

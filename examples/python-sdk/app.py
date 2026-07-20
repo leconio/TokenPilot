@@ -1,16 +1,11 @@
-"""Minimal trusted Python Runtime client; model content never enters the Control Plane."""
+"""Call a virtual model with the trusted Python SDK without exposing request content."""
 
 from __future__ import annotations
 
 import json
 import os
 
-from ai_control_sdk import (
-    AiRuntimeClient,
-    AiRuntimeContext,
-    ai_context,
-    apply_ai_context_to_openai_request,
-)
+from ai_control_sdk import AiRuntimeClient, AiRuntimeContext, ai_context
 
 
 def required_environment(name: str) -> str:
@@ -35,33 +30,30 @@ def main() -> None:
             AiRuntimeContext(
                 user_id="example-user",
                 display_user="Example User",
-                operation_id="example-operation",
+                application_version="python-example-1.0.0",
                 call_source="python-example",
+                event_properties={"voice_enabled": False, "next_action": "confirm"},
                 user_properties={"member_level": "gold"},
                 analytics_dimensions={"client": "python"},
             )
         ):
-            body, options = apply_ai_context_to_openai_request(
-                client,
-                {
-                    "model": "text.fast",
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": "This content goes to LiteLLM, never the Control Plane.",
-                        }
-                    ],
-                    "metadata": {"cp": {"forged": True}, "feature": "python-example"},
-                },
-                {"headers": {"x-litellm-tags": "caller-visible,cp:untrusted"}},
+            result = client.chat(
+                model="customer-support",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": "This content stays in the application request.",
+                    }
+                ],
             )
         print(
             json.dumps(
                 {
                     "refresh_status": refresh.status,
                     "runtime_version": refresh.version,
-                    "sanitized_tags": options["headers"]["x-litellm-tags"],
-                    "governed_context": "cp" in body["metadata"],
+                    "virtual_model": result.virtual_model,
+                    "real_model": result.target.request_model,
+                    "attempt_count": len(result.attempts),
                     "lkg_path": lkg_path,
                 }
             )

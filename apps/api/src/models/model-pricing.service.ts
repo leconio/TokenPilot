@@ -41,7 +41,7 @@ export class ModelPricingService {
       select: {
         id: true,
         name: true,
-        litellmTag: true,
+        requestModel: true,
         application: { select: { baseCurrency: true } },
       },
     });
@@ -74,7 +74,7 @@ export class ModelPricingService {
       }),
     ]);
     return {
-      model: { id: model.id, name: model.name, litellm_tag: model.litellmTag },
+      model: { id: model.id, name: model.name, request_model: model.requestModel },
       cost:
         cost === null
           ? null

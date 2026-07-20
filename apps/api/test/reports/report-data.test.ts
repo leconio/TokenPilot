@@ -11,7 +11,7 @@ function usageRow(overrides: Readonly<Record<string, unknown>> = {}) {
     schema_version: "2.0",
     status: "success",
     user_id: "user-1",
-    model_tag: "provider/model",
+    request_model: "provider/model",
     latency_ms: "12",
     ...overrides,
   };

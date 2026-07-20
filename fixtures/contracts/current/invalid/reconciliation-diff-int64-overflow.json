@@ -9,7 +9,7 @@
     "time_bucket": "2026-07-15T00:00:00.000Z",
     "virtual_model": null,
     "model_id": null,
-    "model_tag": null,
+    "request_model": null,
     "provider": null,
     "user_id": null
   },

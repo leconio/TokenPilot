@@ -15,6 +15,7 @@ model Application {
   inboxEvents             IngestionInbox[]
   outboxEvents            PipelineOutbox[]
   deadLetterEvents        DeadLetterEvent[]
+  callConnections         CallConnection[]
   models                  ModelDefinition[]
   virtualModels           VirtualModel[]
   virtualModelRules       VirtualModelRule[]

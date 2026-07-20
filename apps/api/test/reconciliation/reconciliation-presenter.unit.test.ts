@@ -52,7 +52,7 @@ describe("reconciliation presenter", () => {
         time_bucket: "2026-07-16T00:00:00.000Z",
         virtual_model: "text.fast",
         model_id: "model-1",
-        model_tag: "openai-primary",
+        request_model: "openai-primary",
         provider: "openai",
         user_id: null,
       },

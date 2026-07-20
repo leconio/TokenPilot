@@ -4,7 +4,7 @@ export function PageHeading({
   title,
   description,
   actions,
-}: Readonly<{ title: ReactNode; description: string; actions?: ReactNode }>) {
+}: Readonly<{ title: ReactNode; description: ReactNode; actions?: ReactNode }>) {
   return (
     <div className="page-head">
       <div>

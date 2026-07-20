@@ -211,16 +211,18 @@ await client.execute(`
   INSERT INTO ${identifier(client.database)}.rating_events
   (
     application_id, instance_id, environment, event_time, rating_event_id, source_event_id,
-    rating_kind, rating_stage, rating_sign, request_id, attempt_id, operation_id,
-    user_id, virtual_model, model_id, model_tag, provider,
+    rating_kind, rating_stage, rating_sign, request_id, attempt_id, attempt_index,
+    is_final_attempt, operation_id, user_id, virtual_model, model_id,
+    connection_id, connection_driver, request_model, provider,
     status, attempt_outcome, route_reason, usage_type, currency, amount_decimal, aiu_micros,
     price_version_id, aiu_rate_version_id, calculation_version, rating_fingerprint,
     reason, sink_delivery_id, authority_outbox_id, source_outbox_id
   )
   SELECT
     application_id, instance_id, environment, event_time, ${sqlString(faultRatingId)}, event_id,
-    'provider_cost', 'official', 1, request_id, attempt_id, operation_id,
-    user_id, virtual_model, model_id, model_tag, provider,
+    'provider_cost', 'official', 1, request_id, attempt_id, attempt_index,
+    is_final_attempt, operation_id, user_id, virtual_model, model_id,
+    connection_id, connection_driver, request_model, provider,
     'official', status, route_reason, CAST(NULL AS Nullable(String)), CAST('USD' AS Nullable(String)),
     CAST(toDecimal128(1, 18) AS Nullable(Decimal(38, 18))), CAST(NULL AS Nullable(Int64)),
     CAST(NULL AS Nullable(String)), CAST(NULL AS Nullable(String)), 'acceptance-fault',

@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   ApplicationRole,
+  CallConnectionDriver,
   createPrismaClient,
   PipelineStage,
   type DatabaseClient,
@@ -72,12 +73,43 @@ describe.skipIf(!enabled)("current empty-database schema", () => {
       }),
     ).resolves.toBe(1);
 
+    const [firstConnection, secondConnection] = await Promise.all([
+      database.callConnection.create({
+        data: {
+          applicationId: first.id,
+          name: "Primary",
+          driver: CallConnectionDriver.OPENAI_COMPATIBLE,
+          baseUrl: "https://models.example.com/v1",
+        },
+      }),
+      database.callConnection.create({
+        data: {
+          applicationId: second.id,
+          name: "Primary",
+          driver: CallConnectionDriver.OPENAI_COMPATIBLE,
+          baseUrl: "https://models.example.com/v1",
+        },
+      }),
+    ]);
+
     const [firstModel, secondModel] = await Promise.all([
       database.modelDefinition.create({
-        data: { applicationId: first.id, name: "First model", litellmTag: "shared-tag" },
+        data: {
+          applicationId: first.id,
+          connectionId: firstConnection.id,
+          name: "First model",
+          requestModel: "shared-tag",
+          provider: "openai",
+        },
       }),
       database.modelDefinition.create({
-        data: { applicationId: second.id, name: "Second model", litellmTag: "shared-tag" },
+        data: {
+          applicationId: second.id,
+          connectionId: secondConnection.id,
+          name: "Second model",
+          requestModel: "shared-tag",
+          provider: "openai",
+        },
       }),
     ]);
     await expect(

@@ -68,12 +68,16 @@ def test_success_fixture_maps_exclusive_usage_and_node_metadata(tmp_path) -> Non
     assert event["model"] == {
         "virtual_model": "text.fast",
         "model_id": "019c0000-0000-7000-8000-000000000001",
-        "model_tag": "openai-fast-prod-a",
+        "connection_id": "019c0000-0000-7000-8000-000000000101",
+        "connection_driver": "litellm",
+        "request_model": "openai-fast-prod-a",
         "provider": "openai",
     }
     assert event["request"] == {
         "request_id": "req_success_01",
         "attempt_id": "provider-response-success-01",
+        "attempt_index": 0,
+        "is_final_attempt": True,
         "operation_id": "op_success_01",
         "parent_request_id": None,
         "session_id": None,
@@ -117,11 +121,11 @@ def test_runtime_candidate_mapping_attributes_a_fallback_to_the_real_model(tmp_p
         "candidate_models": [
             {
                 "model_id": "019c0000-0000-7000-8000-000000000001",
-                "model_tag": "text.fast.demo-primary",
+                "request_model": "text.fast.demo-primary",
             },
             {
                 "model_id": "019c0000-0000-7000-8000-000000000002",
-                "model_tag": "text.fast.demo-fallback",
+                "request_model": "text.fast.demo-fallback",
             },
         ],
     }
@@ -132,7 +136,7 @@ def test_runtime_candidate_mapping_attributes_a_fallback_to_the_real_model(tmp_p
     )
 
     assert event["model"]["model_id"] == "019c0000-0000-7000-8000-000000000002"
-    assert event["model"]["model_tag"] == "text.fast.demo-fallback"
+    assert event["model"]["request_model"] == "text.fast.demo-fallback"
     assert "cp:virtual:acceptance.chat:default" in event["route"]["tags"]
 
 

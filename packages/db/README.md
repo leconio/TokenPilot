@@ -3,10 +3,10 @@
 This package owns TokenPilot's PostgreSQL schema, Prisma client, empty-database migration, and
 minimal instance seed. It never starts PostgreSQL or a container runtime.
 
-PostgreSQL is the source of truth for applications, members, API keys, LiteLLM-tagged models,
-virtual-model routing, property definitions, application users, AIU allowances, durable ingestion,
-runtime configuration, and audit history. ClickHouse stores rebuildable analytics projections;
-Redis runs queues and short-lived coordination.
+PostgreSQL is the source of truth for applications, members, API keys, call connections, real
+models, virtual-model routing, property definitions, application users, AIU allowances, durable
+ingestion, runtime configuration, and audit history. ClickHouse stores rebuildable analytics
+projections; Redis runs queues and short-lived coordination.
 
 ## Fresh development database
 
@@ -25,6 +25,17 @@ Never aim migration or integration-test credentials at production.
 The seed only creates the singleton instance settings from environment values. It does not invent
 applications, models, users, usage, cost, AIU consumption, quotas, queue records, or analytics data.
 Running it repeatedly is safe.
+
+After Setup creates an application, an explicitly requested, secret-free routing example can be
+added idempotently with:
+
+```bash
+TOKENPILOT_EXAMPLE_APPLICATION_SLUG=my-application \
+  pnpm --filter @tokenpilot/db db:seed:example
+```
+
+This separate command stores only credential environment-variable names. It never runs as part of
+the normal seed or Compose startup.
 
 ## Application boundaries
 

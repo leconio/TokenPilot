@@ -130,7 +130,7 @@ export const reconciliationDimensionsSchema = z
     time_bucket: utcTimestampSchema,
     virtual_model: boundedUnicodeStringSchema({ minLength: 1, maxLength: 120 }).nullable(),
     model_id: opaqueIdSchema.nullable(),
-    model_tag: boundedUnicodeStringSchema({ minLength: 1, maxLength: 256 }).nullable(),
+    request_model: boundedUnicodeStringSchema({ minLength: 1, maxLength: 256 }).nullable(),
     provider: boundedUnicodeStringSchema({ minLength: 1, maxLength: 120 }).nullable(),
     user_id: boundedUnicodeStringSchema({ minLength: 1, maxLength: 256 }).nullable(),
   })

@@ -129,7 +129,7 @@ describe.skipIf(!enabled)("Prisma ClickHouse Outbox cursor", () => {
         applicationId: application.id,
         applicationUserId: applicationUser.id,
         externalUserId: applicationUser.externalId,
-        modelTag: "integration-model",
+        requestModel: "integration-model",
         eventId,
         schemaVersion: "2.0",
         payloadHash: "a".repeat(64),

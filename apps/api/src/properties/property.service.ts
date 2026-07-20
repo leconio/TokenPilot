@@ -41,7 +41,7 @@ const reservedKeys = new Set([
   "reservation_id",
   "virtual_model",
   "model_id",
-  "model_tag",
+  "request_model",
   "model",
   "provider",
   "route_reason",

@@ -1,7 +1,10 @@
 import type {
   AnalyticsDimensions,
+  RuntimeCallConnection,
+  RuntimeRouteTarget,
   RuntimeUserReservationRequest,
   RuntimeUserReservationResponse,
+  UsageEvent,
 } from "@tokenpilot/contracts";
 
 export type DimensionScalar = string | number | boolean;
@@ -48,8 +51,113 @@ export interface RuntimeClientOptions {
   readonly lkgPath?: string;
   readonly failMode?: RuntimeFailMode;
   readonly fetch?: typeof fetch;
+  readonly providerFetch?: typeof fetch;
+  readonly credentials?: Readonly<Record<string, string>>;
+  readonly credentialResolver?: (
+    reference: string,
+    connection: RuntimeCallConnection,
+  ) => string | Promise<string>;
+  readonly providerAdapters?: Readonly<
+    Partial<Record<RuntimeCallConnection["driver"], AiProviderAdapter>>
+  >;
+  readonly connectionAdapters?: Readonly<Record<string, AiProviderAdapter>>;
+  readonly usageSpoolPath?: string;
+  readonly usageSpoolMaxBytes?: number;
+  readonly usageBatchSize?: number;
+  /** Polling interval used after start(). Set to 0 to disable background refresh. */
+  readonly refreshIntervalMs?: number;
   readonly now?: () => Date;
   readonly onError?: (error: Error) => void;
+}
+
+export interface AiChatMessage {
+  readonly role: "system" | "user" | "assistant" | "tool";
+  readonly content: unknown;
+  readonly name?: string;
+  readonly tool_call_id?: string;
+}
+
+export interface AiChatInput {
+  readonly model: string;
+  readonly messages: readonly AiChatMessage[];
+  readonly maxTokens?: number;
+  readonly temperature?: number;
+  readonly tools?: readonly unknown[];
+  readonly responseFormat?: unknown;
+  readonly estimatedAiuMicros?: string;
+  readonly signal?: AbortSignal;
+}
+
+export interface AiChatAttempt {
+  readonly attemptId: string;
+  readonly attemptIndex: number;
+  readonly target: RuntimeRouteTarget;
+  readonly connection: RuntimeCallConnection;
+  readonly status: "success" | "failure" | "timeout" | "cancelled";
+  readonly httpStatus: number | null;
+  readonly latencyMs: number;
+}
+
+export interface AiChatResult<T = unknown> {
+  readonly response: T;
+  readonly virtualModel: string;
+  readonly target: RuntimeRouteTarget;
+  readonly connection: RuntimeCallConnection;
+  readonly attempts: readonly AiChatAttempt[];
+  readonly operationId: string;
+}
+
+export interface AiProviderChatRequest {
+  readonly input: AiChatInput;
+  readonly target: RuntimeRouteTarget;
+  readonly connection: RuntimeCallConnection;
+  readonly credential: string;
+  readonly signal: AbortSignal;
+}
+
+export interface AiProviderChatResponse {
+  readonly response: unknown;
+  readonly httpStatus?: number;
+  readonly usage?: UsageEvent["usage"];
+}
+
+export interface AiProviderStreamPart<T = unknown> {
+  readonly value: T;
+  readonly usage?: UsageEvent["usage"];
+}
+
+export interface AiProviderChatStreamResponse<T = unknown> {
+  readonly httpStatus?: number;
+  readonly stream: AsyncIterable<AiProviderStreamPart<T>>;
+}
+
+/**
+ * Connection-local adapter contract. Wrap an existing official SDK client here to reuse its
+ * proxy, connection pool, retries, and enterprise gateway configuration.
+ */
+export interface AiProviderAdapter {
+  readonly requiresCredential?: boolean;
+  chat(request: AiProviderChatRequest): Promise<AiProviderChatResponse>;
+  stream?(request: AiProviderChatRequest): Promise<AiProviderChatStreamResponse>;
+}
+
+export type AiChatStream<T = unknown> = AsyncGenerator<T, AiChatResult<null>, void>;
+
+export interface RecordUsageInput {
+  /** Stable caller-generated ULID used for ingestion idempotency. */
+  readonly eventId: string;
+  /** Stable caller-generated attempt ID used with the operation in the active context. */
+  readonly attemptId: string;
+  readonly model: string;
+  readonly modelId?: string;
+  readonly attemptIndex?: number;
+  readonly isFinalAttempt?: boolean;
+  readonly status?: UsageEvent["result"]["status"];
+  readonly httpStatus?: number | null;
+  readonly latencyMs?: number | null;
+  readonly errorClass?: string | null;
+  readonly fallbackFrom?: string | null;
+  readonly usage: UsageEvent["usage"];
 }
 
 export interface RuntimeRefreshResult {

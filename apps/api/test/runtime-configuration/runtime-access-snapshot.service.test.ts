@@ -7,6 +7,7 @@ import { RuntimeAccessSnapshotService } from "../../src/runtime-configuration/ru
 import { signRuntimeSnapshot } from "../../src/runtime-configuration/runtime-snapshot-integrity.js";
 
 const applicationId = "00000000-0000-4000-8000-000000000711";
+const connectionId = "00000000-0000-4000-8000-000000000715";
 const now = new Date("2026-07-18T12:00:00.000Z");
 
 function currentSnapshot() {
@@ -15,6 +16,17 @@ function currentSnapshot() {
     application_id: applicationId,
     version: "runtime-support-3",
     expires_at: "2036-07-18T12:00:00.000Z",
+    connections: {
+      [connectionId]: {
+        id: connectionId,
+        name: "OpenAI",
+        driver: "openai_compatible",
+        base_url: "https://api.openai.com/v1",
+        credential_ref: "OPENAI_API_KEY",
+        timeout_ms: 60_000,
+        max_retries: 2,
+      },
+    },
     routing: {
       chat: {
         virtual_model_id: "00000000-0000-4000-8000-000000000712",
@@ -28,7 +40,11 @@ function currentSnapshot() {
           targets: [
             {
               model_id: "00000000-0000-4000-8000-000000000713",
-              model_tag: "openai/gpt-4.1",
+              connection_id: connectionId,
+              request_model: "openai/gpt-4.1",
+              provider: "openai",
+              task_type: "chat",
+              capabilities: ["streaming"],
               route_tag: "cp:virtual:chat:default",
               fallback_order: 0,
               weight: 1,

@@ -1,9 +1,12 @@
 export const expandedTranslationsA = {
   "1 小时": "1 hour",
   "1. 安装 LiteLLM 接入组件": "1. Install the LiteLLM connector",
+  "1. 保存应用接入密钥": "1. Save the application access key",
   "2. 设置接入参数": "2. Set connection parameters",
+  "2. 在应用服务端设置接入参数": "2. Set the server-side connection variables",
   "24 小时": "24 hours",
   "3. 让 LiteLLM 上报用量": "3. Enable LiteLLM usage reporting",
+  "3. 添加调用连接和模型": "3. Add a connection and models",
   "30 天": "30 days",
   "4 小时": "4 hours",
   "7 天": "7 days",

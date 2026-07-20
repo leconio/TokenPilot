@@ -67,8 +67,8 @@ export function applyAiContextToOpenAiRequest(
   return Object.freeze({
     body: Object.freeze({
       ...body,
-      model: route.primary.model_tag,
-      fallbacks: route.fallbacks.map((target) => target.model_tag),
+      model: route.primary.request_model,
+      fallbacks: route.fallbacks.map((target) => target.request_model),
       metadata: Object.freeze({
         ...sanitizedMetadata(body.metadata),
         cp: envelope,
@@ -76,12 +76,14 @@ export function applyAiContextToOpenAiRequest(
           virtual_model: route.virtualModel,
           route_tag: route.routeTag,
           model_id: route.primary.model_id,
-          model_tag: route.primary.model_tag,
+          connection_id: route.primary.connection_id,
+          request_model: route.primary.request_model,
           configuration_version: route.configurationVersion,
           fallback_model_ids: route.fallbacks.map((target) => target.model_id),
           candidate_models: [route.primary, ...route.fallbacks].map((target) => ({
             model_id: target.model_id,
-            model_tag: target.model_tag,
+            connection_id: target.connection_id,
+            request_model: target.request_model,
           })),
         }),
       }),

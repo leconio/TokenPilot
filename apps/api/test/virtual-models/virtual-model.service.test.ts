@@ -17,8 +17,9 @@ function model(id: string, name: string, tag: string) {
     id,
     applicationId,
     name,
-    litellmTag: tag,
+    requestModel: tag,
     provider: "openai",
+    taskType: "CHAT",
     capabilitiesJson: [],
     notes: null,
     enabled: true,
@@ -35,6 +36,7 @@ function virtualModel() {
     applicationId,
     name: "chat",
     displayName: "对话",
+    taskType: "CHAT",
     enabled: true,
     defaultModelId: primaryId,
     description: null,
@@ -113,6 +115,7 @@ function fixture() {
         row = { ...row, ...data };
         return Promise.resolve(row);
       }),
+      delete: vi.fn().mockResolvedValue({}),
     },
     virtualModelTarget: {
       update: vi.fn().mockImplementation(({ where, data }) => {
@@ -126,6 +129,7 @@ function fixture() {
         };
         return Promise.resolve({});
       }),
+      delete: vi.fn().mockResolvedValue({}),
     },
     virtualModelRule: {
       create: vi.fn().mockResolvedValue({}),
@@ -153,7 +157,7 @@ describe("VirtualModelService", () => {
     expect(result).toMatchObject({
       matched_rule: "工作日高峰",
       reason: "condition",
-      model: { id: peakId, litellm_tag: "openai/gpt-4.1" },
+      model: { id: peakId, request_model: "openai/gpt-4.1" },
       fallbacks: ["openai/gpt-4.1-mini"],
     });
   });
@@ -229,5 +233,27 @@ describe("VirtualModelService", () => {
     expect(value.database.virtualModel.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: virtualModelId, applicationId } }),
     );
+  });
+
+  it("moves the default before removing its route target", async () => {
+    const value = fixture();
+    await value.service.removeTarget(virtualModelId, "00000000-0000-4000-8000-000000000515");
+    expect(value.database.virtualModelTarget.delete).toHaveBeenCalledWith({
+      where: { id: "00000000-0000-4000-8000-000000000515" },
+    });
+    expect(value.database.virtualModel.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ defaultModelId: peakId }) }),
+    );
+  });
+
+  it("deletes only the application-owned virtual model", async () => {
+    const value = fixture();
+    await expect(value.service.delete(virtualModelId)).resolves.toEqual({ deleted: true });
+    expect(value.database.virtualModel.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: virtualModelId, applicationId } }),
+    );
+    expect(value.database.virtualModel.delete).toHaveBeenCalledWith({
+      where: { id: virtualModelId },
+    });
   });
 });

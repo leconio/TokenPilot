@@ -61,9 +61,7 @@ export function ModelStatusControl({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>确认停用模型？</DialogTitle>
-            <DialogDescription>
-              停用后，新调用不会再把这个 LiteLLM 模型名称识别为可用模型。
-            </DialogDescription>
+            <DialogDescription>停用后，新调用不会再选择这个真实模型。</DialogDescription>
           </DialogHeader>
           {impact.isPending ? (
             <p className="text-sm text-muted-foreground">正在检查调用关系…</p>

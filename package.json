@@ -2,7 +2,7 @@
   "name": "tokenpilot",
   "version": "0.2.0",
   "private": true,
-  "description": "Self-hosted LiteLLM usage analytics, cost control, quotas, and model routing",
+  "description": "Self-hosted Token analytics, virtual-model routing, and AI Unit design",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -52,6 +52,7 @@
     "test:normalizer": "pnpm --filter @tokenpilot/usage-normalizer test",
     "test:operations": "scripts/test-operations.sh",
     "test:node-sdk": "pnpm --filter @tokenpilot/node-sdk test",
+    "test:sdk-coverage": "pnpm --filter @tokenpilot/node-sdk test:coverage && uv run --project sdks/python pytest --rootdir sdks/python sdks/python/tests --cov=ai_control_sdk --cov-report=term",
     "test:provider-cost": "pnpm --filter @tokenpilot/worker... build && vitest run apps/worker/test/application-usage/rating.test.ts",
     "test:release": "node --test scripts/acceptance/release/*.test.mjs",
     "test:release:remote": "node scripts/run-release-test.mjs",

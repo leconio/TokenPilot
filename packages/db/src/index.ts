@@ -2,6 +2,7 @@ export * from "./auth-options.js";
 export * from "./applications.js";
 export * from "./aiu-quota-policies.js";
 export * from "./client.js";
+export * from "./example-seed.js";
 export * from "./feature-flag-operator.js";
 export * from "./generated/prisma/client.js";
 export * from "./instance-settings.js";

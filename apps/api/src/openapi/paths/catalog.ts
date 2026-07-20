@@ -7,40 +7,113 @@ import {
   nullable,
   object,
   pathString,
+  query,
   ref,
   success,
   UUID,
 } from "../schema-helpers.js";
 
 const application = () => pathString("applicationSlug", 120);
-const model = object(["id", "name", "litellm_tag", "enabled", "created_at", "updated_at"], {
+const connectionSummary = object(["id", "name", "driver", "enabled", "status"], {
   id: UUID,
   name: { type: "string", minLength: 1, maxLength: 120 },
-  litellm_tag: { type: "string", minLength: 1, maxLength: 256 },
-  provider: nullable({ type: "string", maxLength: 120 }),
+  driver: { type: "string", enum: ["litellm", "openai_compatible", "anthropic"] },
+  enabled: { type: "boolean" },
+  status: { type: "string", enum: ["unverified", "available", "degraded", "offline"] },
+});
+const publicConnectionConfig = object([], {
+  timeout_ms: { type: "integer", minimum: 1, maximum: 600_000 },
+  max_retries: { type: "integer", minimum: 0, maximum: 10 },
+  api_version: { type: "string", minLength: 1, maxLength: 64 },
+});
+const connection = object(
+  [
+    "id",
+    "name",
+    "driver",
+    "base_url",
+    "credential_ref",
+    "public_config",
+    "enabled",
+    "status",
+    "model_count",
+    "created_at",
+    "updated_at",
+  ],
+  {
+    ...connectionSummary.properties,
+    base_url: nullable({ type: "string", format: "uri", maxLength: 2_048 }),
+    credential_ref: nullable({ type: "string", minLength: 1, maxLength: 256 }),
+    public_config: publicConnectionConfig,
+    connector_instance: nullable({ type: "object", additionalProperties: true }),
+    last_seen_at: nullable(DATE_TIME),
+    model_count: { type: "integer", minimum: 0 },
+    created_at: DATE_TIME,
+    updated_at: DATE_TIME,
+  },
+);
+const connectionInputProperties = {
+  name: { type: "string", minLength: 1, maxLength: 120 },
+  driver: { type: "string", enum: ["litellm", "openai_compatible", "anthropic"] },
+  base_url: nullable({ type: "string", format: "uri", maxLength: 2_048 }),
+  credential_ref: nullable({ type: "string", minLength: 1, maxLength: 256 }),
+  public_config: publicConnectionConfig,
+  connector_instance_id: nullable(UUID),
+} as const;
+const model = object(
+  [
+    "id",
+    "name",
+    "connection",
+    "request_model",
+    "provider",
+    "task_type",
+    "capabilities",
+    "enabled",
+    "created_at",
+    "updated_at",
+  ],
+  {
+    id: UUID,
+    name: { type: "string", minLength: 1, maxLength: 120 },
+    connection: connectionSummary,
+    request_model: { type: "string", minLength: 1, maxLength: 256 },
+    provider: { type: "string", minLength: 1, maxLength: 120 },
+    task_type: { type: "string", enum: ["chat", "embedding", "image", "audio"] },
+    capabilities: array({ type: "string" }),
+    notes: nullable({ type: "string", maxLength: 2_000 }),
+    enabled: { type: "boolean" },
+    created_at: DATE_TIME,
+    updated_at: DATE_TIME,
+  },
+);
+const modelInputProperties = {
+  name: { type: "string", minLength: 1, maxLength: 120 },
+  connection_id: UUID,
+  request_model: { type: "string", minLength: 1, maxLength: 256 },
+  provider: { type: "string", minLength: 1, maxLength: 120 },
+  task_type: { type: "string", enum: ["chat", "embedding", "image", "audio"] },
   capabilities: array({ type: "string" }),
   notes: nullable({ type: "string", maxLength: 2_000 }),
-  enabled: { type: "boolean" },
-  created_at: DATE_TIME,
-  updated_at: DATE_TIME,
-});
-const modelInput = object(["name", "litellm_tag"], {
-  name: { type: "string", minLength: 1, maxLength: 120 },
-  litellm_tag: { type: "string", minLength: 1, maxLength: 256 },
-  provider: nullable({ type: "string", maxLength: 120 }),
-  capabilities: array({ type: "string" }),
-  notes: nullable({ type: "string", maxLength: 2_000 }),
-});
-const virtualModel = object(["id", "name", "display_name", "enabled", "targets", "rules"], {
-  id: UUID,
-  name: { type: "string", minLength: 1, maxLength: 120 },
-  display_name: { type: "string", minLength: 1, maxLength: 120 },
-  description: nullable({ type: "string", maxLength: 2_000 }),
-  default_model_id: nullable(UUID),
-  enabled: { type: "boolean" },
-  targets: array({ type: "object", additionalProperties: true }),
-  rules: array({ type: "object", additionalProperties: true }),
-});
+} as const;
+const modelInput = object(
+  ["name", "connection_id", "request_model", "provider", "task_type"],
+  modelInputProperties,
+);
+const virtualModel = object(
+  ["id", "name", "display_name", "task_type", "enabled", "targets", "rules"],
+  {
+    id: UUID,
+    name: { type: "string", minLength: 1, maxLength: 120 },
+    display_name: { type: "string", minLength: 1, maxLength: 120 },
+    task_type: { type: "string", enum: ["chat", "embedding", "image", "audio"] },
+    description: nullable({ type: "string", maxLength: 2_000 }),
+    default_model_id: nullable(UUID),
+    enabled: { type: "boolean" },
+    targets: array({ type: "object", additionalProperties: true }),
+    rules: array({ type: "object", additionalProperties: true }),
+  },
+);
 const rates = object(["model", "cost", "aiu"], {
   model,
   cost: nullable({ type: "object", additionalProperties: true }),
@@ -56,8 +129,58 @@ const pricingInput = object([], {
 });
 
 export const CATALOG_OPERATION_CONTRACTS: Readonly<Record<string, OperationContract>> = {
-  "GET /applications/{applicationSlug}/models": {
+  "GET /applications/{applicationSlug}/connections": {
     parameters: [application()],
+    success: success(
+      "200",
+      object(["connections"], { connections: array(connection) }),
+      "Application call connections.",
+    ),
+  },
+  "POST /applications/{applicationSlug}/connections": {
+    parameters: [application()],
+    requestBody: body(object(["name", "driver"], connectionInputProperties)),
+    success: success("201", connection, "Call connection created."),
+  },
+  "GET /applications/{applicationSlug}/connections/{id}": {
+    parameters: [application(), id("id")],
+    success: success("200", connection, "Application call connection."),
+  },
+  "PATCH /applications/{applicationSlug}/connections/{id}": {
+    parameters: [application(), id("id")],
+    requestBody: body(object([], { ...connectionInputProperties, enabled: { type: "boolean" } })),
+    success: success("200", connection, "Call connection updated."),
+  },
+  "DELETE /applications/{applicationSlug}/connections/{id}": {
+    parameters: [application(), id("id")],
+    success: success(
+      "200",
+      object(["deleted"], { deleted: { type: "boolean", enum: [true] } }),
+      "Call connection deleted.",
+    ),
+  },
+  "POST /applications/{applicationSlug}/connections/{id}/check": {
+    parameters: [application(), id("id")],
+    success: success(
+      "201",
+      object(["valid", "status", "message"], {
+        valid: { type: "boolean" },
+        status: { type: "string", enum: ["unverified", "available", "degraded", "offline"] },
+        message: { type: "string", minLength: 1, maxLength: 500 },
+      }),
+      "Connection settings checked without receiving provider credentials.",
+    ),
+  },
+  "GET /applications/{applicationSlug}/models": {
+    parameters: [
+      application(),
+      query("provider", { type: "string", minLength: 1, maxLength: 120 }),
+      query("connection_id", UUID),
+      query("task_type", { type: "string", enum: ["chat", "embedding", "image", "audio"] }),
+      query("enabled", { type: "string", enum: ["true", "false"] }),
+      query("cursor", UUID),
+      query("limit", { type: "integer", minimum: 1, maximum: 100 }),
+    ],
     success: success("200", object(["models"], { models: array(model) }), "Application models."),
   },
   "POST /applications/{applicationSlug}/models": {
@@ -71,8 +194,16 @@ export const CATALOG_OPERATION_CONTRACTS: Readonly<Record<string, OperationContr
   },
   "PATCH /applications/{applicationSlug}/models/{id}": {
     parameters: [application(), id("id")],
-    requestBody: body(modelInput),
+    requestBody: body(object([], { ...modelInputProperties, enabled: { type: "boolean" } })),
     success: success("200", model, "Model updated."),
+  },
+  "DELETE /applications/{applicationSlug}/models/{id}": {
+    parameters: [application(), id("id")],
+    success: success(
+      "200",
+      object(["deleted"], { deleted: { type: "boolean", enum: [true] } }),
+      "Model deleted after reference checks.",
+    ),
   },
   "GET /applications/{applicationSlug}/models/{id}/rates": {
     parameters: [application(), id("id")],
@@ -107,10 +238,22 @@ export const CATALOG_OPERATION_CONTRACTS: Readonly<Record<string, OperationContr
     ),
     success: success("201", virtualModel, "Virtual model created."),
   },
+  "GET /applications/{applicationSlug}/virtual-models/{id}": {
+    parameters: [application(), id("id")],
+    success: success("200", virtualModel, "Virtual model and its route configuration."),
+  },
   "PATCH /applications/{applicationSlug}/virtual-models/{id}": {
     parameters: [application(), id("id")],
     requestBody: body({ type: "object", additionalProperties: true }),
     success: success("200", virtualModel, "Virtual model updated."),
+  },
+  "DELETE /applications/{applicationSlug}/virtual-models/{id}": {
+    parameters: [application(), id("id")],
+    success: success(
+      "200",
+      object(["deleted"], { deleted: { type: "boolean", enum: [true] } }),
+      "Virtual model deleted.",
+    ),
   },
   "POST /applications/{applicationSlug}/virtual-models/{id}/routes": {
     parameters: [application(), id("id")],
@@ -121,6 +264,15 @@ export const CATALOG_OPERATION_CONTRACTS: Readonly<Record<string, OperationContr
     parameters: [application(), id("id")],
     requestBody: body(object(["ordered_target_ids"], { ordered_target_ids: array(UUID) })),
     success: success("201", virtualModel, "Virtual model routes reordered."),
+  },
+  "PATCH /applications/{applicationSlug}/virtual-models/{id}/routes/{targetId}": {
+    parameters: [application(), id("id"), id("targetId")],
+    requestBody: body(object(["weight"], { weight: { type: "number", exclusiveMinimum: 0 } })),
+    success: success("200", virtualModel, "Route weight updated."),
+  },
+  "DELETE /applications/{applicationSlug}/virtual-models/{id}/routes/{targetId}": {
+    parameters: [application(), id("id"), id("targetId")],
+    success: success("200", virtualModel, "Route target removed."),
   },
   "POST /applications/{applicationSlug}/virtual-models/{id}/rules": {
     parameters: [application(), id("id")],

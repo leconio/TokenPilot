@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import type { DatabaseClient, Prisma } from "@tokenpilot/db";
+import { ModelTaskType, type DatabaseClient, type Prisma } from "@tokenpilot/db";
 import { virtualModelRouteMatchSchema } from "@tokenpilot/contracts";
 
 import { AuditContextService } from "../audit-context.js";
@@ -24,66 +24,18 @@ import {
 } from "./virtual-model.schemas.js";
 import { loadRouteAudience, resolveRuntimeMatch, runtimeMatchApplies } from "./route-matches.js";
 import { orderSimulationTargets } from "./weighted-route-selection.js";
+import {
+  presentVirtualModel,
+  virtualModelRoutes,
+  type VirtualModelRow,
+} from "./virtual-model.presenter.js";
 
-const includeRoutes = {
-  application: { select: { timezone: true } },
-  defaultModel: { select: { id: true, name: true, litellmTag: true } },
-  targets: {
-    include: { model: { select: { id: true, name: true, litellmTag: true, enabled: true } } },
-    orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
-  },
-  rules: {
-    include: { targetModel: { select: { id: true, name: true, litellmTag: true, enabled: true } } },
-    orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
-  },
-} satisfies Prisma.VirtualModelInclude;
-
-type VirtualModelRow = Prisma.VirtualModelGetPayload<{ include: typeof includeRoutes }>;
-
-function present(row: VirtualModelRow) {
-  return {
-    id: row.id,
-    name: row.name,
-    display_name: row.displayName,
-    enabled: row.enabled,
-    description: row.description,
-    default_model: row.defaultModel
-      ? {
-          id: row.defaultModel.id,
-          name: row.defaultModel.name,
-          litellm_tag: row.defaultModel.litellmTag,
-        }
-      : null,
-    targets: row.targets.map((target) => ({
-      id: target.id,
-      model: {
-        id: target.model.id,
-        name: target.model.name,
-        litellm_tag: target.model.litellmTag,
-        enabled: target.model.enabled,
-      },
-      priority: target.priority,
-      weight: target.weight.toString(),
-      enabled: target.enabled,
-    })),
-    rules: row.rules.map((rule) => ({
-      id: rule.id,
-      name: rule.name,
-      priority: rule.priority,
-      match: rule.matchJson,
-      target_model: {
-        id: rule.targetModel.id,
-        name: rule.targetModel.name,
-        litellm_tag: rule.targetModel.litellmTag,
-        enabled: rule.targetModel.enabled,
-      },
-      expires_at: rule.expiresAt?.toISOString() ?? null,
-      enabled: rule.enabled,
-    })),
-    last_published_version: row.lastPublishedVersion,
-    updated_at: row.updatedAt.toISOString(),
-  };
-}
+const taskTypeToDatabase = {
+  chat: ModelTaskType.CHAT,
+  embedding: ModelTaskType.EMBEDDING,
+  image: ModelTaskType.IMAGE,
+  audio: ModelTaskType.AUDIO,
+} as const;
 
 @Injectable()
 export class VirtualModelService {
@@ -102,10 +54,14 @@ export class VirtualModelService {
   async list() {
     const rows = await this.database.virtualModel.findMany({
       where: { applicationId: this.applicationId() },
-      include: includeRoutes,
+      include: virtualModelRoutes,
       orderBy: { name: "asc" },
     });
-    return { virtual_models: rows.map((row) => present(row)) };
+    return { virtual_models: rows.map((row) => presentVirtualModel(row)) };
+  }
+
+  async get(id: string) {
+    return presentVirtualModel(await this.requireVirtualModel(id));
   }
 
   async create(input: unknown) {
@@ -113,16 +69,17 @@ export class VirtualModelService {
     if (!parsed.success) throw new BadRequestException("Invalid virtual model");
     const value = parsed.data;
     if (value.default_model_id !== undefined && value.default_model_id !== null) {
-      await this.assertModel(value.default_model_id);
+      await this.assertModel(value.default_model_id, value.task_type);
     }
     const row = await this.database.virtualModel.create({
       data: {
         applicationId: this.applicationId(),
         name: value.name,
         displayName: value.display_name ?? value.name,
+        taskType: taskTypeToDatabase[value.task_type],
         defaultModelId: value.default_model_id ?? null,
       },
-      include: includeRoutes,
+      include: virtualModelRoutes,
     });
     await this.audit.record({
       action: "virtual_model.create",
@@ -131,7 +88,7 @@ export class VirtualModelService {
       after: { name: row.name },
       reason: "Created virtual model",
     });
-    return present(row);
+    return presentVirtualModel(row);
   }
 
   async update(id: string, input: unknown) {
@@ -141,8 +98,15 @@ export class VirtualModelService {
     if (parsed.data.enabled === true && current.targets.length === 0) {
       throw new BadRequestException("A virtual model needs at least one route before enabling");
     }
+    const nextTaskType = parsed.data.task_type ?? current.taskType.toLowerCase();
+    if (
+      parsed.data.task_type !== undefined &&
+      current.targets.some((target) => target.model.taskType.toLowerCase() !== nextTaskType)
+    ) {
+      throw new BadRequestException("Remove models with a different task type before changing it");
+    }
     if (parsed.data.default_model_id !== undefined && parsed.data.default_model_id !== null) {
-      await this.assertModel(parsed.data.default_model_id);
+      await this.assertModel(parsed.data.default_model_id, nextTaskType);
     }
     const value = parsed.data;
     const row = await this.database.virtualModel.update({
@@ -150,19 +114,20 @@ export class VirtualModelService {
       data: {
         ...(value.display_name === undefined ? {} : { displayName: value.display_name }),
         ...(value.description === undefined ? {} : { description: value.description }),
+        ...(value.task_type === undefined ? {} : { taskType: taskTypeToDatabase[value.task_type] }),
         ...(value.default_model_id === undefined ? {} : { defaultModelId: value.default_model_id }),
         ...(value.enabled === undefined ? {} : { enabled: value.enabled }),
       },
-      include: includeRoutes,
+      include: virtualModelRoutes,
     });
-    return present(row);
+    return presentVirtualModel(row);
   }
 
   async addTarget(id: string, input: unknown) {
     const parsed = createVirtualModelTargetSchema.safeParse(input);
     if (!parsed.success) throw new BadRequestException("Invalid route target");
     const virtualModel = await this.requireVirtualModel(id);
-    const model = await this.assertModel(parsed.data.model_id);
+    const model = await this.assertModel(parsed.data.model_id, virtualModel.taskType.toLowerCase());
     const value = parsed.data;
     const target = await this.database.virtualModelTarget.create({
       data: {
@@ -186,7 +151,7 @@ export class VirtualModelService {
       after: { target_id: target.id, model_id: model.id },
       reason: "Added route target",
     });
-    return this.requireVirtualModel(id).then(present);
+    return this.requireVirtualModel(id).then(presentVirtualModel);
   }
 
   async reorderTargets(id: string, input: unknown) {
@@ -205,7 +170,7 @@ export class VirtualModelService {
         this.database.virtualModelTarget.update({ where: { id: targetId }, data: { priority } }),
       ),
     );
-    return this.requireVirtualModel(id).then(present);
+    return this.requireVirtualModel(id).then(presentVirtualModel);
   }
 
   async updateTarget(id: string, targetId: string, input: unknown) {
@@ -226,7 +191,36 @@ export class VirtualModelService {
       after: { target_id: target.id, weight: parsed.data.weight },
       reason: "Updated weighted routing",
     });
-    return this.requireVirtualModel(id).then(present);
+    return this.requireVirtualModel(id).then(presentVirtualModel);
+  }
+
+  async removeTarget(id: string, targetId: string) {
+    const virtualModel = await this.requireVirtualModel(id);
+    const target = virtualModel.targets.find((candidate) => candidate.id === targetId);
+    if (target === undefined) throw new NotFoundException("Route target not found");
+    const nextDefault = virtualModel.targets.find((candidate) => candidate.id !== target.id);
+    await this.database.$transaction([
+      this.database.virtualModelTarget.delete({ where: { id: target.id } }),
+      ...(virtualModel.defaultModelId === target.modelId
+        ? [
+            this.database.virtualModel.update({
+              where: { id: virtualModel.id },
+              data: {
+                defaultModelId: nextDefault?.modelId ?? null,
+                ...(nextDefault === undefined ? { enabled: false } : {}),
+              },
+            }),
+          ]
+        : []),
+    ]);
+    await this.audit.record({
+      action: "virtual_model.route.delete",
+      objectType: "virtual_model",
+      objectId: virtualModel.id,
+      before: { target_id: target.id, model_id: target.modelId },
+      reason: "Removed route target",
+    });
+    return this.requireVirtualModel(id).then(presentVirtualModel);
   }
 
   async addRule(id: string, input: unknown) {
@@ -246,7 +240,7 @@ export class VirtualModelService {
         expiresAt: value.expires_at ? new Date(value.expires_at) : null,
       },
     });
-    return this.requireVirtualModel(id).then(present);
+    return this.requireVirtualModel(id).then(presentVirtualModel);
   }
 
   async updateRule(id: string, ruleId: string, input: unknown) {
@@ -281,7 +275,7 @@ export class VirtualModelService {
         ...(value.enabled === undefined ? {} : { enabled: value.enabled }),
       },
     });
-    return this.requireVirtualModel(id).then(present);
+    return this.requireVirtualModel(id).then(presentVirtualModel);
   }
 
   async removeRule(id: string, ruleId: string) {
@@ -289,7 +283,20 @@ export class VirtualModelService {
     const current = virtualModel.rules.find((rule) => rule.id === ruleId);
     if (current === undefined) throw new NotFoundException("Route condition not found");
     await this.database.virtualModelRule.delete({ where: { id: current.id } });
-    return this.requireVirtualModel(id).then(present);
+    return this.requireVirtualModel(id).then(presentVirtualModel);
+  }
+
+  async delete(id: string) {
+    const current = await this.requireVirtualModel(id);
+    await this.database.virtualModel.delete({ where: { id: current.id } });
+    await this.audit.record({
+      action: "virtual_model.delete",
+      objectType: "virtual_model",
+      objectId: current.id,
+      before: { name: current.name, display_name: current.displayName },
+      reason: "Deleted virtual model",
+    });
+    return { deleted: true };
   }
 
   async simulate(id: string, input: unknown) {
@@ -344,16 +351,16 @@ export class VirtualModelService {
       model: {
         id: selected!.model.id,
         name: selected!.model.name,
-        litellm_tag: selected!.model.litellmTag,
+        request_model: selected!.model.requestModel,
       },
-      fallbacks: fallbacks.map((target) => target.model.litellmTag),
+      fallbacks: fallbacks.map((target) => target.model.requestModel),
     };
   }
 
   private async requireVirtualModel(id: string) {
     const row = await this.database.virtualModel.findFirst({
       where: { id, applicationId: this.applicationId() },
-      include: includeRoutes,
+      include: virtualModelRoutes,
     });
     if (row === null) throw new NotFoundException("Virtual model not found");
     return row;
@@ -365,12 +372,20 @@ export class VirtualModelService {
     }
   }
 
-  private async assertModel(id: string) {
+  private async assertModel(id: string, taskType: string) {
     const row = await this.database.modelDefinition.findFirst({
-      where: { id, applicationId: this.applicationId(), enabled: true },
-      select: { id: true },
+      where: {
+        id,
+        applicationId: this.applicationId(),
+        enabled: true,
+        connection: { enabled: true },
+      },
+      select: { id: true, taskType: true },
     });
     if (row === null) throw new BadRequestException("Route model is not available");
+    if (row.taskType.toLowerCase() !== taskType) {
+      throw new BadRequestException("Route model uses a different task type");
+    }
     return row;
   }
 }

@@ -39,7 +39,9 @@
         "sdk_version": "0.2.0",
         "virtual_model": "text.fast",
         "model_id": "019c0000-0000-7000-8000-000000000001",
-        "model_tag": "openai-fast-prod-a",
+        "connection_id": "019c0000-0000-7000-8000-000000000101",
+        "connection_driver": "litellm",
+        "request_model": "openai-fast-prod-a",
         "configuration_version": "42",
         "event_properties": { "next_action": "summarize", "voice_enabled": true },
         "user_properties": { "member_level": "VVIP", "interests": ["AI", "voice"] }

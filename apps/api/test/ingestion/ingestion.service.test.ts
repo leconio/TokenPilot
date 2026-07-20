@@ -10,11 +10,13 @@ const applicationId = "00000000-0000-4000-8000-000000000111";
 const otherApplicationId = "00000000-0000-4000-8000-000000000112";
 const modelId = "00000000-0000-4000-8000-000000000211";
 const otherModelId = "00000000-0000-4000-8000-000000000212";
+const connectionId = "00000000-0000-4000-8000-000000000213";
 
 interface ModelFixture {
   readonly id: string;
   readonly applicationId: string;
-  readonly litellmTag: string;
+  readonly requestModel: string;
+  readonly connectionId?: string;
 }
 
 function usageEvent(overrides: Partial<UsageEvent> = {}): UsageEvent {
@@ -27,6 +29,8 @@ function usageEvent(overrides: Partial<UsageEvent> = {}): UsageEvent {
     request: {
       request_id: "request-1",
       attempt_id: "attempt-1",
+      attempt_index: 0,
+      is_final_attempt: true,
       operation_id: "operation-1",
       parent_request_id: null,
       session_id: null,
@@ -35,7 +39,7 @@ function usageEvent(overrides: Partial<UsageEvent> = {}): UsageEvent {
     },
     model: {
       virtual_model: "chat",
-      model_tag: "openai/gpt-test",
+      request_model: "openai/gpt-test",
       provider: "openai",
     },
     route: {
@@ -83,13 +87,24 @@ function databaseFixture(models: readonly ModelFixture[] = []) {
   const upsertUser = vi.fn().mockResolvedValue({ id: "application-user-1" });
   const updateUsers = vi.fn().mockResolvedValue({ count: 1 });
   const findModelDefinition = vi.fn(
-    async ({ where }: { where: { id: string; applicationId: string; litellmTag: string } }) =>
+    async ({ where }: { where: { id: string; applicationId: string; requestModel: string } }) =>
       models.find(
         (model) =>
           model.id === where.id &&
           model.applicationId === where.applicationId &&
-          model.litellmTag === where.litellmTag,
-      ) ?? null,
+          model.requestModel === where.requestModel,
+      ) === undefined
+        ? null
+        : {
+            ...models.find(
+              (model) =>
+                model.id === where.id &&
+                model.applicationId === where.applicationId &&
+                model.requestModel === where.requestModel,
+            )!,
+            connectionId,
+            connection: { driver: "OPENAI_COMPATIBLE" },
+          },
   );
   const transaction = {
     usageEventRegistry: { findFirst, create },
@@ -158,14 +173,14 @@ describe("UsageIngestionService", () => {
     );
   });
 
-  it("keeps a raw LiteLLM deployment ID as the model tag without writing it to the UUID foreign key", async () => {
+  it("keeps a raw model identifier without writing it to the UUID foreign key", async () => {
     const fixture = databaseFixture();
     const service = new UsageIngestionService(fixture.database);
     const event = usageEvent({
       model: {
         virtual_model: "chat",
         model_id: "litellm-deployment-local",
-        model_tag: "openai/gpt-test",
+        request_model: "openai/gpt-test",
         provider: "openai",
       },
     });
@@ -178,7 +193,7 @@ describe("UsageIngestionService", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           realModelId: null,
-          modelTag: "openai/gpt-test",
+          requestModel: "openai/gpt-test",
         }),
       }),
     );
@@ -186,7 +201,7 @@ describe("UsageIngestionService", () => {
 
   it("writes an internal model UUID only when it belongs to the application and matches the tag", async () => {
     const fixture = databaseFixture([
-      { id: modelId, applicationId, litellmTag: "openai/gpt-test" },
+      { id: modelId, applicationId, requestModel: "openai/gpt-test" },
     ]);
     const service = new UsageIngestionService(fixture.database);
     const response = await service.ingest(
@@ -195,7 +210,7 @@ describe("UsageIngestionService", () => {
           model: {
             virtual_model: "chat",
             model_id: modelId,
-            model_tag: "openai/gpt-test",
+            request_model: "openai/gpt-test",
             provider: "openai",
           },
         }),
@@ -205,14 +220,14 @@ describe("UsageIngestionService", () => {
 
     expect(response).toMatchObject({ accepted: 1, rejected: 0 });
     expect(fixture.findModelDefinition).toHaveBeenCalledWith({
-      where: { id: modelId, applicationId, litellmTag: "openai/gpt-test" },
-      select: { id: true },
+      where: { id: modelId, applicationId, requestModel: "openai/gpt-test" },
+      select: { id: true, connectionId: true, connection: { select: { driver: true } } },
     });
     expect(fixture.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           realModelId: modelId,
-          modelTag: "openai/gpt-test",
+          requestModel: "openai/gpt-test",
         }),
       }),
     );
@@ -222,12 +237,12 @@ describe("UsageIngestionService", () => {
     {
       name: "another application",
       reportedModelId: modelId,
-      models: [{ id: modelId, applicationId: otherApplicationId, litellmTag: "openai/gpt-test" }],
+      models: [{ id: modelId, applicationId: otherApplicationId, requestModel: "openai/gpt-test" }],
     },
     {
-      name: "another LiteLLM tag",
+      name: "another real model",
       reportedModelId: otherModelId,
-      models: [{ id: otherModelId, applicationId, litellmTag: "anthropic/claude-test" }],
+      models: [{ id: otherModelId, applicationId, requestModel: "anthropic/claude-test" }],
     },
   ])("does not trust a model UUID from $name", async ({ reportedModelId, models }) => {
     const fixture = databaseFixture(models);
@@ -238,7 +253,7 @@ describe("UsageIngestionService", () => {
           model: {
             virtual_model: "chat",
             model_id: reportedModelId,
-            model_tag: "openai/gpt-test",
+            request_model: "openai/gpt-test",
             provider: "openai",
           },
         }),
@@ -251,7 +266,7 @@ describe("UsageIngestionService", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           realModelId: null,
-          modelTag: "openai/gpt-test",
+          requestModel: "openai/gpt-test",
         }),
       }),
     );
@@ -479,7 +494,6 @@ describe("UsageIngestionService", () => {
       batch([usageEvent({ event_properties: { score: 101 } })]),
       applicationId,
     );
-
     expect(response.results[0]).toMatchObject({ status: "rejected", code: "INVALID_PROPERTY" });
     expect(fixture.create).not.toHaveBeenCalled();
   });

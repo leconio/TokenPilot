@@ -62,8 +62,8 @@ def environment_flag(name: str, default: bool) -> bool:
     raise ValueError(f"{name} must be true or false")
 
 
-def model_entry(alias: str, model_tag: str, api_base: str | None, api_key: str | None) -> dict:
-    parameters: dict[str, object] = {"model": model_tag}
+def model_entry(alias: str, request_model: str, api_base: str | None, api_key: str | None) -> dict:
+    parameters: dict[str, object] = {"model": request_model}
     if api_base:
         parameters["api_base"] = api_base
     if api_key:

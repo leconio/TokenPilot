@@ -18,13 +18,13 @@ Open `http://127.0.0.1:3000/setup` for the first run. Setup:
 1. verifies that PostgreSQL and ClickHouse are both healthy;
 2. creates the first application with its timezone and base currency;
 3. creates the only initial administrator and a hashed eight-hour session;
-4. issues isolated ingest and configuration keys exactly once;
-5. shows the privacy-safe LiteLLM Connector configuration; and
-6. opens the application dashboard so models and virtual models can be configured.
+4. issues one application access key exactly once;
+5. shows privacy-safe Node, Python, and LiteLLM integration settings; and
+6. opens the application dashboard so connections, real models, and virtual models can be configured.
 
 After the administrator exists, setup initialization returns `409` and the page redirects to login.
-Provider keys remain environment-variable references in LiteLLM; only names such as
-`OPENAI_API_KEY` can be stored as `secret_ref` metadata.
+Provider keys remain in the SDK or LiteLLM environment; only names such as `OPENAI_API_KEY` can be
+stored as `credential_ref` metadata.
 
 ## Routes
 
@@ -34,11 +34,13 @@ Provider keys remain environment-variable references in LiteLLM; only names such
   choose a metric, time range, whether to match all or match any conditions, and optional grouping,
   then export the result. These reports use the single ClickHouse report path and never fall back to
   PostgreSQL.
-- `/apps/:slug/models`: register LiteLLM model names and maintain independent provider cost and AIU
-  conversion rates in each model detail page.
+- `/apps/:slug/connections`: configure how trusted SDKs or LiteLLM reach model services without
+  storing credential values.
+- `/apps/:slug/models`: register real Provider model identifiers and maintain independent Provider
+  cost and AIU conversion rates in each model detail page.
 - `/apps/:slug/virtual-models`: configure user-facing virtual models, candidates, fallback order,
   schedules, temporary switches, and routing tests in one place.
-- `/apps/:slug/releases`: publish the application configuration distributed to LiteLLM.
+- `/apps/:slug/releases`: publish the application configuration distributed to trusted runtimes.
 - `/apps/:slug/users`: inspect application users, AIU quota, used and remaining amounts, then reset
   quota or stop calls for an individual user.
 - `/apps/:slug/user-groups`: build reusable audiences from user attributes and measured usage.

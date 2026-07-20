@@ -10,7 +10,7 @@ curl --fail http://127.0.0.1:8080/healthz
 curl --fail http://127.0.0.1:8080/health/ready
 ```
 
-存活检查只表示进程还在运行；就绪检查要求 PostgreSQL、Redis 和 ClickHouse 同时正常。即使外部 LiteLLM 仍能处理模型请求，只要就绪检查失败，就应该按服务故障处理。
+存活检查只表示进程还在运行；就绪检查要求 PostgreSQL、Redis 和 ClickHouse 同时正常。即使 SDK 或外部 LiteLLM 还能用最后一次成功配置访问模型服务，只要就绪检查失败，就应该按服务故障处理。
 
 故障期间重点查看这些页面：
 
@@ -83,7 +83,7 @@ python scripts/connector-spool-admin.py backup \
 | -------------------- | ------------------------------------------ |
 | Connector 心跳过期   | LiteLLM 进程、密钥状态、网络、spool 完整性 |
 | Connector 积压增长   | API 就绪、spool 容量、接入错误             |
-| 服务商用量未定价     | 模型标签识别和缺少的用量类型价格           |
+| 服务商用量未定价     | 真实模型识别和缺少的用量类型价格           |
 | AIU 未计算           | 已发布 AIU 单价和继承覆盖                  |
 | ClickHouse sink 延迟 | ClickHouse 就绪、Outbox 租约、暂停所有者   |
 | 额度预留过期突增     | 客户端取消路径和请求超时                   |

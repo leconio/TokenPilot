@@ -97,21 +97,21 @@ describe("ApplicationUserMetricsRepository", () => {
       [{ bucket: "2026-07-18T00:00:00Z", calls: "2", tokens: "42", aiu_micros: "900000" }],
       [
         {
-          model_tag: "company/chat",
+          request_model: "company/chat",
           virtual_model: "assistant",
           calls: "2",
           tokens: "42",
           aiu_micros: "900000",
         },
       ],
-      [{ model_tag: "company/chat", currency: "USD", amount: "0.12" }],
+      [{ request_model: "company/chat", currency: "USD", amount: "0.12" }],
       [
         {
           event_id: "event-1",
           request_id: "request-1",
           event_time: "2026-07-18T01:00:00.000Z",
           virtual_model: "assistant",
-          model_tag: "company/chat",
+          request_model: "company/chat",
           status: "success",
         },
       ],
@@ -140,7 +140,7 @@ describe("ApplicationUserMetricsRepository", () => {
     );
     expect(result).toMatchObject({
       trend: [{ calls: 2, tokens: "42", aiu_micros: "900000" }],
-      models: [{ model_tag: "company/chat", costs: [{ currency: "USD", amount: "0.12" }] }],
+      models: [{ request_model: "company/chat", costs: [{ currency: "USD", amount: "0.12" }] }],
       costs: [{ currency: "USD", amount: "0.12" }],
       recent_calls: [{ event_id: "event-1", status: "success" }],
     });

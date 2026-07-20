@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { ControlPlaneMock } from "./control-plane-mock";
 
-test("首次配置创建管理员、首个应用和两枚应用密钥", async ({ page }) => {
+test("首次配置创建管理员、首个应用和一枚应用接入密钥", async ({ page }) => {
   const mock = new ControlPlaneMock({ setupRequired: true });
   await mock.install(page);
   await page.goto("/setup");
@@ -12,9 +12,14 @@ test("首次配置创建管理员、首个应用和两枚应用密钥", async ({
   await page.getByLabel("管理员密码").fill("StrongPassword123!");
   await page.getByRole("button", { name: "创建管理员", exact: true }).click();
   await expect(page.getByRole("heading", { name: "配置已完成" })).toBeVisible();
-  await expect(page.getByLabel("用量接入密钥 key")).toHaveValue(/tp_live_knowledge/u);
-  await expect(page.getByLabel("策略读取密钥 key")).toHaveValue(/tp_live_knowledge/u);
-  expect(mock.callsFor("POST", "/applications/knowledge/service-api-keys")).toHaveLength(2);
+  await expect(page.getByLabel("应用接入密钥 key")).toHaveValue(/tp_live_knowledge/u);
+  const keyCalls = mock.callsFor("POST", "/applications/knowledge/service-api-keys");
+  expect(keyCalls).toHaveLength(1);
+  expect(keyCalls[0]?.body).toEqual({
+    name: "应用接入",
+    scopes: ["usage:write", "connector:heartbeat", "runtime:read", "runtime:write", "runtime:ack"],
+    reason: "首次配置创建应用接入密钥",
+  });
   await page.getByRole("button", { name: "进入应用" }).click();
   await expect(page).toHaveURL(/\/apps\/knowledge\/dashboard/u);
 });

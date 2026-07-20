@@ -31,7 +31,10 @@ class StandardLoggingPayload:
     model_id: str | None
     model_group: str | None
     routed_model_id: str | None
-    routed_model_tag: str | None
+    routed_connection_id: str | None
+    routed_request_model: str | None
+    attempt_index: int
+    is_last_candidate: bool
     provider: str | None
     fallback_from: str | None
     route_tags: tuple[str, ...]
@@ -162,21 +165,22 @@ def _route_tags(*values: object) -> tuple[str, ...]:
 
 def _routed_model(
     model_group: str | None, *metadata_values: object
-) -> tuple[str | None, str | None]:
+) -> tuple[str | None, str | None, str | None, int, bool]:
     if model_group is None:
-        return None, None
+        return None, None, None, 0, True
     for metadata in metadata_values:
         route = _mapping(_mapping(metadata).get("cp_route"))
         candidates = route.get("candidate_models")
         if not isinstance(candidates, list):
             continue
-        for raw_candidate in candidates:
+        for index, raw_candidate in enumerate(candidates):
             candidate = _mapping(raw_candidate)
             model_id = _bounded_string(candidate.get("model_id"))
-            model_tag = _bounded_string(candidate.get("model_tag"))
-            if model_id is not None and model_tag == model_group:
-                return model_id, model_tag
-    return None, None
+            connection_id = _bounded_string(candidate.get("connection_id"))
+            request_model = _bounded_string(candidate.get("request_model"))
+            if model_id is not None and request_model == model_group:
+                return model_id, connection_id, request_model, index, index == len(candidates) - 1
+    return None, None, None, 0, True
 
 
 def extract_standard_logging_payload(kwargs: Mapping[str, object]) -> StandardLoggingPayload:
@@ -236,7 +240,13 @@ def extract_standard_logging_payload(kwargs: Mapping[str, object]) -> StandardLo
     status = _first_string(payload.get("status"), kwargs.get("status")) or "success"
 
     model_group = _first_string(payload.get("model_group"), kwargs.get("model"))
-    routed_model_id, routed_model_tag = _routed_model(
+    (
+        routed_model_id,
+        routed_connection_id,
+        routed_request_model,
+        attempt_index,
+        is_last_candidate,
+    ) = _routed_model(
         model_group,
         raw_metadata,
         raw_litellm_metadata,
@@ -251,7 +261,10 @@ def extract_standard_logging_payload(kwargs: Mapping[str, object]) -> StandardLo
         model_id=deployment_id,
         model_group=model_group,
         routed_model_id=routed_model_id,
-        routed_model_tag=routed_model_tag,
+        routed_connection_id=routed_connection_id,
+        routed_request_model=routed_request_model,
+        attempt_index=attempt_index,
+        is_last_candidate=is_last_candidate,
         provider=provider,
         fallback_from=_previous_deployment_id(
             raw_metadata,

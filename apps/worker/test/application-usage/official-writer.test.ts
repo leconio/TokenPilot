@@ -23,6 +23,8 @@ function event(): UsageEvent {
     request: {
       request_id: "request-1",
       attempt_id: "attempt-1",
+      attempt_index: 0,
+      is_final_attempt: true,
       operation_id: "operation-1",
       parent_request_id: null,
       session_id: null,
@@ -33,7 +35,7 @@ function event(): UsageEvent {
     model: {
       virtual_model: "assistant.fast",
       model_id: modelId,
-      model_tag: "openai/gpt-5-mini",
+      request_model: "openai/gpt-5-mini",
       provider: "openai",
     },
     route: null,
@@ -188,6 +190,55 @@ describe("application usage official writer", () => {
         return String(payload.application_id) === applicationId;
       }),
     ).toBe(true);
+  });
+
+  it("reconciles a client-side estimate to the final rated AIU", async () => {
+    const transaction = baseTransaction();
+    transaction.userAiuReservation.findFirst.mockResolvedValue({
+      id: reservationId,
+      applicationId,
+      userId: applicationUserId,
+      quotaId,
+      status: AiuReservationStatus.SETTLED,
+      reservedAiuMicros: 8n,
+      settledAiuMicros: 8n,
+      lockVersion: 5,
+      quota: {
+        id: quotaId,
+        lockVersion: 8,
+        limitAiuMicros: 100n,
+        consumedAiuMicros: 28n,
+        reservedAiuMicros: 0n,
+      },
+    });
+
+    const result = await new ApplicationUsageOfficialWriter().commit(
+      transaction as unknown as Prisma.TransactionClient,
+      context(),
+    );
+
+    expect(transaction.userAiuReservation.updateMany).toHaveBeenCalledWith({
+      where: {
+        applicationId,
+        id: reservationId,
+        status: AiuReservationStatus.SETTLED,
+        lockVersion: 5,
+      },
+      data: { settledAiuMicros: 5n, lockVersion: { increment: 1 } },
+    });
+    expect(transaction.userAiuQuota.updateMany).toHaveBeenCalledWith({
+      where: { applicationId, id: quotaId, lockVersion: 8 },
+      data: { consumedAiuMicros: { increment: -3n }, lockVersion: { increment: 1 } },
+    });
+    expect(transaction._ledgerCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        idempotencyKey: `user-usage:${event().event_id}:settle-reconciliation`,
+        consumedDeltaMicros: -3n,
+        reservedDeltaMicros: 0n,
+        consumedAfterMicros: 25n,
+      }),
+    });
+    expect(result.metrics?.consumedAiuMicros).toBe("5");
   });
 
   it("consumes rated AIU once in observe mode when no reservation exists", async () => {

@@ -12,13 +12,17 @@ model UsageEventRegistry {
   applicationUserId          String                  @map("application_user_id") @db.Uuid
   virtualModel               String?                 @map("virtual_model") @db.VarChar(120)
   realModelId                String?                 @map("model_id") @db.Uuid
-  modelTag                   String                  @map("model_tag") @db.VarChar(256)
+  requestModel               String                  @map("request_model") @db.VarChar(256)
+  connectionId               String?                 @map("connection_id") @db.Uuid
+  connectionDriver           String?                 @map("connection_driver") @db.VarChar(64)
   reservationId              String?                 @map("reservation_id") @db.Uuid
   eventId                    String                  @map("event_id") @db.VarChar(36)
   schemaVersion              String                  @map("schema_version") @db.VarChar(32)
   payloadHash                String                  @map("payload_hash") @db.Char(64)
   requestId                  String                  @map("request_id") @db.VarChar(256)
   attemptId                  String                  @map("attempt_id") @db.VarChar(256)
+  attemptIndex               Int                     @default(0) @map("attempt_index")
+  isFinalAttempt             Boolean                 @default(true) @map("is_final_attempt")
   operationId                String?                 @map("operation_id") @db.VarChar(256)
   instanceId                 String                  @map("instance_id") @db.VarChar(256)
   provider                   String?                 @db.VarChar(120)
@@ -38,6 +42,7 @@ model UsageEventRegistry {
   application                Application             @relation(fields: [applicationId], references: [id], onDelete: Restrict)
   applicationUser            ApplicationUser         @relation(fields: [applicationId, applicationUserId], references: [applicationId, id], onDelete: Restrict)
   realModel                  ModelDefinition?        @relation(fields: [applicationId, realModelId], references: [applicationId, id], onDelete: Restrict)
+  connection                 CallConnection?         @relation(fields: [applicationId, connectionId], references: [applicationId, id], onDelete: Restrict)
   inbox                      IngestionInbox?
   applicationRating          ApplicationUsageRating?
 
@@ -48,7 +53,8 @@ model UsageEventRegistry {
   @@index([requestId, attemptId], map: "usage_event_registry_request_attempt_idx")
   @@index([processingStage, receivedAt], map: "usage_event_registry_stage_received_idx")
   @@index([eventTime, eventId], map: "usage_event_registry_event_time_idx")
-  @@index([applicationId, modelTag, eventTime], map: "usage_event_registry_application_model_idx")
+  @@index([applicationId, requestModel, eventTime], map: "usage_event_registry_application_model_idx")
+  @@index([applicationId, connectionId, eventTime], map: "usage_event_registry_application_connection_idx")
   @@index([resultStatus, eventTime], map: "usage_event_registry_status_time_idx")
   @@map("usage_event_registry")
 }

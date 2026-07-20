@@ -1,11 +1,5 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 
-import {
-  virtualModelRouteMatchSchema,
-  type RuntimeRoute,
-  type RuntimeRoutingRule,
-  type RuntimeSnapshot,
-} from "@tokenpilot/contracts";
 import {
   ConnectorStatus,
   PublicationStatus,
@@ -16,43 +10,11 @@ import {
 import { AuditContextService } from "../audit-context.js";
 import { AuditService } from "../audit.service.js";
 import { DATABASE_CLIENT } from "../tokens.js";
-import { loadRouteAudience, resolveRuntimeMatch } from "../virtual-models/route-matches.js";
+import { loadRouteAudience } from "../virtual-models/route-matches.js";
 import {
-  runtimeFingerprint,
-  signRuntimeSnapshot,
-  type UnsignedRuntimeSnapshot,
-} from "./runtime-snapshot-integrity.js";
-
-interface TargetRow {
-  readonly id: string;
-  readonly priority: number;
-  readonly weight: { toNumber(): number };
-  readonly model: {
-    readonly id: string;
-    readonly litellmTag: string;
-    readonly provider: string | null;
-    readonly enabled: boolean;
-  };
-}
-
-function routeTarget(target: TargetRow, routeTag: string, order: number) {
-  return {
-    model_id: target.model.id,
-    model_tag: target.model.litellmTag,
-    ...(target.model.provider === null ? {} : { provider: target.model.provider }),
-    route_tag: routeTag,
-    fallback_order: order,
-    weight: target.weight.toNumber(),
-  };
-}
-
-function defaultSelectionMode(targets: readonly TargetRow[]): RuntimeRoute["selection_mode"] {
-  return targets.some((target) => target.weight.toNumber() !== 1) ? "weighted" : "ordered";
-}
-
-function activeTargets(targets: readonly TargetRow[]): readonly TargetRow[] {
-  return targets.filter((target) => target.model.enabled);
-}
+  buildRuntimePublication,
+  runtimeVirtualModelInclude,
+} from "./runtime-publication-builder.js";
 
 @Injectable()
 export class RuntimeConfigurationService {
@@ -175,7 +137,7 @@ export class RuntimeConfigurationService {
 
   async publish(now: Date = new Date()) {
     const application = this.application();
-    const [applicationRow, settings, properties, virtualModels, latest, audience] =
+    const [applicationRow, settings, properties, connections, virtualModels, latest, audience] =
       await Promise.all([
         this.database.application.findUnique({
           where: { id: application.id },
@@ -186,22 +148,21 @@ export class RuntimeConfigurationService {
           where: { applicationId: application.id, status: "ACTIVE" },
           orderBy: { key: "asc" },
         }),
+        this.database.callConnection.findMany({
+          where: { applicationId: application.id, enabled: true },
+          select: {
+            id: true,
+            name: true,
+            driver: true,
+            baseUrl: true,
+            credentialRef: true,
+            publicConfigJson: true,
+          },
+          orderBy: { name: "asc" },
+        }),
         this.database.virtualModel.findMany({
           where: { applicationId: application.id, enabled: true },
-          include: {
-            application: { select: { timezone: true } },
-            defaultModel: true,
-            targets: {
-              where: { enabled: true },
-              include: { model: true },
-              orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
-            },
-            rules: {
-              where: { enabled: true },
-              include: { targetModel: true },
-              orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
-            },
-          },
+          include: runtimeVirtualModelInclude,
           orderBy: { name: "asc" },
         }),
         this.database.runtimeConfigurationVersion.findFirst({
@@ -212,121 +173,21 @@ export class RuntimeConfigurationService {
         loadRouteAudience(this.database, application.id),
       ]);
     if (applicationRow === null) throw new ForbiddenException("Application not found");
-    if (virtualModels.length === 0) {
-      throw new BadRequestException("Enable at least one virtual model before publishing");
-    }
     const version = (latest?.version ?? 0) + 1;
-    const publishedAt = now.toISOString();
-    const routing: RuntimeSnapshot["routing"] = {};
-    for (const virtualModel of virtualModels) {
-      const targets = activeTargets(virtualModel.targets);
-      if (targets.length === 0) {
-        throw new BadRequestException(`${virtualModel.displayName} has no available route`);
-      }
-      const defaultIndex = targets.findIndex(
-        (target) => target.model.id === virtualModel.defaultModelId,
-      );
-      if (defaultIndex < 0) {
-        throw new BadRequestException(`${virtualModel.displayName} has no available default model`);
-      }
-      const ordered = [
-        targets[defaultIndex]!,
-        ...targets.filter((_, index) => index !== defaultIndex),
-      ];
-      const defaultTag = `cp:virtual:${virtualModel.name}:default`;
-      const defaultRoute: RuntimeRoute = {
-        route_tag: defaultTag,
-        selection_mode: defaultSelectionMode(ordered),
-        targets: ordered.map((target, index) => routeTarget(target, defaultTag, index)),
-      };
-      const rules: RuntimeRoutingRule[] = [];
-      const priorities = new Set<number>();
-      for (const [index, rule] of virtualModel.rules.entries()) {
-        if (priorities.has(rule.priority)) {
-          throw new BadRequestException(
-            `${virtualModel.displayName} contains route conditions with the same priority`,
-          );
-        }
-        priorities.add(rule.priority);
-        const match = virtualModelRouteMatchSchema.safeParse(rule.matchJson);
-        if (!match.success) {
-          throw new BadRequestException(
-            `${virtualModel.displayName} contains a route condition that cannot be published`,
-          );
-        }
-        let runtimeMatch: RuntimeRoutingRule["match"];
-        try {
-          runtimeMatch = resolveRuntimeMatch(match.data, audience);
-        } catch {
-          throw new BadRequestException(
-            `${virtualModel.displayName} contains a user-group condition without a current member snapshot`,
-          );
-        }
-        const selectedTarget = targets.find((target) => target.model.id === rule.targetModelId);
-        if (selectedTarget === undefined || !rule.targetModel.enabled) {
-          throw new BadRequestException(
-            `${virtualModel.displayName} contains a condition for an unavailable model`,
-          );
-        }
-        const routeTag = `cp:virtual:${virtualModel.name}:rule${index + 1}`;
-        rules.push({
-          id: rule.id,
-          priority: rule.priority,
-          match: runtimeMatch,
-          route: {
-            route_tag: routeTag,
-            selection_mode: "ordered",
-            targets: [
-              selectedTarget,
-              ...targets.filter((candidate) => candidate.id !== selectedTarget.id),
-            ].map((candidate, order) => routeTarget(candidate, routeTag, order)),
-          },
-          ...(rule.expiresAt === null ? {} : { expires_at: rule.expiresAt.toISOString() }),
-        });
-      }
-      const planIdentity = {
-        application_id: application.id,
-        version,
-        virtual_model_id: virtualModel.id,
-        default: defaultRoute,
-        rules,
-      };
-      routing[virtualModel.name] = {
-        virtual_model_id: virtualModel.id,
-        configuration_version: version,
-        configuration_etag: runtimeFingerprint(planIdentity),
-        published_at: publishedAt,
-        timezone: virtualModel.application.timezone,
-        default: defaultRoute,
-        rules,
-      };
-    }
-    const base: UnsignedRuntimeSnapshot = {
-      schema_version: "2.0" as const,
-      application_id: application.id,
-      version: `runtime-${application.slug}-${version}`,
-      expires_at: new Date(now.getTime() + 10 * 365 * 86_400_000).toISOString(),
-      routing,
-      aiu: {
-        enabled: settings?.featureAiu ?? false,
-        mode: settings?.featureAiu
-          ? settings.featureHardLimit
-            ? "hard_limit"
-            : "observe"
-          : "disabled",
-        unrated_model_policy: "allow_unrated" as const,
+    const { snapshot, routing } = buildRuntimePublication({
+      application: {
+        id: application.id,
+        slug: application.slug,
+        enabled: applicationRow.status === "ACTIVE",
       },
-      access: {
-        application_enabled: applicationRow.status === "ACTIVE",
-        blocked_user_ids: audience.users
-          .filter((user) => user.status === "BLOCKED")
-          .map((user) => user.externalId),
-      },
-      dimensions: {
-        analytics_allowed_keys: properties.map((property) => property.key),
-      },
-    };
-    const snapshot = signRuntimeSnapshot(base);
+      settings,
+      properties,
+      connections,
+      virtualModels,
+      audience,
+      version,
+      now,
+    });
     const created = await this.database.$transaction(async (transaction) => {
       await transaction.runtimeConfigurationVersion.updateMany({
         where: { applicationId: application.id, status: PublicationStatus.PUBLISHED },

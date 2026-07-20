@@ -30,7 +30,7 @@ function row(
       bucketSize: "hour",
       virtualModel: "chat-fast",
       modelId: "model-1",
-      modelTag: "openai-primary",
+      requestModel: "openai-primary",
       provider: "openai",
       userId: null,
     },

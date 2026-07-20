@@ -208,14 +208,43 @@ if (
   throw new Error("Application-scoped acceptance keys were not issued");
 }
 
+const connection = await mutate(
+  `${appPath}/connections`,
+  {
+    name: "Acceptance LiteLLM",
+    driver: "litellm",
+    base_url: "http://litellm:4000/v1",
+    credential_ref: "LITELLM_MASTER_KEY",
+    public_config: { timeout_ms: 60000, max_retries: 1 },
+  },
+  session,
+);
+if (typeof connection?.id !== "string") {
+  throw new Error("Acceptance call connection creation failed");
+}
+
 const primary = await mutate(
   `${appPath}/models`,
-  { name: "Acceptance primary", litellm_tag: "text.fast.demo-primary" },
+  {
+    name: "Acceptance primary",
+    connection_id: connection.id,
+    request_model: "text.fast.demo-primary",
+    provider: "openai",
+    task_type: "chat",
+    capabilities: ["streaming"],
+  },
   session,
 );
 const fallback = await mutate(
   `${appPath}/models`,
-  { name: "Acceptance fallback", litellm_tag: "text.fast.demo-fallback" },
+  {
+    name: "Acceptance fallback",
+    connection_id: connection.id,
+    request_model: "text.fast.demo-fallback",
+    provider: "openai",
+    task_type: "chat",
+    capabilities: ["streaming"],
+  },
   session,
 );
 for (const model of [primary, fallback]) {
@@ -250,6 +279,7 @@ const virtualModel = await mutate(
   {
     name: "acceptance.chat",
     display_name: "Acceptance chat",
+    task_type: "chat",
     default_model_id: primary.id,
   },
   session,

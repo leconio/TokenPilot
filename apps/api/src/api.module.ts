@@ -8,6 +8,8 @@ import { AuditService } from "./audit.service.js";
 import { ApplicationController } from "./applications/application.controller.js";
 import { ApplicationMembersService } from "./applications/application-members.service.js";
 import { ApplicationService } from "./applications/application.service.js";
+import { ConnectionController } from "./connections/connection.controller.js";
+import { ConnectionService } from "./connections/connection.service.js";
 import { ModelController } from "./models/model.controller.js";
 import { ModelService } from "./models/model.service.js";
 import { ModelPricingController } from "./models/model-pricing.controller.js";
@@ -89,6 +91,7 @@ export class ApiModule {
       module: ApiModule,
       controllers: [
         ApplicationController,
+        ConnectionController,
         ModelController,
         ModelPricingController,
         PropertyController,
@@ -133,6 +136,7 @@ export class ApiModule {
         RequestDetailsService,
         AuditService,
         ApplicationService,
+        ConnectionService,
         ApplicationMembersService,
         ModelService,
         ModelPricingService,

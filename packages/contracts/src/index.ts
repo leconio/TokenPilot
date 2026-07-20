@@ -1,6 +1,7 @@
 export * from "./common.js";
 export * from "./dtos.js";
 export * from "./machine-contracts.js";
+export * from "./model-runtime.js";
 export * from "./policy.js";
 export * from "./reconciliation.js";
 export * from "./registry.js";

@@ -141,6 +141,8 @@ function eventFromScenario(scenario: Scenario, event: ScenarioEvent, index: numb
     request: {
       request_id: `request-${scenario.name}`,
       attempt_id: event.attempt_id ?? `attempt-${index}`,
+      attempt_index: index,
+      is_final_attempt: index === scenario.events.length - 1,
       operation_id: null,
       parent_request_id: "business-request-fixture",
       session_id: "session-fixture",
@@ -149,7 +151,7 @@ function eventFromScenario(scenario: Scenario, event: ScenarioEvent, index: numb
     },
     model: {
       virtual_model: "text.fast",
-      model_tag: event.deployment_id ?? event.actual_model,
+      request_model: event.deployment_id ?? event.actual_model,
       provider: event.provider,
     },
     route: {

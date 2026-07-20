@@ -7,6 +7,7 @@ import { ulid } from "ulid";
 
 import { evaluatePerformanceReport, thresholdsDigest } from "./report-validation.mjs";
 import { loadRemotePerformanceContext, parseRemoteArguments } from "./remote-context.mjs";
+import { performanceModelFromSnapshot } from "./runtime-model.mjs";
 import { sampleSummary } from "./statistics.mjs";
 import {
   collectPerformanceStages,
@@ -19,6 +20,7 @@ export {
   performanceFailureDiagnostic,
   runPerformanceStage,
 } from "./performance-stages.mjs";
+export { performanceModelFromSnapshot };
 
 const root = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const thresholdsPath = resolve(root, "scripts/performance/thresholds.json");
@@ -78,6 +80,8 @@ export function performanceEvent(context, model, index, run) {
     request: {
       request_id: requestId,
       attempt_id: `${requestId}-attempt`,
+      attempt_index: 0,
+      is_final_attempt: true,
       operation_id: `${requestId}-operation`,
       parent_request_id: null,
       session_id: null,
@@ -87,7 +91,9 @@ export function performanceEvent(context, model, index, run) {
     model: {
       virtual_model: "acceptance.chat",
       model_id: model.id,
-      model_tag: model.litellm_tag,
+      connection_id: model.connection_id,
+      connection_driver: model.connection_driver,
+      request_model: model.request_model,
       provider: model.provider,
     },
     route: null,
@@ -101,16 +107,7 @@ export function performanceEvent(context, model, index, run) {
 
 async function modelForPerformance(context) {
   const result = await jsonRequest(context, "/runtime/snapshot", context.runtimeKey);
-  const targets = result.body?.routing?.["acceptance.chat"]?.default?.targets;
-  const model = Array.isArray(targets)
-    ? targets.find((candidate) => candidate?.model_tag === "text.fast.demo-fallback")
-    : undefined;
-  if (typeof model?.model_id !== "string") throw new Error("Performance model is unavailable");
-  return {
-    id: model.model_id,
-    litellm_tag: model.model_tag,
-    provider: typeof model.provider === "string" ? model.provider : null,
-  };
+  return performanceModelFromSnapshot(result.body);
 }
 
 function reportParameters(requestId) {
@@ -144,7 +141,7 @@ async function waitForRatedUsage(context, requestId) {
     if (typeof item?.provider_cost_amount === "string" && typeof item?.aiu_micros === "string") {
       return {
         seconds: (performance.now() - started) / 1_000,
-        model_tag: item.model_tag,
+        request_model: item.request_model,
         provider_cost_amount: item.provider_cost_amount,
         aiu_micros: item.aiu_micros,
       };
@@ -193,7 +190,7 @@ async function benchmarkPipeline(context) {
     settlement.push(rated.seconds);
     await pipelineStep("rating-evidence", () => {
       if (
-        rated.model_tag !== model.litellm_tag ||
+        rated.request_model !== model.request_model ||
         Number(rated.provider_cost_amount) <= 0 ||
         BigInt(rated.aiu_micros) <= 0n
       ) {
@@ -291,7 +288,7 @@ async function timedReport(context, suffix, requestId, validate) {
   for (let run = 0; run < repetitions; run += 1) {
     const parameters = reportParameters(requestId);
     if (suffix === "/reports/provider-cost" || suffix === "/reports/aiu") {
-      parameters.set("group_dimension", "model_tag");
+      parameters.set("group_dimension", "request_model");
       parameters.set("page_size", "20");
     }
     const started = performance.now();

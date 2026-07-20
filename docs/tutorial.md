@@ -2,24 +2,33 @@
 
 [中文](tutorial.zh-CN.md)
 
-This tutorial takes a new installation from an empty console to a real LiteLLM call, content-free
-usage reporting, model cost and AIU analytics, user quota, and published routing. The Mac example
-runs as native Python and never needs a local container runtime.
+This tutorial takes a new installation from an empty console to one application, a directly called
+model with fallback, content-free reporting, cost and AI Unit analytics, and a user allowance. The
+Node and Python examples run natively on macOS and do not need a local container runtime.
 
-## 1. Create the application and keys
+## 1. Finish setup and create an application
 
-Complete first-run setup, then create an application with only a name. TokenPilot derives the URL
-slug. In **Settings → Access keys**, create three separate application keys:
+Open the Web console and complete first-run setup. TokenPilot creates the administrator and a first
+application, plus one application key with the permissions needed by the SDKs and Connector. Copy
+the key immediately; its raw value cannot be displayed again.
 
-- usage and Connector heartbeat;
-- runtime configuration and AIU reservation;
-- report read access for verification.
+Create another application from the application switcher when needed. Applications do not share
+users, reports, fields, quotas, or routing publications.
 
-Copy each key immediately; raw values cannot be displayed again.
+For a disposable environment, the optional example seed adds two secret-free connections, two real
+models, and a fallback virtual model to an application that already exists:
 
-## 2. Define fields
+```bash
+TOKENPILOT_EXAMPLE_APPLICATION_SLUG='my-application' \
+  pnpm --filter @tokenpilot/db db:seed:example
+```
 
-Open **Fields** and add these examples:
+The regular `db:seed` never adds product data. The example command stores environment-variable
+names, not credential values, and is safe to run more than once.
+
+## 2. Define reportable fields
+
+Open **Fields** and add only the product dimensions you intend to search or report:
 
 | Scope | Field           | Type    |
 | ----- | --------------- | ------- |
@@ -28,61 +37,80 @@ Open **Fields** and add these examples:
 | User  | `parse_context` | text    |
 | User  | `voice_type`    | text    |
 
-Keep sensitive fields marked sensitive. Undefined fields and values of the wrong type are rejected,
-which keeps searches and reports trustworthy.
+Mark sensitive dimensions as sensitive. Undefined fields and values of the wrong type are rejected,
+which keeps searches and saved reports trustworthy. Prompts and model responses are not custom
+fields and must not be reported.
 
-## 3. Register models and rates
+## 3. Add a connection and real models
 
-Open **Models**. A model needs only a display name and its exact LiteLLM name. For the included
-native example, register:
+Open **Models → Connections** and add an OpenAI-compatible connection. Enter its endpoint and the
+name of an environment variable such as `OPENAI_API_KEY`; enter the actual credential only in the
+SDK process environment. Use **Check connection** after that environment is available to the
+runtime.
 
-- `openai/local-success`;
-- `openai/local-primary`;
-- `openai/local-fallback`.
+Open **Models → Real models** and add a model on the connection. Its request name is the exact model
+identifier expected by the Provider. Add a second real model if you want to exercise fallback.
 
-Open each model and enter Provider cost and AIU conversion rates for the usage lines you expect.
-AIU binds directly to this model; input, output, cache, reasoning, image, audio, and other supported
-units may have different conversion rates.
+For each real model, publish Provider cost and AI Unit rates for the usage lines you expect. Input,
+output, cache, reasoning, image, audio, and other supported units can use different rates.
 
 ## 4. Create and publish a virtual model
 
-Open **Virtual models**, create a stable name used by application code, and add the primary model
-followed by the fallback. Optional conditions can select candidates by time, user, user group, or a
-temporary override. Use **Simulate** with a representative user, then publish in **Releases**.
+Open **Virtual models** and create a short stable name such as `support-chat`. Add the primary real
+model followed by the fallback. Optional conditions can select candidates by time, user, user
+group, or a temporary override. Use **Simulate** with a representative user and input type, resolve
+all validation messages, then publish.
 
-The release is considered active only after the target Connector reports that it applied the exact
-configuration version. A rejected configuration remains visible with its reason.
+The release is active only after the target runtime acknowledges the exact revision. A rejected
+configuration remains visible with all validation reasons, and the last applied revision remains in
+use.
 
-## 5. Run the Mac-native LiteLLM example
+## 5. Call the virtual model from an SDK
 
-From the repository root:
+Build the Node SDK, then run the example with the control URL, application key, application slug,
+and the Provider credential named in the connection:
 
 ```bash
-cd examples/litellm-local
-cp .env.example .env
-# Fill the three application keys and application slug.
-uv sync --all-groups
-uv run python app.py
-uv run python verify_reporting.py
+pnpm --filter @tokenpilot/node-sdk build
+AI_CONTROL_URL=http://127.0.0.1:4000 \
+AI_CONTROL_POLICY_API_KEY='the-one-time-application-key' \
+AI_CONTROL_APPLICATION_SLUG='my-application' \
+OPENAI_API_KEY='provider-key' \
+node examples/node-sdk/app.mjs
 ```
 
-The example starts an OpenAI-compatible fake Provider, uses a real LiteLLM Router, records one
-successful call and one primary-failure/fallback call, and reports them through the durable
-Connector spool. Its `.env.example` already shows the optional LAN proxy settings.
+The Python SDK follows the same virtual-model contract:
+
+```bash
+PYTHONPATH=sdks/python/src \
+AI_CONTROL_URL=http://127.0.0.1:4000 \
+AI_CONTROL_POLICY_API_KEY='the-one-time-application-key' \
+AI_CONTROL_APPLICATION_SLUG='my-application' \
+OPENAI_API_KEY='provider-key' \
+uv run --project sdks/python python examples/python-sdk/app.py
+```
+
+The SDK downloads the published candidates, reserves AI Unit when enforcement is enabled, calls the
+real model, falls back only when allowed, settles actual usage, and queues one content-free event
+per attempt. See [Integration guide](integration.md) for complete code and adapter examples.
+
+If the application already uses LiteLLM, use the separate
+[`litellm-local`](../examples/litellm-local/README.md) example. It exercises the same reporting and
+published virtual-model behavior without moving Provider credentials into TokenPilot.
 
 ## 6. Verify users and analytics
 
-Open **Users**. The reported `user_id` now exists automatically and its recommended
-`display_user` is shown. You can also add another user manually with only `user_id`; users are
-isolated to this application.
+Open **Users**. The reported `user_id` now exists automatically and `display_user` is shown as its
+human name. You can also add a user manually with only `user_id`.
 
-Then check **Usage**, **AI cost**, and **AIU**. Filter by the example user and model. The event detail
-should show token lines, actual fallback model, route reason, cost, AIU, and typed properties, but no
-prompt or response text. Save the analysis and add it to the application's dashboard.
+Check **Usage**, **Model cost**, and **AI Unit**. Combine filters for the example user, virtual model,
+real model, attempt result, and a custom field. The event detail should show token lines, the full
+fallback chain, route reason, cost, AI Unit, and typed properties, but no prompt or response text.
+Save the analysis and add it to the current application's dashboard.
 
-## 7. Exercise quota control
+## 7. Exercise allowance control
 
-Set an AIU quota for the example user. In strict mode, a trusted runtime reserves AIU before the
-call, settles actual use on success, and releases on failure. Resetting quota appends an audited
-adjustment instead of deleting history. Blocking the user is published in the runtime snapshot and
-prevents later calls while the last successfully applied configuration remains available.
+Grant the example user an AI Unit allowance. In enforcement mode, the SDK reserves an estimate
+before any Provider call, settles it to the final rated amount on success, and releases it when the
+request cannot start. Resetting allowance appends an audited adjustment instead of deleting
+history. Blocking the user prevents later calls after the updated runtime policy is applied.

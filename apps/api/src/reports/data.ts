@@ -107,7 +107,7 @@ export function usageReportItem(row: ReportRow): UsageReportItem {
   const schemaVersion = reportString(row.schema_version);
   const status = reportString(row.status);
   const userId = reportString(row.user_id);
-  const modelTag = reportString(row.model_tag);
+  const requestModel = reportString(row.request_model);
   if (eventTime === null) {
     throw new UsageReportTimeError("Usage report row has an invalid event time");
   }
@@ -118,7 +118,7 @@ export function usageReportItem(row: ReportRow): UsageReportItem {
     schemaVersion === null ||
     status === null ||
     userId === null ||
-    modelTag === null
+    requestModel === null
   ) {
     throw new UsageReportIdentityError("Usage report row is missing canonical identity fields");
   }
@@ -134,6 +134,8 @@ export function usageReportItem(row: ReportRow): UsageReportItem {
     event_id: eventId,
     request_id: requestId,
     attempt_id: attemptId,
+    attempt_index: reportCount(row.attempt_index ?? 0),
+    is_final_attempt: reportBoolean(row.is_final_attempt) ?? false,
     operation_id: reportString(row.operation_id),
     event_time: eventTime,
     received_at: reportInstant(row.received_at),
@@ -149,7 +151,9 @@ export function usageReportItem(row: ReportRow): UsageReportItem {
     trace_id: reportString(row.trace_id),
     virtual_model: reportString(row.virtual_model),
     model_id: reportString(row.model_id),
-    model_tag: modelTag,
+    connection_id: reportString(row.connection_id),
+    connection_driver: reportString(row.connection_driver),
+    request_model: requestModel,
     provider: reportString(row.provider),
     status,
     route_reason: reportString(row.route_reason),

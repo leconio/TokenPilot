@@ -11,20 +11,38 @@ const applicationId = "00000000-0000-4000-8000-000000000611";
 const virtualModelId = "00000000-0000-4000-8000-000000000612";
 const primaryId = "00000000-0000-4000-8000-000000000613";
 const fallbackId = "00000000-0000-4000-8000-000000000614";
+const connectionId = "00000000-0000-4000-8000-000000000610";
 const now = new Date("2026-07-20T00:00:00.000Z");
+
+function connection() {
+  return {
+    id: connectionId,
+    applicationId,
+    name: "LiteLLM",
+    driver: "LITELLM",
+    baseUrl: "http://litellm.test/v1",
+    credentialRef: "LITELLM_API_KEY",
+    publicConfigJson: { timeout_ms: 60000, max_retries: 1 },
+    enabled: true,
+    status: "AVAILABLE",
+  };
+}
 
 function model(id: string, name: string, tag: string) {
   return {
     id,
     applicationId,
     name,
-    litellmTag: tag,
+    connectionId,
+    requestModel: tag,
     provider: "openai",
+    taskType: "CHAT",
     capabilitiesJson: [],
     notes: null,
     enabled: true,
     createdAt: now,
     updatedAt: now,
+    connection: connection(),
   };
 }
 
@@ -40,6 +58,7 @@ function virtualModel(
     applicationId,
     name: "chat",
     displayName: "对话",
+    taskType: "CHAT",
     enabled: true,
     defaultModelId: primaryId,
     description: null,
@@ -111,6 +130,7 @@ function fixture(row = virtualModel()) {
     applicationUser: { findMany: vi.fn().mockResolvedValue([]) },
     applicationUserGroup: { findMany: vi.fn().mockResolvedValue([]) },
     connectorInstance: { findMany: vi.fn().mockResolvedValue([]) },
+    callConnection: { findMany: vi.fn().mockResolvedValue([connection()]) },
     applicationSettings: {
       findUnique: vi.fn().mockResolvedValue({ featureAiu: true, featureHardLimit: false }),
     },
@@ -159,9 +179,9 @@ describe("RuntimeConfigurationService", () => {
         {
           default: {
             selection_mode: string;
-            targets: readonly { model_tag: string; weight: number }[];
+            targets: readonly { request_model: string; weight: number }[];
           };
-          rules: readonly { route: { targets: readonly { model_tag: string }[] } }[];
+          rules: readonly { route: { targets: readonly { request_model: string }[] } }[];
         }
       >;
       dimensions: {
@@ -171,14 +191,14 @@ describe("RuntimeConfigurationService", () => {
     };
     expect(data).toMatchObject({ applicationId, version: 3, status: "PUBLISHED" });
     expect(data.signature).toMatch(/^sha256:[0-9a-f]{64}$/u);
-    expect(snapshot.routing.chat?.default.targets.map((target) => target.model_tag)).toEqual([
+    expect(snapshot.routing.chat?.default.targets.map((target) => target.request_model)).toEqual([
       "openai/gpt-4.1",
       "openai/gpt-4.1-mini",
     ]);
     expect(snapshot.routing.chat?.default.selection_mode).toBe("ordered");
     expect(snapshot.routing.chat?.default.targets.map((target) => target.weight)).toEqual([1, 1]);
     expect(
-      snapshot.routing.chat?.rules[0]?.route.targets.map((target) => target.model_tag),
+      snapshot.routing.chat?.rules[0]?.route.targets.map((target) => target.request_model),
     ).toEqual(["openai/gpt-4.1-mini", "openai/gpt-4.1"]);
     expect(snapshot.dimensions).toEqual({
       analytics_allowed_keys: ["team", "next_action"],
@@ -218,6 +238,28 @@ describe("RuntimeConfigurationService", () => {
     });
     const value = fixture(row);
     await expect(value.service.publish(now)).rejects.toMatchObject({ status: 400 });
+    expect(value.database.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns every publication problem in one response", async () => {
+    const row = virtualModel({ arbitrary: true });
+    row.rules.push({
+      ...row.rules[0]!,
+      id: "00000000-0000-4000-8000-000000000698",
+      name: "重复优先级",
+    });
+    const value = fixture(row);
+
+    await expect(value.service.publish(now)).rejects.toMatchObject({
+      status: 400,
+      response: {
+        code: "PUBLICATION_VALIDATION_FAILED",
+        issues: expect.arrayContaining([
+          expect.objectContaining({ code: "ROUTE_CONDITION_INVALID" }),
+          expect.objectContaining({ code: "ROUTE_PRIORITY_DUPLICATE" }),
+        ]),
+      },
+    });
     expect(value.database.$transaction).not.toHaveBeenCalled();
   });
 

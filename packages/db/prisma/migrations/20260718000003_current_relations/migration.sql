@@ -20,6 +20,12 @@ ALTER TABLE "connector_heartbeat_receipts" ADD CONSTRAINT "connector_heartbeat_r
 ALTER TABLE "connector_heartbeat_receipts" ADD CONSTRAINT "connector_heartbeat_receipts_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "applications"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "call_connections" ADD CONSTRAINT "call_connections_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "call_connections" ADD CONSTRAINT "call_connections_application_id_connector_instance_id_fkey" FOREIGN KEY ("application_id", "connector_instance_id") REFERENCES "connector_instances"("application_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "applications"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -33,6 +39,9 @@ ALTER TABLE "account" ADD CONSTRAINT "account_user_id_fkey" FOREIGN KEY ("user_i
 
 -- AddForeignKey
 ALTER TABLE "model_definitions" ADD CONSTRAINT "model_definitions_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "model_definitions" ADD CONSTRAINT "model_definitions_application_id_connection_id_fkey" FOREIGN KEY ("application_id", "connection_id") REFERENCES "call_connections"("application_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "virtual_models" ADD CONSTRAINT "virtual_models_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -177,6 +186,9 @@ ALTER TABLE "usage_event_registry" ADD CONSTRAINT "usage_event_registry_applicat
 
 -- AddForeignKey
 ALTER TABLE "usage_event_registry" ADD CONSTRAINT "usage_event_registry_application_id_model_id_fkey" FOREIGN KEY ("application_id", "model_id") REFERENCES "model_definitions"("application_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "usage_event_registry" ADD CONSTRAINT "usage_event_registry_application_id_connection_id_fkey" FOREIGN KEY ("application_id", "connection_id") REFERENCES "call_connections"("application_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ingestion_inbox" ADD CONSTRAINT "ingestion_inbox_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "applications"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

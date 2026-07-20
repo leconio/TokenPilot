@@ -20,6 +20,8 @@ export interface UsageReportItem {
   readonly event_id: string;
   readonly request_id: string;
   readonly attempt_id: string;
+  readonly attempt_index: number;
+  readonly is_final_attempt: boolean;
   readonly operation_id: string | null;
   readonly event_time: string;
   readonly received_at: string | null;
@@ -35,7 +37,9 @@ export interface UsageReportItem {
   readonly trace_id: string | null;
   readonly virtual_model: string | null;
   readonly model_id: string | null;
-  readonly model_tag: string;
+  readonly connection_id: string | null;
+  readonly connection_driver: string | null;
+  readonly request_model: string;
   readonly provider: string | null;
   readonly status: string;
   readonly route_reason: string | null;

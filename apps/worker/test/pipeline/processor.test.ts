@@ -23,6 +23,8 @@ function usageEvent(): UsageEvent {
     request: {
       request_id: "request-1",
       attempt_id: "attempt-1",
+      attempt_index: 0,
+      is_final_attempt: true,
       operation_id: "operation-1",
       parent_request_id: null,
       session_id: null,
@@ -31,7 +33,7 @@ function usageEvent(): UsageEvent {
     },
     model: {
       virtual_model: "chat",
-      model_tag: "openai/gpt-test",
+      request_model: "openai/gpt-test",
       provider: "openai",
     },
     route: null,

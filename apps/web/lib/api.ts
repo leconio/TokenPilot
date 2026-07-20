@@ -6,6 +6,7 @@ export class ApiError extends Error {
     readonly status: number,
     readonly diagnostic?: string,
     readonly code?: string,
+    readonly payload?: unknown,
   ) {
     super(message);
   }
@@ -65,6 +66,7 @@ export async function controlApi<T>(path: string, init: RequestInit = {}): Promi
       response.status,
       diagnostic,
       code,
+      payload,
     );
   }
   return payload as T;

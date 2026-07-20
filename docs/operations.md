@@ -11,8 +11,8 @@ curl --fail http://127.0.0.1:8080/health/ready
 ```
 
 Liveness means the process is running. Readiness requires PostgreSQL, Redis, and ClickHouse. Treat a
-readiness failure as a service incident even when model requests still pass through external
-LiteLLM.
+readiness failure as a service incident even when an SDK or external LiteLLM can still reach its
+model service using the last applied configuration.
 
 Review these Web pages during an incident:
 
@@ -97,7 +97,7 @@ passes. A failure keeps delivery paused for investigation.
 | --------------------------------- | ----------------------------------------------------- |
 | Connector heartbeat stale         | LiteLLM process, key status, network, spool integrity |
 | Connector backlog growing         | API readiness, spool capacity, ingest errors          |
-| Unpriced Provider usage           | Model tag selection and missing usage price           |
+| Unpriced Provider usage           | Real-model resolution and missing usage price         |
 | Unrated AIU usage                 | Published AIU card and inherited rate coverage        |
 | ClickHouse sink lag               | ClickHouse readiness, Outbox leases, pause owner      |
 | Quota reservation expiry spike    | Client cancellation path and request timeout          |
