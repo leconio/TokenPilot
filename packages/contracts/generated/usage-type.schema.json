@@ -1,0 +1,24 @@
+{
+  "$id": "https://tokenpilot.dev/schemas/usage-type.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "string",
+  "enum": [
+    "uncached_input_token",
+    "cache_read_input_token",
+    "cache_write_input_token",
+    "output_token",
+    "reasoning_output_token",
+    "input_image",
+    "output_image",
+    "input_audio_second",
+    "output_audio_second",
+    "input_video_second",
+    "output_video_second",
+    "embedding_token",
+    "request",
+    "custom_unit",
+    "unknown"
+  ],
+  "title": "Usage Type",
+  "description": "A mutually exclusive canonical usage bucket."
+}

@@ -1,0 +1,94 @@
+model Application {
+  id                      String                                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                    String                                @db.VarChar(120)
+  slug                    String                                @unique(map: "applications_slug_key") @db.VarChar(120)
+  status                  ApplicationStatus                     @default(ACTIVE)
+  timezone                String                                @default("UTC") @db.VarChar(128)
+  baseCurrency            String                                @default("USD") @map("base_currency") @db.Char(3)
+  archivedAt              DateTime?                             @map("archived_at") @db.Timestamptz(6)
+  createdAt               DateTime                              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime                              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  members                 ApplicationMember[]
+  apiKeys                 ApplicationApiKey[]
+  settings                ApplicationSettings?
+  usageEvents             UsageEventRegistry[]
+  inboxEvents             IngestionInbox[]
+  outboxEvents            PipelineOutbox[]
+  deadLetterEvents        DeadLetterEvent[]
+  models                  ModelDefinition[]
+  virtualModels           VirtualModel[]
+  virtualModelRules       VirtualModelRule[]
+  runtimeConfigurations   RuntimeConfigurationVersion[]
+  runtimeAcknowledgements RuntimeConfigurationAcknowledgement[]
+  propertyDefinitions     PropertyDefinition[]
+  modelCostVersions       ModelCostVersion[]
+  modelAiuVersions        ModelAiuVersion[]
+  endUsers                ApplicationUser[]
+  userAiuQuotas           UserAiuQuota[]
+  userAiuLedgerEntries    UserAiuLedgerEntry[]
+  userAiuReservations     UserAiuReservation[]
+  aiuQuotaPolicies        AiuQuotaPolicy[]
+  usageRatings            ApplicationUsageRating[]
+  userGroups              ApplicationUserGroup[]
+  userGroupEvaluations    ApplicationUserGroupEvaluation[]
+  userGroupBulkActions    ApplicationUserGroupBulkAction[]
+  savedReports            SavedReport[]
+  dashboardCards          ApplicationDashboardCard[]
+  auditLogs               AuditLog[]
+  connectorInstances      ConnectorInstance[]
+  connectorReceipts       ConnectorHeartbeatReceipt[]
+  reconciliationRuns      ReconciliationRun[]
+  backgroundJobs          BackgroundJob[]
+
+  @@index([status, updatedAt], map: "applications_status_updated_at_idx")
+  @@map("applications")
+}
+
+model ApplicationMember {
+  applicationId String          @map("application_id") @db.Uuid
+  userId        String          @map("user_id") @db.Text
+  role          ApplicationRole @default(VIEWER)
+  permissions   String[]        @default([])
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application   Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([applicationId, userId])
+  @@index([userId, createdAt], map: "application_members_user_created_at_idx")
+  @@map("application_members")
+}
+
+model ApplicationApiKey {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId String       @map("application_id") @db.Uuid
+  name          String       @db.VarChar(120)
+  keyPrefix     String       @unique(map: "application_api_keys_key_prefix_key") @map("key_prefix") @db.VarChar(32)
+  keyHash       String       @unique(map: "application_api_keys_key_hash_key") @map("key_hash") @db.Char(64)
+  scopes        String[]
+  status        ApiKeyStatus @default(ACTIVE)
+  lastUsedAt    DateTime?    @map("last_used_at") @db.Timestamptz(6)
+  expiresAt     DateTime?    @map("expires_at") @db.Timestamptz(6)
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  application   Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, status, expiresAt], map: "application_api_keys_app_status_expiry_idx")
+  @@map("application_api_keys")
+}
+
+model ApplicationSettings {
+  applicationId         String      @id @map("application_id") @db.Uuid
+  featureUsagePipeline  Boolean     @default(true) @map("feature_usage_pipeline")
+  featureModelCatalog   Boolean     @default(true) @map("feature_model_catalog")
+  featureAiu            Boolean     @default(true) @map("feature_aiu")
+  featureQuota          Boolean     @default(true) @map("feature_quota")
+  featureHardLimit      Boolean     @default(false) @map("feature_hard_limit")
+  featureReconciliation Boolean     @default(true) @map("feature_reconciliation")
+  aiuMicroScale         BigInt      @default(1000000) @map("aiu_micro_scale")
+  rawEventRetentionDays Int         @default(30) @map("raw_event_retention_days")
+  createdAt             DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application           Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@map("application_settings")
+}

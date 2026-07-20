@@ -1,0 +1,467 @@
+{
+  "$id": "https://tokenpilot.dev/schemas/reconciliation-diff.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "run_id": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "diff_type": {
+      "$ref": "#/$defs/ReconciliationDiffType"
+    },
+    "severity": {
+      "$ref": "#/$defs/ReconciliationSeverity"
+    },
+    "dimensions": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "pg_values": {
+      "$ref": "#/$defs/__schema8"
+    },
+    "ch_values": {
+      "$ref": "#/$defs/__schema17"
+    },
+    "delta_values": {
+      "$ref": "#/$defs/ReconciliationDeltaValues"
+    },
+    "count": {
+      "$ref": "#/$defs/MicroAiuString"
+    },
+    "amount": {
+      "$ref": "#/$defs/__schema26"
+    },
+    "sample_event_ids": {
+      "$ref": "#/$defs/__schema27"
+    },
+    "explanation": {
+      "$ref": "#/$defs/__schema30"
+    },
+    "status": {
+      "$ref": "#/$defs/ReconciliationDiffStatus"
+    },
+    "resolution": {
+      "$ref": "#/$defs/__schema31"
+    },
+    "resolved_by": {
+      "$ref": "#/$defs/__schema32"
+    },
+    "resolved_at": {
+      "$ref": "#/$defs/__schema33"
+    },
+    "created_at": {
+      "$ref": "#/$defs/__schema2"
+    }
+  },
+  "required": [
+    "id",
+    "run_id",
+    "diff_type",
+    "severity",
+    "dimensions",
+    "pg_values",
+    "ch_values",
+    "delta_values",
+    "count",
+    "amount",
+    "sample_event_ids",
+    "explanation",
+    "status",
+    "resolution",
+    "resolved_by",
+    "resolved_at",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "title": "Reconciliation Diff",
+  "description": "A classified, explainable difference between authoritative and projected data.",
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$"
+    },
+    "ReconciliationDiffType": {
+      "type": "string",
+      "enum": [
+        "CH_MISSING",
+        "PG_MISSING",
+        "DUPLICATE_PROJECTION",
+        "PAYLOAD_HASH_CONFLICT",
+        "USAGE_NORMALIZATION_MISMATCH",
+        "MODEL_IDENTITY_MISMATCH",
+        "PRICE_VERSION_MISMATCH",
+        "AIU_RATE_VERSION_MISMATCH",
+        "PROVISIONAL_OFFICIAL_DELTA_PENDING",
+        "LEDGER_PROJECTION_MISSING",
+        "LATE_EVENT",
+        "ADJUSTMENT_NOT_PROJECTED",
+        "WATERMARK_STALLED",
+        "unknown"
+      ]
+    },
+    "ReconciliationSeverity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "error",
+        "critical",
+        "unknown"
+      ]
+    },
+    "__schema1": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReconciliationDimensions"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ReconciliationDimensions": {
+      "type": "object",
+      "properties": {
+        "application_id": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "granularity": {
+          "$ref": "#/$defs/ReconciliationGranularity"
+        },
+        "time_bucket": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "virtual_model": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "model_id": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "model_tag": {
+          "$ref": "#/$defs/__schema5"
+        },
+        "provider": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "user_id": {
+          "$ref": "#/$defs/__schema7"
+        }
+      },
+      "required": [
+        "application_id",
+        "granularity",
+        "time_bucket",
+        "virtual_model",
+        "model_id",
+        "model_tag",
+        "provider",
+        "user_id"
+      ],
+      "additionalProperties": false
+    },
+    "ReconciliationGranularity": {
+      "type": "string",
+      "enum": [
+        "hour",
+        "day",
+        "unknown"
+      ]
+    },
+    "__schema2": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?Z$"
+    },
+    "__schema3": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema4": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/__schema0"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema5": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema6": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema7": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema8": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReconciliationMetricValues"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ReconciliationMetricValues": {
+      "type": "object",
+      "properties": {
+        "event_count": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "input_tokens": {
+          "$ref": "#/$defs/__schema10"
+        },
+        "cached_input_tokens": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "output_tokens": {
+          "$ref": "#/$defs/__schema12"
+        },
+        "provider_cost": {
+          "$ref": "#/$defs/__schema13"
+        },
+        "aiu_micros": {
+          "$ref": "#/$defs/__schema14"
+        },
+        "unpriced_count": {
+          "$ref": "#/$defs/__schema15"
+        },
+        "unrated_count": {
+          "$ref": "#/$defs/__schema16"
+        }
+      },
+      "additionalProperties": false
+    },
+    "__schema9": {
+      "$ref": "#/$defs/MicroAiuString"
+    },
+    "MicroAiuString": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]{0,18})$",
+      "format": "nonnegative-int64-string",
+      "description": "A canonical decimal string in the non-negative signed-int64 range."
+    },
+    "__schema10": {
+      "$ref": "#/$defs/MicroAiuString"
+    },
+    "__schema11": {
+      "$ref": "#/$defs/MicroAiuString"
+    },
+    "__schema12": {
+      "$ref": "#/$defs/MicroAiuString"
+    },
+    "__schema13": {
+      "$ref": "#/$defs/Decimal38Scale18"
+    },
+    "Decimal38Scale18": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]{0,19})(?:\\.[0-9]{1,18})?$"
+    },
+    "__schema14": {
+      "$ref": "#/$defs/MicroAiuString"
+    },
+    "__schema15": {
+      "$ref": "#/$defs/MicroAiuString"
+    },
+    "__schema16": {
+      "$ref": "#/$defs/MicroAiuString"
+    },
+    "__schema17": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReconciliationMetricValues"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ReconciliationDeltaValues": {
+      "type": "object",
+      "properties": {
+        "event_count": {
+          "$ref": "#/$defs/__schema18"
+        },
+        "input_tokens": {
+          "$ref": "#/$defs/__schema19"
+        },
+        "cached_input_tokens": {
+          "$ref": "#/$defs/__schema20"
+        },
+        "output_tokens": {
+          "$ref": "#/$defs/__schema21"
+        },
+        "provider_cost": {
+          "$ref": "#/$defs/__schema22"
+        },
+        "aiu_micros": {
+          "$ref": "#/$defs/__schema23"
+        },
+        "unpriced_count": {
+          "$ref": "#/$defs/__schema24"
+        },
+        "unrated_count": {
+          "$ref": "#/$defs/__schema25"
+        }
+      },
+      "additionalProperties": false
+    },
+    "__schema18": {
+      "$ref": "#/$defs/SignedMicroAiuString"
+    },
+    "SignedMicroAiuString": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]{0,18}|-[1-9][0-9]{0,18})$",
+      "format": "int64-string",
+      "description": "A canonical decimal string in the signed-int64 range."
+    },
+    "__schema19": {
+      "$ref": "#/$defs/SignedMicroAiuString"
+    },
+    "__schema20": {
+      "$ref": "#/$defs/SignedMicroAiuString"
+    },
+    "__schema21": {
+      "$ref": "#/$defs/SignedMicroAiuString"
+    },
+    "__schema22": {
+      "$ref": "#/$defs/SignedDecimal38Scale18"
+    },
+    "SignedDecimal38Scale18": {
+      "type": "string",
+      "pattern": "^-?(?:0|[1-9][0-9]{0,19})(?:\\.[0-9]{1,18})?$"
+    },
+    "__schema23": {
+      "$ref": "#/$defs/SignedMicroAiuString"
+    },
+    "__schema24": {
+      "$ref": "#/$defs/SignedMicroAiuString"
+    },
+    "__schema25": {
+      "$ref": "#/$defs/SignedMicroAiuString"
+    },
+    "__schema26": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Decimal38Scale18"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema27": {
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/EventId"
+      }
+    },
+    "EventId": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/__schema28"
+        },
+        {
+          "$ref": "#/$defs/__schema29"
+        }
+      ],
+      "title": "Event ID",
+      "description": "A globally idempotent ULID or UUIDv7 event identifier."
+    },
+    "__schema28": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "__schema29": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-7[0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$"
+    },
+    "__schema30": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "ReconciliationDiffStatus": {
+      "type": "string",
+      "enum": [
+        "open",
+        "investigating",
+        "resolved",
+        "ignored",
+        "unknown"
+      ]
+    },
+    "__schema31": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema32": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/__schema0"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema33": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/__schema2"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

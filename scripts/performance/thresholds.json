@@ -1,0 +1,10 @@
+{
+  "ingestion_batch_p95_ms": 2000,
+  "settlement_lag_p95_seconds": 60,
+  "dashboard_p95_ms": 2000,
+  "usage_report_p95_ms": 2000,
+  "provider_cost_report_p95_ms": 2000,
+  "aiu_report_p95_ms": 2000,
+  "runtime_snapshot_p95_ms": 500,
+  "reservation_p95_ms": 1000
+}

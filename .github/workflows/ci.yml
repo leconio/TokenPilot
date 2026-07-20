@@ -1,0 +1,208 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://ai_control:ci-test-password@127.0.0.1:5432/ai_control
+      CLICKHOUSE_URL: http://127.0.0.1:8123
+      CLICKHOUSE_DATABASE: ai_control_plane_test
+      CLICKHOUSE_BOOTSTRAP_PASSWORD: ci-clickhouse-bootstrap-password
+      CLICKHOUSE_USERNAME: ai_control_ci_app
+      CLICKHOUSE_PASSWORD: ci-clickhouse-app-password
+      CLICKHOUSE_MIGRATION_USERNAME: ai_control_ci_migrator
+      CLICKHOUSE_MIGRATION_PASSWORD: ci-clickhouse-migration-password
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ai_control
+          POSTGRES_USER: ai_control
+          POSTGRES_PASSWORD: ci-test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ai_control -d ai_control"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+      clickhouse:
+        image: clickhouse:26.3.17.4@sha256:158dcce6f6fdc59309650aad6b79484abf4eed07d4e0bdba31d732e64b5a25fb
+        env:
+          CLICKHOUSE_DB: ai_control_plane_test
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_PASSWORD: ci-clickhouse-bootstrap-password
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+        ports:
+          - 8123:8123
+        options: >-
+          --health-cmd "clickhouse-client --user default --password ci-clickhouse-bootstrap-password --query 'SELECT 1'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 20s
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - name: Create least-privilege ClickHouse test users
+        run: |
+          docker exec --interactive \
+            --env CLICKHOUSE_PASSWORD="$CLICKHOUSE_BOOTSTRAP_PASSWORD" \
+            --env AI_CONTROL_CLICKHOUSE_DATABASE="$CLICKHOUSE_DATABASE" \
+            --env AI_CONTROL_CLICKHOUSE_APPLICATION_USER="$CLICKHOUSE_USERNAME" \
+            --env AI_CONTROL_CLICKHOUSE_APPLICATION_PASSWORD="$CLICKHOUSE_PASSWORD" \
+            --env AI_CONTROL_CLICKHOUSE_MIGRATION_USER="$CLICKHOUSE_MIGRATION_USERNAME" \
+            --env AI_CONTROL_CLICKHOUSE_MIGRATION_PASSWORD="$CLICKHOUSE_MIGRATION_PASSWORD" \
+            "${{ job.services.clickhouse.id }}" \
+            bash < deploy/clickhouse/init/001-create-least-privilege-users.sh
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: "0.11.28"
+          enable-cache: true
+      - run: uv sync --project connectors/litellm --locked --all-groups
+      - run: pnpm check:structure
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm check:contracts
+      - run: pnpm build
+      - name: Apply and verify the ClickHouse test schema
+        run: |
+          pnpm --filter @tokenpilot/clickhouse clickhouse up
+          pnpm --filter @tokenpilot/clickhouse clickhouse verify
+      - run: uv run --project connectors/litellm ruff check connectors/litellm
+      - run: uv run --project connectors/litellm mypy connectors/litellm/src connectors/litellm/tests connectors/litellm/scripts
+      - run: pnpm test
+      - run: pnpm test:db
+        env:
+          TEST_DATABASE_URL: postgresql://ai_control:ci-test-password@127.0.0.1:5432/postgres
+      - run: pnpm test:api
+        env:
+          TEST_DATABASE_URL: postgresql://ai_control:ci-test-password@127.0.0.1:5432/postgres
+          TEST_REDIS_URL: redis://127.0.0.1:6379/15
+      - run: pnpm test:worker
+        env:
+          TEST_DATABASE_URL: postgresql://ai_control:ci-test-password@127.0.0.1:5432/postgres
+          TEST_REDIS_URL: redis://127.0.0.1:6379/14
+  release-acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: "0.11.28"
+          enable-cache: true
+      - run: uv sync --project connectors/litellm --locked --all-groups
+      - run: pnpm test:release
+      - run: pnpm test:operations
+      - run: pnpm --filter @tokenpilot/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @tokenpilot/web test:e2e
+      - name: Validate Prometheus configuration and alerts
+        run: |
+          docker build --pull --target prometheus --file deploy/docker/Observability.Dockerfile --tag tokenpilot-prometheus:ci .
+          docker run --rm --entrypoint promtool -v "$PWD/deploy/observability:/work:ro" tokenpilot-prometheus:ci check config /work/prometheus.yml
+          docker run --rm --entrypoint promtool -v "$PWD/deploy/observability:/work:ro" tokenpilot-prometheus:ci check rules /work/alerts.yml
+          docker run --rm --entrypoint promtool -v "$PWD/deploy/observability:/work:ro" tokenpilot-prometheus:ci test rules /work/alerts.test.yml
+
+  pricing-determinism:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["24.0.0", "24.x"]
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:provider-cost
+
+  litellm-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: "0.11.28"
+          enable-cache: true
+      - name: Validate the locked LiteLLM runtime and Connector
+        run: uv run --python 3.12 python scripts/validate-litellm-runtime.py
+
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level=high
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: "0.11.28"
+          enable-cache: true
+      - name: Export locked Python dependency graphs
+        run: |
+          uv export --project connectors/litellm --locked --no-emit-project --format requirements-txt --output-file /tmp/connector-requirements.txt
+          uv export --project sdks/python --locked --no-emit-project --format requirements-txt --output-file /tmp/sdk-requirements.txt
+      - name: Audit Python dependencies
+        run: |
+          uvx --python 3.12 --from pip-audit==2.10.0 pip-audit --disable-pip --no-deps -r /tmp/connector-requirements.txt
+          uvx --python 3.12 --from pip-audit==2.10.0 pip-audit --disable-pip --no-deps -r /tmp/sdk-requirements.txt
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          artifact-name: tokenpilot-sbom.spdx.json
+          output-file: tokenpilot-sbom.spdx.json
+      - name: Scan source, dependencies, secrets, and configuration
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          # Dependency vulnerabilities remain covered through the committed lockfiles. Exclude
+          # generated install/cache trees so third-party example Dockerfiles are not attributed to
+          # this repository's own configuration.
+          skip-dirs: node_modules,.venv,.sbom,.trivy-cache,artifacts
+          severity: CRITICAL,HIGH
+          ignore-unfixed: false
+          exit-code: "1"

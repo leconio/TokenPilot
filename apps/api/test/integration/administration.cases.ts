@@ -1,0 +1,114 @@
+import { expect, it } from "vitest";
+
+import { adminKey, applicationSlug } from "./support/config.js";
+import { database, server } from "./support/harness.js";
+
+function request(method: "GET" | "POST" | "PATCH" | "PUT", path: string, payload?: unknown) {
+  return server.inject({
+    method,
+    url: `/applications/${applicationSlug}${path}`,
+    headers: {
+      authorization: `Bearer ${adminKey}`,
+      ...(payload === undefined ? {} : { "content-type": "application/json" }),
+    },
+    ...(payload === undefined ? {} : { payload: JSON.stringify(payload) }),
+  });
+}
+
+export function registerAdministrationCases(): void {
+  it("manages an application model, its independent rates, and application users", async () => {
+    const created = await request("POST", "/models", {
+      name: "Integration model",
+      litellm_tag: "openai/integration-model",
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({
+      name: "Integration model",
+      litellm_tag: "openai/integration-model",
+      provider: "openai",
+    });
+    const modelId = created.json().id as string;
+
+    const cost = await request("PUT", `/models/${modelId}/cost`, {
+      request: "0.01",
+      input_per_million: "1.25",
+      output_per_million: "4.5",
+    });
+    expect(cost.statusCode).toBe(200);
+    expect(cost.json().cost.rates).toMatchObject({
+      request: "0.01",
+      input_per_million: "1.25",
+      output_per_million: "4.5",
+    });
+    const aiu = await request("PUT", `/models/${modelId}/aiu`, {
+      input_per_million: "2",
+      output_per_million: "8",
+    });
+    expect(aiu.statusCode).toBe(200);
+    expect(aiu.json().aiu.rates).toMatchObject({
+      input_per_million: "2",
+      output_per_million: "8",
+    });
+
+    const manualUser = await request("POST", "/users", {
+      user_id: "manual-user",
+      display_user: "Manual user",
+      tags: ["integration"],
+    });
+    expect(manualUser.statusCode).toBe(201);
+    expect(manualUser.json()).toMatchObject({
+      user_id: "manual-user",
+      display_user: "Manual user",
+    });
+    const user = await request("GET", `/users/${manualUser.json().id}`);
+    expect(user.statusCode).toBe(200);
+    expect(user.json()).toMatchObject({
+      user_id: "manual-user",
+      display_user: "Manual user",
+    });
+
+    await expect(
+      database.modelDefinition.findUniqueOrThrow({
+        where: { id: modelId },
+        include: { application: true },
+      }),
+    ).resolves.toMatchObject({
+      litellmTag: "openai/integration-model",
+      application: { slug: applicationSlug },
+    });
+  });
+
+  it("publishes a virtual model as the application's runtime configuration", async () => {
+    const model = await database.modelDefinition.findFirstOrThrow({
+      where: { application: { slug: applicationSlug }, enabled: true },
+    });
+    const created = await request("POST", "/virtual-models", {
+      name: "assistant",
+      display_name: "Assistant",
+      default_model_id: model.id,
+    });
+    expect(created.statusCode).toBe(201);
+    const virtualModelId = created.json().id as string;
+    expect(
+      (
+        await request("POST", `/virtual-models/${virtualModelId}/routes`, {
+          model_id: model.id,
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await request("PATCH", `/virtual-models/${virtualModelId}`, {
+          enabled: true,
+        })
+      ).statusCode,
+    ).toBe(200);
+
+    const published = await request("POST", "/runtime-configurations/publish");
+    expect(published.statusCode).toBe(201);
+    expect(published.json()).toMatchObject({ version: 1, virtual_model_count: 1 });
+    const versions = await request("GET", "/runtime-configurations");
+    expect(versions.statusCode).toBe(200);
+    expect(versions.json().versions[0]).toMatchObject({ version: 1, connectors: [] });
+  });
+}

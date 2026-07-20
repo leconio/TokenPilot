@@ -1,0 +1,88 @@
+# Production-oriented example. Provider credentials are resolved only from the
+# LiteLLM process environment; never replace these references with literal keys.
+router_settings:
+  enable_tag_filtering: true
+  routing_strategy: simple-shuffle
+
+litellm_settings:
+  turn_off_message_logging: true
+  callbacks:
+    - ai_control_callback.proxy_handler_instance
+  success_callback:
+    - ai_control_callback.proxy_handler_instance
+  failure_callback:
+    - ai_control_callback.proxy_handler_instance
+
+# order and weight are properties of a LiteLLM model-list entry, not of an
+# individual tag. A physical deployment is therefore repeated when it has
+# different routing metadata in Peak and Offpeak. Repeated model_info.id values
+# are intentional: the three unique IDs below must match Control Plane
+# Deployment.external_id values.
+model_list:
+  # Peak 09:00-23:00: OpenAI and Azure share order 1 at 80/20.
+  - model_name: text.fast
+    litellm_params:
+      model: openai/your-model
+      api_key: os.environ/OPENAI_API_KEY
+      tags: ["cp:text.fast:peak", "cp:text.fast:default"]
+      order: 1
+      weight: 80
+    model_info:
+      id: openai-fast-prod
+
+  - model_name: text.fast
+    litellm_params:
+      model: azure/your-deployment-name
+      api_key: os.environ/AZURE_OPENAI_API_KEY
+      api_base: os.environ/AZURE_OPENAI_ENDPOINT
+      api_version: os.environ/AZURE_OPENAI_API_VERSION
+      tags: ["cp:text.fast:peak", "cp:text.fast:default"]
+      order: 1
+      weight: 20
+    model_info:
+      id: azure-fast-fallback
+
+  # Peak fallback after the complete order-1 pool is unavailable.
+  - model_name: text.fast
+    litellm_params:
+      model: gemini/your-model
+      api_key: os.environ/GEMINI_API_KEY
+      tags: ["cp:text.fast:peak", "cp:text.fast:default"]
+      order: 2
+      weight: 100
+    model_info:
+      id: gemini-fast-prod
+
+  # Offpeak 23:00-09:00: Gemini first, OpenAI second.
+  - model_name: text.fast
+    litellm_params:
+      model: gemini/your-model
+      api_key: os.environ/GEMINI_API_KEY
+      tags: ["cp:text.fast:offpeak"]
+      order: 1
+      weight: 100
+    model_info:
+      id: gemini-fast-prod
+
+  - model_name: text.fast
+    litellm_params:
+      model: openai/your-model
+      api_key: os.environ/OPENAI_API_KEY
+      tags: ["cp:text.fast:offpeak"]
+      order: 2
+      weight: 100
+    model_info:
+      id: openai-fast-prod
+
+  # Emergency is an explicit operator override pool. This example pins Azure.
+  - model_name: text.fast
+    litellm_params:
+      model: azure/your-deployment-name
+      api_key: os.environ/AZURE_OPENAI_API_KEY
+      api_base: os.environ/AZURE_OPENAI_ENDPOINT
+      api_version: os.environ/AZURE_OPENAI_API_VERSION
+      tags: ["cp:text.fast:emergency"]
+      order: 1
+      weight: 100
+    model_info:
+      id: azure-fast-fallback

@@ -1,0 +1,51 @@
+-- Current empty-database baseline statement 0010.
+-- Deterministically projects mutually exclusive normalized usage buckets into additive 1m rows.
+CREATE MATERIALIZED VIEW usage_lines_to_1m_mv
+TO usage_agg_1m
+AS
+SELECT
+    toDate(event_time) AS event_date,
+    toStartOfMinute(event_time) AS bucket_start,
+    application_id,
+    instance_id,
+    environment,
+    virtual_model,
+    model_id,
+    model_tag,
+    provider,
+    status,
+    route_reason,
+    usage_type,
+    unit,
+    unit_key,
+    '' AS currency,
+    toUInt64(0) AS request_count,
+    toUInt64(0) AS attempt_count,
+    toUInt64(0) AS success_count,
+    toUInt64(0) AS error_count,
+    sum(quantity) AS usage_quantity,
+    toUInt64(0) AS latency_sum_ms,
+    toUInt64(0) AS latency_sample_count,
+    toDecimal128(0, 18) AS provisional_provider_cost,
+    toDecimal128(0, 18) AS official_provider_cost_delta,
+    toInt64(0) AS provisional_aiu_micros,
+    toInt64(0) AS official_aiu_micros_delta,
+    toInt64(0) AS unpriced_count,
+    toInt64(0) AS unrated_count,
+    toUInt64(0) AS fallback_count
+FROM usage_lines
+GROUP BY
+    toDate(event_time),
+    toStartOfMinute(event_time),
+    application_id,
+    instance_id,
+    environment,
+    virtual_model,
+    model_id,
+    model_tag,
+    provider,
+    status,
+    route_reason,
+    usage_type,
+    unit,
+    unit_key;

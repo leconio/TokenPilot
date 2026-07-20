@@ -1,0 +1,11 @@
+{
+  "$id": "https://tokenpilot.dev/schemas/usage-confidence.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "string",
+  "enum": [
+    "exact_provider_response",
+    "gateway_reported",
+    "sdk_reported",
+    "estimated"
+  ]
+}

@@ -1,0 +1,40 @@
+name: Feature request
+description: Propose an improvement to TokenPilot.
+title: "[Feature]: "
+labels: [enhancement, triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What operator or application problem should be solved?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable behavior, not only an implementation.
+    validations:
+      required: true
+  - type: dropdown
+    id: boundary
+    attributes:
+      label: Boundary impact
+      options:
+        - No architecture boundary change
+        - May require an ADR
+        - Unsure
+    validations:
+      required: true
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints
+      options:
+        - label: The proposal does not require the Control Plane to receive model traffic or Provider keys.
+          required: true
+        - label: The proposal preserves application isolation and does not weaken authorization boundaries.
+          required: true
+        - label: I did not include credentials, prompts, responses, or customer data.
+          required: true

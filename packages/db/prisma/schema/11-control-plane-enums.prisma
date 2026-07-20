@@ -1,0 +1,155 @@
+enum QuotaPeriodType {
+  CALENDAR_DAY   @map("calendar_day")
+  CALENDAR_WEEK  @map("calendar_week")
+  CALENDAR_MONTH @map("calendar_month")
+  FIXED_WINDOW   @map("fixed_window")
+  LIFETIME       @map("lifetime")
+  UNKNOWN        @map("unknown")
+
+  @@map("quota_period_type")
+}
+
+enum AiuQuotaPolicyScope {
+  APPLICATION @map("application")
+  USER_GROUP  @map("user_group")
+  USER        @map("user")
+
+  @@map("aiu_quota_policy_scope")
+}
+
+enum AiuLedgerEntryType {
+  GRANT               @map("grant")
+  CONSUME             @map("consume")
+  REFUND              @map("refund")
+  ADJUSTMENT          @map("adjustment")
+  EXPIRE              @map("expire")
+  RESERVE             @map("reserve")
+  RESERVATION_RELEASE @map("reservation_release")
+  SETTLEMENT_DELTA    @map("settlement_delta")
+  REVERSAL            @map("reversal")
+
+  @@map("aiu_ledger_entry_type")
+}
+
+enum AiuReservationStatus {
+  RESERVED @map("reserved")
+  SETTLED  @map("settled")
+  RELEASED @map("released")
+  EXPIRED  @map("expired")
+  UNKNOWN  @map("unknown")
+
+  @@map("aiu_reservation_status")
+}
+
+enum PipelineStage {
+  RECEIVED            @map("received")
+  NORMALIZED          @map("normalized")
+  MODEL_RESOLVED      @map("model_resolved")
+  PROVIDER_COST_RATED @map("provider_cost_rated")
+  AIU_RATED           @map("aiu_rated")
+  QUOTA_SETTLED       @map("quota_settled")
+  OFFICIAL_COMMITTED  @map("official_committed")
+  OUTBOX_CREATED      @map("outbox_created")
+  COMPLETED           @map("completed")
+  DEAD_LETTER         @map("dead_letter")
+
+  @@map("pipeline_stage")
+}
+
+enum InboxStatus {
+  PENDING     @map("pending")
+  LEASED      @map("leased")
+  COMPLETED   @map("completed")
+  FAILED      @map("failed")
+  DEAD_LETTER @map("dead_letter")
+
+  @@map("inbox_status")
+}
+
+enum OutboxStatus {
+  PENDING     @map("pending")
+  LEASED      @map("leased")
+  SENT        @map("sent")
+  FAILED      @map("failed")
+  DEAD_LETTER @map("dead_letter")
+
+  @@map("outbox_status")
+}
+
+enum ClickhouseSyncStatus {
+  HEALTHY  @map("healthy")
+  DEGRADED @map("degraded")
+  STALE    @map("stale")
+  FAILED   @map("failed")
+
+  @@map("clickhouse_sync_status")
+}
+
+enum DeadLetterStatus {
+  OPEN          @map("open")
+  REPLAY_QUEUED @map("replay_queued")
+  RESOLVED      @map("resolved")
+  IGNORED       @map("ignored")
+
+  @@map("dead_letter_status")
+}
+
+enum ReconciliationRunType {
+  HOURLY  @map("hourly")
+  DAILY   @map("daily")
+  MANUAL  @map("manual")
+  REBUILD @map("rebuild")
+  UNKNOWN @map("unknown")
+
+  @@map("reconciliation_run_type")
+}
+
+enum ReconciliationRunStatus {
+  QUEUED    @map("queued")
+  RUNNING   @map("running")
+  COMPLETED @map("completed")
+  FAILED    @map("failed")
+  CANCELLED @map("cancelled")
+  UNKNOWN   @map("unknown")
+
+  @@map("reconciliation_run_status")
+}
+
+enum ReconciliationDiffType {
+  CH_MISSING                         @map("CH_MISSING")
+  PG_MISSING                         @map("PG_MISSING")
+  DUPLICATE_PROJECTION               @map("DUPLICATE_PROJECTION")
+  PAYLOAD_HASH_CONFLICT              @map("PAYLOAD_HASH_CONFLICT")
+  USAGE_NORMALIZATION_MISMATCH       @map("USAGE_NORMALIZATION_MISMATCH")
+  MODEL_IDENTITY_MISMATCH            @map("MODEL_IDENTITY_MISMATCH")
+  PRICE_VERSION_MISMATCH             @map("PRICE_VERSION_MISMATCH")
+  AIU_RATE_VERSION_MISMATCH          @map("AIU_RATE_VERSION_MISMATCH")
+  PROVISIONAL_OFFICIAL_DELTA_PENDING @map("PROVISIONAL_OFFICIAL_DELTA_PENDING")
+  LEDGER_PROJECTION_MISSING          @map("LEDGER_PROJECTION_MISSING")
+  LATE_EVENT                         @map("LATE_EVENT")
+  ADJUSTMENT_NOT_PROJECTED           @map("ADJUSTMENT_NOT_PROJECTED")
+  WATERMARK_STALLED                  @map("WATERMARK_STALLED")
+  UNKNOWN                            @map("unknown")
+
+  @@map("reconciliation_diff_type")
+}
+
+enum ReconciliationSeverity {
+  INFO     @map("info")
+  WARNING  @map("warning")
+  ERROR    @map("error")
+  CRITICAL @map("critical")
+  UNKNOWN  @map("unknown")
+
+  @@map("reconciliation_severity")
+}
+
+enum ReconciliationDiffStatus {
+  OPEN          @map("open")
+  INVESTIGATING @map("investigating")
+  RESOLVED      @map("resolved")
+  IGNORED       @map("ignored")
+  UNKNOWN       @map("unknown")
+
+  @@map("reconciliation_diff_status")
+}

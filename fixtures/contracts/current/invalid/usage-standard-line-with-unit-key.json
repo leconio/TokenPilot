@@ -1,0 +1,9 @@
+{
+  "usage_type": "output_token",
+  "quantity": "10",
+  "unit": "token",
+  "unit_key": "not_allowed",
+  "source_path": "usage.output_tokens",
+  "is_estimated": false,
+  "confidence": "gateway_reported"
+}

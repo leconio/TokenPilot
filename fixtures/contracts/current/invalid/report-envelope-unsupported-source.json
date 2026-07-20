@@ -1,0 +1,9 @@
+{
+  "source": "realtime",
+  "is_provisional": false,
+  "watermark": null,
+  "as_of": "2026-07-15T12:34:40.000Z",
+  "lag_seconds": null,
+  "range": null,
+  "data": {}
+}

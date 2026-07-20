@@ -1,0 +1,33 @@
+{
+  "standard_logging_object": {
+    "id": "attempt-stream-final",
+    "status": "success",
+    "model": "openai/gpt-5-mini-2026-06-01",
+    "model_id": "openai-stream-prod",
+    "model_group": "text.stream",
+    "startTime": "2026-07-16T02:20:00.000Z",
+    "endTime": "2026-07-16T02:20:01.500Z",
+    "metadata": {
+      "usage_object": {
+        "prompt_tokens": 400,
+        "completion_tokens": 80,
+        "audio_output_seconds": 1.25
+      }
+    }
+  },
+  "litellm_params": {
+    "stream": true,
+    "metadata": {
+      "tags": ["cp:route:streaming"],
+      "cp": {
+        "context_version": "runtime-v42",
+        "user_id": "stream-user",
+        "display_user": "Stream user",
+        "operation_id": "op_stream_01",
+        "request_id": "req_stream_01",
+        "trace_id": "trace_stream_01",
+        "analytics_dimensions": { "client": "web" }
+      }
+    }
+  }
+}

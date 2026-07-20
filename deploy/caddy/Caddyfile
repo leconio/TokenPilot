@@ -1,0 +1,48 @@
+{
+  admin off
+  auto_https off
+}
+
+:8080 {
+  encode zstd gzip
+
+  header {
+    -Server
+    Content-Security-Policy "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    Cross-Origin-Opener-Policy same-origin
+    Permissions-Policy "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
+    Referrer-Policy strict-origin-when-cross-origin
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+  }
+
+  handle /healthz {
+    header Cache-Control "no-store"
+    respond "ok" 200
+  }
+
+  @control_plane_public path /health/* /openapi /openapi/* /openapi-json
+  handle @control_plane_public {
+    header Cache-Control "no-store"
+    reverse_proxy api:4000
+  }
+
+  @control_plane_web path /web /web/*
+  handle @control_plane_web {
+    header Cache-Control "no-store"
+    reverse_proxy api:4000
+  }
+
+  @control_plane_api {
+    header Authorization *
+    path /applications* /audit* /connectors* /dlq* /metrics /runtime* /usage-events*
+  }
+  handle @control_plane_api {
+    header Cache-Control "no-store"
+    reverse_proxy api:4000
+  }
+
+  handle {
+    reverse_proxy web:3000
+  }
+}

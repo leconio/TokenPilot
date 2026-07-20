@@ -1,0 +1,232 @@
+[
+  {
+    "name": "litellm-success",
+    "events": [
+      {
+        "provider": "openai",
+        "actual_model": "gpt-4.1-mini",
+        "deployment_id": "openai-fast-prod",
+        "usage": { "input_tokens": 100, "output_tokens": 20 },
+        "present_fields": [
+          "input_tokens",
+          "output_tokens",
+          "cache_read_input_tokens",
+          "cache_write_input_tokens",
+          "reasoning_output_tokens",
+          "input_images",
+          "output_images",
+          "audio_input_seconds",
+          "audio_output_seconds"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "litellm-failure-zero-token-attempt",
+    "events": [
+      {
+        "provider": "openai",
+        "actual_model": "gpt-4.1-mini",
+        "status": "failure",
+        "http_status": 429,
+        "error_code": "rate_limit",
+        "present_fields": []
+      }
+    ]
+  },
+  {
+    "name": "openai-style-cached-tokens",
+    "events": [
+      {
+        "provider": "openai",
+        "actual_model": "gpt-5.4",
+        "usage": { "input_tokens": 1000, "output_tokens": 100, "cache_read_input_tokens": 400 },
+        "present_fields": ["input_tokens", "output_tokens", "cache_read_input_tokens"],
+        "input_token_semantics": "total_including_cache",
+        "source_fields": {
+          "input_tokens": ["prompt_tokens"],
+          "output_tokens": ["completion_tokens"],
+          "cache_read_input_tokens": ["prompt_tokens_details.cached_tokens"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "anthropic-cache-read-write",
+    "events": [
+      {
+        "provider": "anthropic",
+        "actual_model": "claude-sonnet-4-5",
+        "usage": {
+          "input_tokens": 200,
+          "output_tokens": 80,
+          "cache_read_input_tokens": 800,
+          "cache_write_input_tokens": 100
+        },
+        "present_fields": [
+          "input_tokens",
+          "output_tokens",
+          "cache_read_input_tokens",
+          "cache_write_input_tokens"
+        ],
+        "input_token_semantics": "uncached_only",
+        "output_token_semantics": "reasoning_excluded",
+        "source_fields": {
+          "input_tokens": ["usage.input_tokens"],
+          "output_tokens": ["usage.output_tokens"],
+          "cache_read_input_tokens": ["usage.cache_read_input_tokens"],
+          "cache_write_input_tokens": ["usage.cache_creation_input_tokens"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "gemini-usage-and-implicit-cache",
+    "events": [
+      {
+        "provider": "google",
+        "actual_model": "gemini-2.5-pro",
+        "usage": {
+          "input_tokens": 2048,
+          "output_tokens": 512,
+          "cache_read_input_tokens": 1024,
+          "reasoning_output_tokens": 128
+        },
+        "present_fields": [
+          "input_tokens",
+          "output_tokens",
+          "cache_read_input_tokens",
+          "reasoning_output_tokens"
+        ],
+        "source_fields": {
+          "input_tokens": ["usage_metadata.prompt_token_count"],
+          "output_tokens": ["usage_metadata.candidates_token_count"],
+          "cache_read_input_tokens": ["usage_metadata.cached_content_token_count"],
+          "reasoning_output_tokens": ["usage_metadata.thoughts_token_count"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "reasoning-tokens-excluded-from-ordinary-output",
+    "events": [
+      {
+        "provider": "openai",
+        "actual_model": "o4-mini",
+        "usage": { "input_tokens": 250, "output_tokens": 1000, "reasoning_output_tokens": 700 },
+        "present_fields": ["input_tokens", "output_tokens", "reasoning_output_tokens"],
+        "output_token_semantics": "total_including_reasoning"
+      }
+    ]
+  },
+  {
+    "name": "image-line-items",
+    "events": [
+      {
+        "provider": "openai",
+        "actual_model": "gpt-image-1",
+        "usage": { "input_images": 2, "output_images": 1 },
+        "present_fields": ["input_images", "output_images"],
+        "source_fields": {
+          "input_images": ["usage.input_images"],
+          "output_images": ["usage.output_images"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "streaming-final-usage",
+    "events": [
+      {
+        "provider": "openai",
+        "actual_model": "gpt-4.1-mini",
+        "usage": { "input_tokens": 75, "output_tokens": 33 },
+        "present_fields": ["input_tokens", "output_tokens"],
+        "source_fields": {
+          "input_tokens": ["stream.final_usage.prompt_tokens"],
+          "output_tokens": ["stream.final_usage.completion_tokens"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "missing-usage-estimated",
+    "events": [
+      {
+        "provider": "unknown",
+        "actual_model": "opaque-model",
+        "confidence": "estimated",
+        "present_fields": []
+      }
+    ]
+  },
+  {
+    "name": "multiple-attempt-fallback",
+    "events": [
+      {
+        "provider": "openai",
+        "actual_model": "gpt-4.1-mini",
+        "attempt_id": "attempt-primary",
+        "status": "failure",
+        "http_status": 503,
+        "error_code": "upstream_unavailable",
+        "present_fields": [],
+        "attempt_visibility": "complete",
+        "route": {
+          "configuration_version": 12,
+          "rule_id": "peak",
+          "route_tag": "cp:text.fast:peak",
+          "reason": "scheduled_peak",
+          "fallback_from": null
+        }
+      },
+      {
+        "provider": "google",
+        "actual_model": "gemini-2.5-flash",
+        "deployment_id": "gemini-fast-fallback",
+        "attempt_id": "attempt-fallback",
+        "usage": { "input_tokens": 90, "output_tokens": 25 },
+        "present_fields": ["input_tokens", "output_tokens"],
+        "attempt_visibility": "incomplete",
+        "route": {
+          "configuration_version": 12,
+          "rule_id": "peak",
+          "route_tag": "cp:text.fast:peak",
+          "reason": "provider_fallback",
+          "fallback_from": "openai-fast-prod"
+        }
+      }
+    ]
+  },
+  {
+    "name": "unknown-model-remains-attributable",
+    "events": [
+      {
+        "provider": "custom-provider",
+        "actual_model": "new-model-not-in-catalog",
+        "deployment_id": "unknown-deployment",
+        "usage": { "input_tokens": 10, "output_tokens": 2 },
+        "present_fields": ["input_tokens", "output_tokens"]
+      }
+    ]
+  },
+  {
+    "name": "invalid-negative-and-oversized-quantity",
+    "events": [
+      {
+        "provider": "openai",
+        "actual_model": "gpt-4.1-mini",
+        "usage": { "input_tokens": -1 },
+        "present_fields": ["input_tokens"],
+        "expected_error": "NORMALIZER_INVALID_EVENT"
+      },
+      {
+        "provider": "openai",
+        "actual_model": "gpt-4.1-mini",
+        "usage": { "audio_input_seconds": 1e30 },
+        "present_fields": ["audio_input_seconds"],
+        "expected_error": "NORMALIZER_QUANTITY_OUT_OF_RANGE"
+      }
+    ]
+  }
+]

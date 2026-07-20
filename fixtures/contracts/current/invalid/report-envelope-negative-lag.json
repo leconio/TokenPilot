@@ -1,0 +1,12 @@
+{
+  "watermark": "2026-07-15T12:34:56.000Z",
+  "lag_seconds": -1,
+  "range": {
+    "from": "2026-07-15T00:00:00.000Z",
+    "to": "2026-07-16T00:00:00.000Z",
+    "timezone": "Asia/Shanghai"
+  },
+  "data": {
+    "request_count": "1000"
+  }
+}

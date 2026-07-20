@@ -1,0 +1,5 @@
+{
+  "description": "Temporary source-size debt. Entries must be removed before release.",
+  "releaseDeadline": "before-release",
+  "files": []
+}

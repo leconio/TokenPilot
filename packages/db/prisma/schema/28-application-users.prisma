@@ -1,0 +1,111 @@
+model ApplicationUser {
+  id               String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId    String                       @map("application_id") @db.Uuid
+  externalId       String                       @map("external_id") @db.VarChar(256)
+  name             String?                      @db.VarChar(256)
+  tags             String[]                     @default([])
+  propertiesJson   Json                         @default("{}") @map("properties_json")
+  status           ApplicationUserStatus        @default(ACTIVE)
+  blockedReason    String?                      @map("blocked_reason") @db.VarChar(500)
+  firstSeenAt      DateTime                     @default(now()) @map("first_seen_at") @db.Timestamptz(6)
+  lastSeenAt       DateTime                     @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  createdAt        DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application      Application                  @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  quota            UserAiuQuota?
+  quotaPolicy      AiuQuotaPolicy?
+  ledgerEntries    UserAiuLedgerEntry[]
+  reservations     UserAiuReservation[]
+  usageEvents      UsageEventRegistry[]
+  usageRatings     ApplicationUsageRating[]
+  groupMemberships ApplicationUserGroupMember[]
+
+  @@unique([applicationId, externalId], map: "application_users_external_id_key")
+  @@unique([applicationId, id], map: "application_users_application_id_key")
+  @@index([applicationId, status, lastSeenAt], map: "application_users_status_seen_idx")
+  @@map("application_users")
+}
+
+model UserAiuQuota {
+  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId     String               @map("application_id") @db.Uuid
+  userId            String               @map("user_id") @db.Uuid
+  policyId          String?              @map("policy_id") @db.Uuid
+  periodType        QuotaPeriodType      @default(LIFETIME) @map("period_type")
+  periodStart       DateTime             @default(now()) @map("period_start") @db.Timestamptz(6)
+  periodEnd         DateTime?            @map("period_end") @db.Timestamptz(6)
+  limitAiuMicros    BigInt               @default(0) @map("limit_aiu_micros")
+  consumedAiuMicros BigInt               @default(0) @map("consumed_aiu_micros")
+  reservedAiuMicros BigInt               @default(0) @map("reserved_aiu_micros")
+  hardLimit         Boolean              @default(false) @map("hard_limit")
+  enabled           Boolean              @default(true)
+  lockVersion       Int                  @default(0) @map("lock_version")
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application       Application          @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  user              ApplicationUser      @relation(fields: [applicationId, userId], references: [applicationId, id], onDelete: Restrict)
+  policy            AiuQuotaPolicy?      @relation(fields: [applicationId, policyId], references: [applicationId, id], onDelete: Restrict)
+  ledgerEntries     UserAiuLedgerEntry[]
+  reservations      UserAiuReservation[]
+
+  @@unique([applicationId, id], map: "user_aiu_quotas_application_id_key")
+  @@unique([applicationId, userId], map: "user_aiu_quotas_application_user_key")
+  @@index([applicationId, enabled, periodEnd], map: "user_aiu_quotas_active_period_idx")
+  @@map("user_aiu_quotas")
+}
+
+model UserAiuLedgerEntry {
+  id                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId       String             @map("application_id") @db.Uuid
+  userId              String             @map("user_id") @db.Uuid
+  quotaId             String             @map("quota_id") @db.Uuid
+  entryType           AiuLedgerEntryType @map("entry_type")
+  consumedDeltaMicros BigInt             @default(0) @map("consumed_delta_micros")
+  reservedDeltaMicros BigInt             @default(0) @map("reserved_delta_micros")
+  consumedAfterMicros BigInt             @map("consumed_after_micros")
+  reservedAfterMicros BigInt             @map("reserved_after_micros")
+  limitAfterMicros    BigInt             @map("limit_after_micros")
+  sourceEventId       String?            @map("source_event_id") @db.VarChar(36)
+  sourceReservationId String?            @map("source_reservation_id") @db.Uuid
+  idempotencyKey      String             @map("idempotency_key") @db.VarChar(256)
+  reason              String?            @db.VarChar(500)
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  application         Application        @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  user                ApplicationUser    @relation(fields: [applicationId, userId], references: [applicationId, id], onDelete: Restrict)
+  quota               UserAiuQuota       @relation(fields: [applicationId, quotaId], references: [applicationId, id], onDelete: Restrict)
+
+  @@unique([applicationId, idempotencyKey], map: "user_aiu_ledger_idempotency_key")
+  @@index([applicationId, userId, createdAt], map: "user_aiu_ledger_user_created_idx")
+  @@index([applicationId, quotaId, createdAt], map: "user_aiu_ledger_quota_created_idx")
+  @@map("user_aiu_ledger_entries")
+}
+
+model UserAiuReservation {
+  id                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId         String               @map("application_id") @db.Uuid
+  userId                String               @map("user_id") @db.Uuid
+  quotaId               String               @map("quota_id") @db.Uuid
+  operationId           String               @map("operation_id") @db.VarChar(256)
+  virtualModel          String               @map("virtual_model") @db.VarChar(120)
+  candidateModelIdsJson Json                 @map("candidate_model_ids_json")
+  estimatedAiuMicros    BigInt               @map("estimated_aiu_micros")
+  reservedAiuMicros     BigInt               @map("reserved_aiu_micros")
+  settledAiuMicros      BigInt               @default(0) @map("settled_aiu_micros")
+  tokenHash             String               @map("token_hash") @db.Char(64)
+  status                AiuReservationStatus @default(RESERVED)
+  expiresAt             DateTime             @map("expires_at") @db.Timestamptz(6)
+  settledAt             DateTime?            @map("settled_at") @db.Timestamptz(6)
+  releasedAt            DateTime?            @map("released_at") @db.Timestamptz(6)
+  lockVersion           Int                  @default(0) @map("lock_version")
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application           Application          @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  user                  ApplicationUser      @relation(fields: [applicationId, userId], references: [applicationId, id], onDelete: Restrict)
+  quota                 UserAiuQuota         @relation(fields: [applicationId, quotaId], references: [applicationId, id], onDelete: Restrict)
+
+  @@unique([applicationId, userId, operationId], map: "user_aiu_reservations_operation_key")
+  @@unique([applicationId, id], map: "user_aiu_reservations_application_id_key")
+  @@index([applicationId, status, expiresAt], map: "user_aiu_reservations_status_expiry_idx")
+  @@index([applicationId, quotaId, status], map: "user_aiu_reservations_quota_status_idx")
+  @@map("user_aiu_reservations")
+}

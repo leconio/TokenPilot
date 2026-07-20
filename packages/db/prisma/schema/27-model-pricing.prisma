@@ -1,0 +1,70 @@
+model ModelCostVersion {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId String            @map("application_id") @db.Uuid
+  modelId       String            @map("model_id") @db.Uuid
+  version       Int
+  currency      String            @db.Char(3)
+  status        PublicationStatus @default(PUBLISHED)
+  effectiveFrom DateTime          @map("effective_from") @db.Timestamptz(6)
+  publishedAt   DateTime          @default(now()) @map("published_at") @db.Timestamptz(6)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  model         ModelDefinition   @relation(fields: [applicationId, modelId], references: [applicationId, id], onDelete: Restrict)
+  items         ModelCostItem[]
+
+  @@unique([applicationId, id], map: "model_cost_versions_application_id_key")
+  @@unique([applicationId, modelId, version], map: "model_cost_versions_model_version_key")
+  @@index([applicationId, modelId, status, effectiveFrom], map: "model_cost_versions_current_idx")
+  @@map("model_cost_versions")
+}
+
+model ModelCostItem {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId String           @map("application_id") @db.Uuid
+  versionId     String           @map("version_id") @db.Uuid
+  usageType     String           @map("usage_type") @db.VarChar(120)
+  unitKey       String           @default("") @map("unit_key") @db.VarChar(128)
+  unitSize      Decimal          @map("unit_size") @db.Decimal(38, 9)
+  unitPrice     Decimal          @map("unit_price") @db.Decimal(38, 18)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  version       ModelCostVersion @relation(fields: [applicationId, versionId], references: [applicationId, id], onDelete: Cascade)
+
+  @@unique([versionId, usageType, unitKey], map: "model_cost_items_usage_key")
+  @@index([applicationId, usageType, createdAt], map: "model_cost_items_application_usage_idx")
+  @@map("model_cost_items")
+}
+
+model ModelAiuVersion {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId String            @map("application_id") @db.Uuid
+  modelId       String            @map("model_id") @db.Uuid
+  version       Int
+  status        PublicationStatus @default(PUBLISHED)
+  effectiveFrom DateTime          @map("effective_from") @db.Timestamptz(6)
+  publishedAt   DateTime          @default(now()) @map("published_at") @db.Timestamptz(6)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  model         ModelDefinition   @relation(fields: [applicationId, modelId], references: [applicationId, id], onDelete: Restrict)
+  items         ModelAiuItem[]
+
+  @@unique([applicationId, id], map: "model_aiu_versions_application_id_key")
+  @@unique([applicationId, modelId, version], map: "model_aiu_versions_model_version_key")
+  @@index([applicationId, modelId, status, effectiveFrom], map: "model_aiu_versions_current_idx")
+  @@map("model_aiu_versions")
+}
+
+model ModelAiuItem {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId    String          @map("application_id") @db.Uuid
+  versionId        String          @map("version_id") @db.Uuid
+  usageType        String          @map("usage_type") @db.VarChar(120)
+  unitKey          String          @default("") @map("unit_key") @db.VarChar(128)
+  unitSize         Decimal         @map("unit_size") @db.Decimal(38, 9)
+  aiuMicrosPerUnit BigInt          @map("aiu_micros_per_unit")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  version          ModelAiuVersion @relation(fields: [applicationId, versionId], references: [applicationId, id], onDelete: Cascade)
+
+  @@unique([versionId, usageType, unitKey], map: "model_aiu_items_usage_key")
+  @@index([applicationId, usageType, createdAt], map: "model_aiu_items_application_usage_idx")
+  @@map("model_aiu_items")
+}

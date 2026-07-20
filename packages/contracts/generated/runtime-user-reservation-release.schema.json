@@ -1,0 +1,22 @@
+{
+  "$id": "https://tokenpilot.dev/schemas/runtime-user-reservation-release.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "reservation_token": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 4096
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    }
+  },
+  "required": [
+    "reservation_token",
+    "reason"
+  ],
+  "additionalProperties": false
+}

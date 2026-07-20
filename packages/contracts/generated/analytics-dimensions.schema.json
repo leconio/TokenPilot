@@ -1,0 +1,36 @@
+{
+  "$id": "https://tokenpilot.dev/schemas/analytics-dimensions.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "propertyNames": {
+    "pattern": "^[a-z][a-z0-9_]{0,63}$"
+  },
+  "additionalProperties": {
+    "$ref": "#/$defs/__schema1"
+  },
+  "title": "Analytics Dimensions",
+  "description": "Custom dimensions used only for usage analysis and reports.",
+  "maxProperties": 32,
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "__schema1": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 256
+        },
+        {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "boolean"
+        }
+      ]
+    }
+  }
+}

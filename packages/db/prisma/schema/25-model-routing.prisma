@@ -1,0 +1,132 @@
+model ModelDefinition {
+  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId    String                   @map("application_id") @db.Uuid
+  name             String                   @db.VarChar(120)
+  litellmTag       String                   @map("litellm_tag") @db.VarChar(256)
+  provider         String?                  @db.VarChar(120)
+  capabilitiesJson Json                     @default("[]") @map("capabilities_json")
+  notes            String?                  @db.Text
+  enabled          Boolean                  @default(true)
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application      Application              @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  defaultFor       VirtualModel[]           @relation("VirtualModelDefault")
+  routeTargets     VirtualModelTarget[]
+  ruleTargets      VirtualModelRule[]
+  costVersions     ModelCostVersion[]
+  aiuVersions      ModelAiuVersion[]
+  usageEvents      UsageEventRegistry[]
+  usageRatings     ApplicationUsageRating[]
+
+  @@unique([applicationId, litellmTag], map: "model_definitions_application_tag_key")
+  @@unique([applicationId, id], map: "model_definitions_application_id_key")
+  @@index([applicationId, enabled, updatedAt], map: "model_definitions_application_enabled_idx")
+  @@map("model_definitions")
+}
+
+model VirtualModel {
+  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId        String               @map("application_id") @db.Uuid
+  name                 String               @db.VarChar(120)
+  displayName          String               @map("display_name") @db.VarChar(120)
+  enabled              Boolean              @default(false)
+  defaultModelId       String?              @map("default_model_id") @db.Uuid
+  description          String?              @db.Text
+  lastPublishedVersion Int?                 @map("last_published_version")
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application          Application          @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  defaultModel         ModelDefinition?     @relation("VirtualModelDefault", fields: [applicationId, defaultModelId], references: [applicationId, id], onDelete: Restrict)
+  targets              VirtualModelTarget[]
+  rules                VirtualModelRule[]
+
+  @@unique([applicationId, name], map: "virtual_models_application_name_key")
+  @@unique([applicationId, id], map: "virtual_models_application_id_key")
+  @@index([applicationId, enabled, updatedAt], map: "virtual_models_application_enabled_idx")
+  @@map("virtual_models")
+}
+
+model VirtualModelTarget {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId  String          @map("application_id") @db.Uuid
+  virtualModelId String          @map("virtual_model_id") @db.Uuid
+  modelId        String          @map("model_id") @db.Uuid
+  priority       Int             @default(0)
+  weight         Decimal         @default(1) @db.Decimal(9, 6)
+  enabled        Boolean         @default(true)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  virtualModel   VirtualModel    @relation(fields: [applicationId, virtualModelId], references: [applicationId, id], onDelete: Cascade)
+  model          ModelDefinition @relation(fields: [applicationId, modelId], references: [applicationId, id], onDelete: Restrict)
+
+  @@unique([virtualModelId, modelId], map: "virtual_model_targets_model_key")
+  @@index([applicationId, virtualModelId, enabled, priority], map: "virtual_model_targets_route_idx")
+  @@map("virtual_model_targets")
+}
+
+model VirtualModelRule {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId  String          @map("application_id") @db.Uuid
+  virtualModelId String          @map("virtual_model_id") @db.Uuid
+  name           String          @db.VarChar(120)
+  priority       Int
+  matchJson      Json            @map("match_json")
+  targetModelId  String          @map("target_model_id") @db.Uuid
+  expiresAt      DateTime?       @map("expires_at") @db.Timestamptz(6)
+  enabled        Boolean         @default(true)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application    Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  virtualModel   VirtualModel    @relation(fields: [applicationId, virtualModelId], references: [applicationId, id], onDelete: Cascade)
+  targetModel    ModelDefinition @relation(fields: [applicationId, targetModelId], references: [applicationId, id], onDelete: Restrict)
+
+  @@unique([virtualModelId, id], map: "virtual_model_rules_virtual_model_id_key")
+  @@index([applicationId, virtualModelId, enabled, priority], map: "virtual_model_rules_route_idx")
+  @@map("virtual_model_rules")
+}
+
+model RuntimeConfigurationVersion {
+  id               String                                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId    String                                @map("application_id") @db.Uuid
+  version          Int
+  status           PublicationStatus                     @default(DRAFT)
+  etag             String                                @db.Char(71)
+  snapshotJson     Json                                  @map("snapshot_json")
+  signature        String                                @db.Text
+  publishedBy      String?                               @map("published_by") @db.Text
+  publishedAt      DateTime?                             @map("published_at") @db.Timestamptz(6)
+  createdAt        DateTime                              @default(now()) @map("created_at") @db.Timestamptz(6)
+  application      Application                           @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  publisher        User?                                 @relation(fields: [publishedBy], references: [id], onDelete: SetNull)
+  acknowledgements RuntimeConfigurationAcknowledgement[]
+
+  @@unique([applicationId, version], map: "runtime_configuration_versions_application_version_key")
+  @@unique([applicationId, etag], map: "runtime_configuration_versions_application_etag_key")
+  @@index([applicationId, status, publishedAt], map: "runtime_configuration_versions_status_idx")
+  @@map("runtime_configuration_versions")
+}
+
+model RuntimeConfigurationAcknowledgement {
+  id                   String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId        String                      @map("application_id") @db.Uuid
+  acknowledgementId    String                      @map("acknowledgement_id") @db.VarChar(36)
+  connectorInstanceId  String                      @map("connector_instance_id") @db.VarChar(256)
+  connectorName        String                      @map("connector_name") @db.VarChar(32)
+  connectorVersion     String                      @map("connector_version") @db.VarChar(64)
+  configurationVersion Int                         @map("configuration_version")
+  configurationEtag    String                      @map("configuration_etag") @db.Char(71)
+  state                PolicyAcknowledgementState
+  acknowledgedAt       DateTime                    @map("acknowledged_at") @db.Timestamptz(6)
+  appliedAt            DateTime?                   @map("applied_at") @db.Timestamptz(6)
+  errorCode            String?                     @map("error_code") @db.VarChar(120)
+  errorMessage         String?                     @map("error_message") @db.VarChar(500)
+  payloadHash          String                      @map("payload_hash") @db.Char(64)
+  receivedAt           DateTime                    @default(now()) @map("received_at") @db.Timestamptz(6)
+  application          Application                 @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  configuration        RuntimeConfigurationVersion @relation(fields: [applicationId, configurationVersion], references: [applicationId, version], onDelete: Cascade)
+
+  @@unique([applicationId, acknowledgementId], map: "runtime_configuration_acknowledgements_application_ack_key")
+  @@index([applicationId, connectorInstanceId, receivedAt], map: "runtime_configuration_acknowledgements_connector_idx")
+  @@index([applicationId, configurationVersion, state, receivedAt], map: "runtime_configuration_acknowledgements_configuration_idx")
+  @@map("runtime_configuration_acknowledgements")
+}

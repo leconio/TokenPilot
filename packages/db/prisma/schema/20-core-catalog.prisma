@@ -1,0 +1,18 @@
+model InstanceSettings {
+  id                    Int                   @id @default(1)
+  instanceId            String                @unique(map: "instance_settings_instance_id_key") @map("instance_id") @db.VarChar(256)
+  environment           DeploymentEnvironment
+  timezone              String                @db.VarChar(128)
+  baseCurrency          String                @map("base_currency") @db.Char(3)
+  featureUsagePipeline  Boolean               @default(false) @map("feature_usage_pipeline")
+  featureModelCatalog   Boolean               @default(false) @map("feature_model_catalog")
+  featureAiu            Boolean               @default(false) @map("feature_aiu")
+  featureQuota          Boolean               @default(false) @map("feature_quota")
+  featureHardLimit      Boolean               @default(false) @map("feature_hard_limit")
+  featureReconciliation Boolean               @default(false) @map("feature_reconciliation")
+  aiuMicroScale         BigInt                @default(1000000) @map("aiu_micro_scale")
+  createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("instance_settings")
+}

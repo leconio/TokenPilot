@@ -1,0 +1,7 @@
+{
+  "watermark": "2026-07-15T12:34:40.000Z",
+  "lag_seconds": 0,
+  "range": null,
+  "data": {},
+  "debug_sql": "select secret"
+}

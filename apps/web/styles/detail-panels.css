@@ -1,0 +1,126 @@
+.drawer {
+  height: 100%;
+  width: min(620px, 100%);
+  background: white;
+  box-shadow: -20px 0 50px rgb(10 28 22 / 17%);
+  overflow-y: auto;
+}
+.drawer-head {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 2;
+  border-bottom: 1px solid var(--line);
+  padding: 18px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.drawer-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.drawer-body {
+  padding: 20px;
+}
+.timeline {
+  display: grid;
+  gap: 0;
+}
+.timeline-item {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 12px;
+  min-height: 72px;
+}
+.timeline-track {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--blue);
+  background: white;
+  border-radius: 50%;
+  margin-top: 4px;
+}
+.timeline-line {
+  width: 1px;
+  background: var(--line);
+  flex: 1;
+}
+.timeline-content h3 {
+  margin: 0 0 5px;
+  font-size: 12px;
+}
+.timeline-content p,
+.timeline-content pre {
+  margin: 0;
+  color: var(--surface-muted);
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.code {
+  background: #12251f;
+  color: #c9e8d9;
+  border-radius: 10px;
+  padding: 14px;
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+  font:
+    11px/1.65 ui-monospace,
+    monospace;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #e9eee9;
+  border-radius: 9px;
+  width: fit-content;
+}
+.tab {
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 11px;
+  background: transparent;
+  color: var(--surface-muted);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.tab.active {
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 1px 4px rgb(16 40 32 / 9%);
+}
+.note {
+  padding: 13px 14px;
+  border-left: 3px solid var(--blue);
+  background: #f0f3ff;
+  color: #4b598b;
+  font-size: 12px;
+  line-height: 1.6;
+  border-radius: 0 8px 8px 0;
+}
+.definition {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 11px;
+  padding: 10px 0;
+  border-bottom: 1px solid #edf0ec;
+  font-size: 12px;
+}
+.definition dt {
+  color: var(--surface-muted);
+}
+.definition dd {
+  margin: 0;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}

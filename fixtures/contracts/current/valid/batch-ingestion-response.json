@@ -1,0 +1,33 @@
+{
+  "schema_version": "2.0",
+  "batch_id": "01ARZ3NDEKTSV4RRFFQ69G5FAY",
+  "received_at": "2026-07-15T08:02:00Z",
+  "accepted": 2,
+  "duplicates": 1,
+  "conflicts": 0,
+  "rejected": 1,
+  "results": [
+    {
+      "index": 0,
+      "event_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "status": "accepted"
+    },
+    {
+      "index": 1,
+      "event_id": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+      "status": "accepted"
+    },
+    {
+      "index": 2,
+      "event_id": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
+      "status": "duplicate"
+    },
+    {
+      "index": 3,
+      "event_id": null,
+      "status": "rejected",
+      "code": "INVALID_EVENT",
+      "message": "The event did not satisfy the Usage Event contract."
+    }
+  ]
+}

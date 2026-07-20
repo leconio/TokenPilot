@@ -1,0 +1,73 @@
+-- Current empty-database baseline statement 0001.
+-- Creates the rebuildable raw telemetry projection. PG Registry and the sink own idempotency.
+CREATE TABLE usage_events_raw
+(
+    application_id String,
+    instance_id String,
+    environment LowCardinality(String),
+    application_version LowCardinality(String),
+    sdk_version LowCardinality(String),
+    connector_version LowCardinality(String),
+    config_version LowCardinality(String),
+    event_date Date DEFAULT toDate(event_time),
+    event_time DateTime64(3, 'UTC'),
+    received_at DateTime64(3, 'UTC'),
+    event_id String,
+    schema_version LowCardinality(String),
+    request_id String,
+    attempt_id String,
+    operation_id String,
+    session_id String,
+    conversation_id String,
+    trace_id String,
+    user_id String,
+    display_user String,
+    user_tags Array(String),
+    virtual_model LowCardinality(String),
+    model_id String,
+    model_tag LowCardinality(String),
+    provider LowCardinality(String),
+    status LowCardinality(String),
+    error_class LowCardinality(String),
+    http_status Nullable(UInt16),
+    latency_ms Nullable(UInt64),
+    route_reason LowCardinality(String),
+    fallback_from String,
+    is_final_success_attempt UInt8,
+    is_user_visible_operation UInt8 DEFAULT if(empty(fallback_from), 1, 0),
+    analytics_dimensions Map(String, String),
+    event_text_properties Map(String, String),
+    event_number_properties Map(String, Float64),
+    event_boolean_properties Map(String, UInt8),
+    event_datetime_properties Map(String, DateTime64(3, 'UTC')),
+    event_enum_properties Map(String, String),
+    event_text_list_properties Map(String, Array(String)),
+    user_text_properties Map(String, String),
+    user_number_properties Map(String, Float64),
+    user_boolean_properties Map(String, UInt8),
+    user_datetime_properties Map(String, DateTime64(3, 'UTC')),
+    user_enum_properties Map(String, String),
+    user_text_list_properties Map(String, Array(String)),
+    -- The sink strips configured secrets before this redacted payload lands.
+    raw_payload String CODEC(ZSTD(3)),
+    payload_hash String,
+    sink_delivery_id String,
+    source_outbox_id String,
+    inserted_at DateTime64(3, 'UTC') DEFAULT now64(3)
+)
+ENGINE = MergeTree
+PARTITION BY toYYYYMM(event_date)
+ORDER BY
+(
+    application_id,
+    instance_id,
+    event_date,
+    event_time,
+    user_id,
+    model_tag,
+    request_id,
+    attempt_id,
+    event_id
+)
+TTL event_time + toIntervalDay(90) DELETE
+SETTINGS index_granularity = 8192;

@@ -1,0 +1,19 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "sdks/node"
+
+autoInstallPeers: false
+
+allowBuilds:
+  "@prisma/engines": true
+  "@scarf/scarf": false
+  cpu-features: false
+  esbuild: true
+  msgpackr-extract: false
+  prisma: true
+  protobufjs: false
+  sharp: true
+  ssh2: false
+
+minimumReleaseAge: 1440

@@ -1,0 +1,41 @@
+{
+  "standard_logging_object": {
+    "id": "attempt-fallback-success",
+    "status": "success",
+    "model": "google/gemini-2.5-flash-2026-06",
+    "model_id": "gemini-fallback-prod",
+    "model_group": "text.fast",
+    "startTime": "2026-07-16T02:10:00.150Z",
+    "endTime": "2026-07-16T02:10:00.600Z",
+    "metadata": {
+      "usage_object": {
+        "usage_metadata": {
+          "prompt_token_count": 800,
+          "cached_content_token_count": 500,
+          "candidates_token_count": 120,
+          "thoughts_token_count": 30
+        }
+      }
+    }
+  },
+  "litellm_params": {
+    "metadata": {
+      "previous_models": [
+        {
+          "exception_string": "PRIVATE_FALLBACK_ERROR",
+          "messages": ["PRIVATE_FALLBACK_PROMPT"],
+          "metadata": { "model_info": { "id": "anthropic-primary-prod" } }
+        }
+      ],
+      "tags": ["cp:route:fallback"],
+      "cp": {
+        "context_version": "runtime-v42",
+        "user_id": "user_123",
+        "display_user": "Ada",
+        "operation_id": "op_fallback_01",
+        "request_id": "req_fallback_01",
+        "trace_id": "trace_fallback_01"
+      }
+    }
+  }
+}

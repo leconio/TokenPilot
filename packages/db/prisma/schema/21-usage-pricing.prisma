@@ -1,0 +1,87 @@
+model ConnectorInstance {
+  id                       String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId            String                      @map("application_id") @db.Uuid
+  instanceId               String                      @map("instance_id") @db.VarChar(256)
+  name                     String                      @db.VarChar(120)
+  type                     String                      @db.VarChar(64)
+  version                  String                      @db.VarChar(64)
+  status                   ConnectorStatus
+  lastHeartbeatAt          DateTime                    @map("last_heartbeat_at") @db.Timestamptz(6)
+  heartbeatSentAt          DateTime?                   @map("heartbeat_sent_at") @db.Timestamptz(6)
+  lastHeartbeatId          String?                     @map("last_heartbeat_id") @db.Char(26)
+  lastHeartbeatPayloadHash String?                     @map("last_heartbeat_payload_hash") @db.Char(64)
+  lastSuccessfulUploadAt   DateTime?                   @map("last_successful_upload_at") @db.Timestamptz(6)
+  bufferDepth              Int                         @default(0) @map("buffer_depth")
+  oldestEventAgeSeconds    Decimal?                    @map("oldest_event_age_seconds") @db.Decimal(20, 3)
+  capabilitiesJson         Json?                       @map("capabilities_json")
+  metadataJson             Json                        @map("metadata_json")
+  createdAt                DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  heartbeatReceipts        ConnectorHeartbeatReceipt[]
+  application              Application                 @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+
+  @@unique([applicationId, instanceId], map: "connector_instances_application_instance_key")
+  @@unique([applicationId, id], map: "connector_instances_application_id_key")
+  @@index([applicationId, lastHeartbeatAt(sort: Desc)], map: "connector_instances_application_heartbeat_idx")
+  @@map("connector_instances")
+}
+
+model ConnectorHeartbeatReceipt {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId       String            @map("application_id") @db.Uuid
+  heartbeatId         String            @map("heartbeat_id") @db.Char(26)
+  connectorInstanceId String            @map("connector_instance_id") @db.Uuid
+  payloadHash         String            @map("payload_hash") @db.Char(64)
+  sentAt              DateTime          @map("sent_at") @db.Timestamptz(6)
+  receivedAt          DateTime          @default(now()) @map("received_at") @db.Timestamptz(6)
+  connectorInstance   ConnectorInstance @relation(fields: [applicationId, connectorInstanceId], references: [applicationId, id], onDelete: Restrict)
+  application         Application       @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+
+  @@unique([applicationId, heartbeatId], map: "connector_heartbeat_receipts_application_heartbeat_key")
+  @@index([applicationId, connectorInstanceId, sentAt], map: "connector_heartbeat_receipts_application_instance_sent_idx")
+  @@map("connector_heartbeat_receipts")
+}
+
+model AuditLog {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId String?      @map("application_id") @db.Uuid
+  actorId       String?      @map("actor_id") @db.Text
+  action        String       @db.VarChar(120)
+  objectType    String       @map("object_type") @db.VarChar(120)
+  objectId      String       @map("object_id") @db.VarChar(256)
+  beforeJson    Json?        @map("before_json")
+  afterJson     Json?        @map("after_json")
+  reason        String?      @db.VarChar(500)
+  ip            String?      @db.Inet
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId, createdAt(sort: Desc)], map: "audit_logs_application_created_idx")
+  @@index([objectType, objectId, createdAt], map: "audit_logs_object_created_at_idx")
+  @@index([actorId, createdAt], map: "audit_logs_actor_created_at_idx")
+  @@map("audit_logs")
+}
+
+model BackgroundJob {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId  String?             @map("application_id") @db.Uuid
+  type           BackgroundJobType
+  status         BackgroundJobStatus @default(QUEUED)
+  idempotencyKey String              @unique(map: "background_jobs_idempotency_key_key") @map("idempotency_key") @db.VarChar(256)
+  parametersJson Json                @map("parameters_json")
+  resultJson     Json?               @map("result_json")
+  attempts       Int                 @default(0)
+  errorCode      String?             @map("error_code") @db.VarChar(120)
+  errorMessage   String?             @map("error_message") @db.VarChar(500)
+  scheduledFor   DateTime?           @map("scheduled_for") @db.Timestamptz(6)
+  startedAt      DateTime?           @map("started_at") @db.Timestamptz(6)
+  completedAt    DateTime?           @map("completed_at") @db.Timestamptz(6)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application    Application?        @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+
+  @@index([status, scheduledFor, createdAt], map: "background_jobs_status_scheduled_idx")
+  @@index([type, createdAt], map: "background_jobs_type_created_idx")
+  @@index([applicationId, type, createdAt], map: "background_jobs_application_type_created_idx")
+  @@map("background_jobs")
+}

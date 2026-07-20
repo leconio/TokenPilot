@@ -1,0 +1,158 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Inbox pending",
+      "type": "stat",
+      "targets": [{ "expr": "max(ai_control_inbox_pending_total)", "refId": "A" }],
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "Inbox oldest age",
+      "type": "stat",
+      "targets": [{ "expr": "max(ai_control_inbox_oldest_age_seconds)", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "ClickHouse sink lag",
+      "type": "stat",
+      "targets": [{ "expr": "max(ai_control_clickhouse_sink_lag_seconds)", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 }
+    },
+    {
+      "id": 4,
+      "title": "Outbox backlog",
+      "type": "stat",
+      "targets": [{ "expr": "max(ai_control_clickhouse_outbox_backlog)", "refId": "A" }],
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 }
+    },
+    {
+      "id": 5,
+      "title": "Active reservations",
+      "type": "stat",
+      "targets": [{ "expr": "max(ai_control_quota_reservations_active)", "refId": "A" }],
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 }
+    },
+    {
+      "id": 6,
+      "title": "Negative balances",
+      "type": "stat",
+      "targets": [{ "expr": "max(ai_control_quota_negative_balance_users)", "refId": "A" }],
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 }
+    },
+    {
+      "id": 7,
+      "title": "Ingestion latency",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(ai_control_ingestion_latency_seconds_bucket[5m])))",
+          "legendFormat": "p95",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 4 }
+    },
+    {
+      "id": 8,
+      "title": "Settlement throughput",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (stage, status) (rate(ai_control_settlement_events_total[5m]))",
+          "legendFormat": "{{stage}} {{status}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 4 }
+    },
+    {
+      "id": 9,
+      "title": "Unrated and unmapped",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(ai_control_provider_cost_unpriced_total[5m]))",
+          "legendFormat": "provider cost",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(ai_control_aiu_unrated_total[5m]))",
+          "legendFormat": "AIU",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(ai_control_model_unmapped_total[5m]))",
+          "legendFormat": "model",
+          "refId": "C"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 4 }
+    },
+    {
+      "id": 10,
+      "title": "ClickHouse insert health",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(ai_control_clickhouse_insert_rows_total[5m]))",
+          "legendFormat": "rows/s",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(ai_control_clickhouse_insert_failures_total[5m]))",
+          "legendFormat": "failures/s",
+          "refId": "B"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 }
+    },
+    {
+      "id": 11,
+      "title": "Quota decisions",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (decision) (rate(ai_control_quota_check_total[5m]))",
+          "legendFormat": "{{decision}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 }
+    },
+    {
+      "id": 12,
+      "title": "Reconciliation",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (status) (increase(ai_control_reconciliation_runs_total[1h]))",
+          "legendFormat": "runs {{status}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (severity) (increase(ai_control_reconciliation_diff_total[1h]))",
+          "legendFormat": "diffs {{severity}}",
+          "refId": "B"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["tokenpilot", "operations"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "TokenPilot Operations",
+  "uid": "tokenpilot-operations"
+}

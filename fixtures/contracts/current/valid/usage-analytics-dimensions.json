@@ -1,0 +1,7 @@
+{
+  "client": "ios",
+  "region": "tw",
+  "experiment": "exp_17",
+  "retry_count": 2,
+  "streaming": true
+}

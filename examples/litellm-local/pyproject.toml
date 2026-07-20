@@ -1,0 +1,30 @@
+[project]
+name = "tokenpilot-litellm-local-example"
+version = "0.1.0"
+description = "Native macOS LiteLLM reporting example for TokenPilot"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "httpx>=0.28.1,<1",
+  "litellm>=1.80.0,<2",
+  "python-dotenv>=1.1.1,<2",
+  "tokenpilot-litellm",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=9.0.2,<10",
+  "ruff>=0.14.14,<1",
+]
+
+[tool.uv.sources]
+tokenpilot-litellm = { path = "../../connectors/litellm", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "RUF", "SIM", "UP"]

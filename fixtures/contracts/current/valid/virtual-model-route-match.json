@@ -1,0 +1,7 @@
+{
+  "user_property": {
+    "key": "plan",
+    "operator": "equals",
+    "value": "pro"
+  }
+}

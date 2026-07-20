@@ -1,0 +1,198 @@
+{
+  "schema_version": "2.0",
+  "cases": [
+    {
+      "contract": "ConnectorHeartbeat",
+      "fixture": "valid/connector-heartbeat.json",
+      "expected_valid": true
+    },
+    {
+      "contract": "BatchIngestionResponse",
+      "fixture": "valid/batch-ingestion-response.json",
+      "expected_valid": true
+    },
+    { "contract": "ApiError", "fixture": "valid/api-error.json", "expected_valid": true },
+    {
+      "contract": "RuntimeConfigurationAcknowledgement",
+      "fixture": "valid/runtime-configuration-acknowledgement.json",
+      "expected_valid": true
+    },
+    { "contract": "UsageEvent", "fixture": "valid/usage-event.json", "expected_valid": true },
+    { "contract": "UsageBatch", "fixture": "valid/usage-batch.json", "expected_valid": true },
+    {
+      "contract": "NormalizedUsage",
+      "fixture": "valid/usage-normalized.json",
+      "expected_valid": true
+    },
+    { "contract": "UsageType", "fixture": "valid/usage-type.json", "expected_valid": true },
+    {
+      "contract": "UsageConfidence",
+      "fixture": "valid/usage-confidence.json",
+      "expected_valid": true
+    },
+    {
+      "contract": "AnalyticsDimensions",
+      "fixture": "valid/usage-analytics-dimensions.json",
+      "expected_valid": true
+    },
+    {
+      "contract": "VirtualModelRouteMatch",
+      "fixture": "valid/virtual-model-route-match.json",
+      "expected_valid": true
+    },
+    {
+      "contract": "RuntimeSnapshot",
+      "fixture": "valid/runtime-snapshot.json",
+      "expected_valid": true
+    },
+    {
+      "contract": "RuntimeUserReservationRequest",
+      "fixture": "valid/runtime-user-reservation-request.json",
+      "expected_valid": true
+    },
+    {
+      "contract": "RuntimeUserReservationResponse",
+      "fixture": "valid/runtime-user-reservation-response.json",
+      "expected_valid": true
+    },
+    {
+      "contract": "RuntimeUserReservationSettlement",
+      "fixture": "valid/runtime-user-reservation-settlement.json",
+      "expected_valid": true
+    },
+    {
+      "contract": "RuntimeUserReservationRelease",
+      "fixture": "valid/runtime-user-reservation-release.json",
+      "expected_valid": true
+    },
+    { "contract": "ReportQuery", "fixture": "valid/report-query.json", "expected_valid": true },
+    {
+      "contract": "ReportEnvelope",
+      "fixture": "valid/report-envelope-analytics.json",
+      "expected_valid": true
+    },
+    {
+      "contract": "ReconciliationRun",
+      "fixture": "valid/reconciliation-run.json",
+      "expected_valid": true
+    },
+    {
+      "contract": "ReconciliationDiff",
+      "fixture": "valid/reconciliation-diff.json",
+      "expected_valid": true
+    },
+
+    {
+      "contract": "ConnectorHeartbeat",
+      "fixture": "invalid/heartbeat-negative-buffer.json",
+      "expected_valid": false
+    },
+    {
+      "contract": "BatchIngestionResponse",
+      "fixture": "invalid/batch-error-count-mismatch.json",
+      "expected_valid": false,
+      "json_schema_valid": true
+    },
+    {
+      "contract": "ApiError",
+      "fixture": "invalid/api-error-sensitive-extra-field.json",
+      "expected_valid": false
+    },
+    {
+      "contract": "RuntimeConfigurationAcknowledgement",
+      "fixture": "invalid/runtime-configuration-ack-rejected-without-error.json",
+      "expected_valid": false,
+      "json_schema_valid": true
+    },
+    {
+      "contract": "UsageEvent",
+      "fixture": "invalid/usage-event-contains-prompt.json",
+      "expected_valid": false
+    },
+    {
+      "contract": "UsageBatch",
+      "fixture": "invalid/usage-batch-duplicate-event-id.json",
+      "expected_valid": false,
+      "json_schema_valid": true
+    },
+    {
+      "contract": "NormalizedUsage",
+      "fixture": "invalid/usage-normalized-custom-line-missing-unit-key.json",
+      "expected_valid": false,
+      "json_schema_valid": true
+    },
+    {
+      "contract": "UsageType",
+      "fixture": "invalid/usage-type-unmapped.json",
+      "expected_valid": false
+    },
+    {
+      "contract": "UsageConfidence",
+      "fixture": "invalid/usage-confidence-deprecated-invoice.json",
+      "expected_valid": false
+    },
+    {
+      "contract": "AnalyticsDimensions",
+      "fixture": "invalid/usage-analytics-reserved-key.json",
+      "expected_valid": false,
+      "json_schema_valid": true
+    },
+    {
+      "contract": "VirtualModelRouteMatch",
+      "fixture": "invalid/virtual-model-route-match-missing-value.json",
+      "expected_valid": false,
+      "json_schema_valid": true
+    },
+    {
+      "contract": "RuntimeSnapshot",
+      "fixture": "invalid/runtime-snapshot-invalid-fallback-order.json",
+      "expected_valid": false,
+      "json_schema_valid": true
+    },
+    {
+      "contract": "RuntimeUserReservationRequest",
+      "fixture": "invalid/runtime-user-reservation-request-duplicate-models.json",
+      "expected_valid": false,
+      "json_schema_valid": true
+    },
+    {
+      "contract": "RuntimeUserReservationResponse",
+      "fixture": "invalid/runtime-user-reservation-response-denied-with-reservation.json",
+      "expected_valid": false,
+      "json_schema_valid": true
+    },
+    {
+      "contract": "RuntimeUserReservationSettlement",
+      "fixture": "invalid/runtime-user-reservation-settlement-overflow.json",
+      "expected_valid": false,
+      "json_schema_valid": true
+    },
+    {
+      "contract": "RuntimeUserReservationRelease",
+      "fixture": "invalid/runtime-user-reservation-release-short-token.json",
+      "expected_valid": false
+    },
+    {
+      "contract": "ReportQuery",
+      "fixture": "invalid/report-query-reversed-range.json",
+      "expected_valid": false,
+      "json_schema_valid": true
+    },
+    {
+      "contract": "ReportEnvelope",
+      "fixture": "invalid/report-envelope-negative-lag.json",
+      "expected_valid": false
+    },
+    {
+      "contract": "ReconciliationRun",
+      "fixture": "invalid/reconciliation-run-invalid-range.json",
+      "expected_valid": false,
+      "json_schema_valid": true
+    },
+    {
+      "contract": "ReconciliationDiff",
+      "fixture": "invalid/reconciliation-diff-extra-dimension.json",
+      "expected_valid": false
+    }
+  ]
+}

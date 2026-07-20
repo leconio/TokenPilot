@@ -1,0 +1,42 @@
+{
+  "name": "@tokenpilot/web",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "TokenPilot administration console",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --hostname 127.0.0.1",
+    "lint": "eslint . && prettier --check README.md app components e2e features lib styles test components.json next.config.ts package.json playwright.config.ts postcss.config.mjs tsconfig.json",
+    "start": "next start --hostname 0.0.0.0",
+    "test": "vitest run test",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "5.2.2",
+    "@tanstack/react-query": "5.101.2",
+    "@tanstack/react-table": "8.21.3",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "cmdk": "1.1.1",
+    "decimal.js": "10.6.0",
+    "echarts": "6.1.0",
+    "lucide-react": "1.24.0",
+    "next": "16.2.10",
+    "radix-ui": "1.6.2",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-hook-form": "7.81.0",
+    "tailwind-merge": "3.6.0",
+    "tw-animate-css": "1.4.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@tailwindcss/postcss": "4.3.2",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "tailwindcss": "4.3.2"
+  }
+}

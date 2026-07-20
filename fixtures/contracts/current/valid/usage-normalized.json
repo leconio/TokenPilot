@@ -1,0 +1,84 @@
+{
+  "schema_version": "2.0",
+  "event_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "event_time": "2026-07-15T12:34:56.123Z",
+  "user": {
+    "user_id": "user_123",
+    "display_user": "Ada"
+  },
+  "source": {
+    "type": "gateway",
+    "name": "litellm",
+    "version": "1.80.0",
+    "instance_id": "litellm-prod-01"
+  },
+  "request": {
+    "request_id": "req_01JTEST",
+    "attempt_id": "att_01JTEST",
+    "operation_id": "op_01JTEST",
+    "parent_request_id": null,
+    "session_id": null,
+    "conversation_id": null,
+    "trace_id": "trace_01JTEST"
+  },
+  "model": {
+    "virtual_model": "text.fast",
+    "model_id": "model_gpt_4_1",
+    "model_tag": "openai/gpt-4.1",
+    "provider": "openai"
+  },
+  "route": {
+    "configuration_version": "3",
+    "rule": "offpeak",
+    "reason": "scheduled_offpeak",
+    "tags": ["cp:route:offpeak"],
+    "fallback_from": null,
+    "is_final_success_attempt": true,
+    "is_user_visible_operation": true
+  },
+  "analytics_dimensions": {
+    "client": "ios",
+    "region": "tw",
+    "experiment": "exp_17"
+  },
+  "result": {
+    "status": "success",
+    "http_status": 200,
+    "latency_ms": 820,
+    "error_class": null
+  },
+  "source_cost": {
+    "amount": "0.0061",
+    "currency": "USD",
+    "is_estimated": false
+  },
+  "privacy": {
+    "contains_prompt": false,
+    "contains_response": false
+  },
+  "normalization": {
+    "normalizer_name": "usage-native",
+    "normalizer_version": "1.0.0",
+    "missing_usage_fields": [],
+    "warnings": []
+  },
+  "usage_lines": [
+    {
+      "usage_type": "uncached_input_token",
+      "quantity": "3000",
+      "unit": "token",
+      "source_path": "usage.uncached_input_tokens",
+      "is_estimated": false,
+      "confidence": "exact_provider_response"
+    },
+    {
+      "usage_type": "custom_unit",
+      "quantity": "12.5",
+      "unit": "custom",
+      "unit_key": "gpu_millisecond",
+      "source_path": "usage.custom_units[0].quantity",
+      "is_estimated": false,
+      "confidence": "sdk_reported"
+    }
+  ]
+}

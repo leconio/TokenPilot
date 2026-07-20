@@ -1,0 +1,51 @@
+{
+  "schema_version": "2.0",
+  "event_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "event_time": "2026-07-15T12:34:56.123Z",
+  "user": { "user_id": "custom-line-user", "display_user": "Custom line user" },
+  "source": {
+    "type": "sdk",
+    "name": "tokenpilot-sdk",
+    "version": "2.0.0",
+    "instance_id": "sdk-prod-01"
+  },
+  "request": {
+    "request_id": "req_custom",
+    "attempt_id": "att_custom",
+    "operation_id": null,
+    "parent_request_id": null,
+    "session_id": null,
+    "conversation_id": null,
+    "trace_id": null
+  },
+  "model": {
+    "model_tag": "test/model",
+    "provider": null
+  },
+  "route": null,
+  "analytics_dimensions": {},
+  "result": {
+    "status": "success",
+    "http_status": 200,
+    "latency_ms": 1,
+    "error_class": null
+  },
+  "source_cost": null,
+  "privacy": { "contains_prompt": false, "contains_response": false },
+  "normalization": {
+    "normalizer_name": "usage-native",
+    "normalizer_version": "1.0.0",
+    "missing_usage_fields": [],
+    "warnings": []
+  },
+  "usage_lines": [
+    {
+      "usage_type": "custom_unit",
+      "quantity": "12.5",
+      "unit": "custom",
+      "source_path": "usage.custom_units[0].quantity",
+      "is_estimated": false,
+      "confidence": "sdk_reported"
+    }
+  ]
+}

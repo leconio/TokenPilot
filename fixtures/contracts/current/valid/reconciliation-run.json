@@ -1,0 +1,25 @@
+{
+  "id": "recon-run-2026-07-16",
+  "application_id": "application-a",
+  "run_type": "manual",
+  "range_start": "2026-07-15T00:00:00.000Z",
+  "range_end": "2026-07-16T00:00:00.000Z",
+  "status": "completed",
+  "pg_watermark": "2026-07-16T00:00:00.000Z",
+  "ch_watermark": "2026-07-15T23:59:58.000Z",
+  "summary": {
+    "event_count": "1000",
+    "input_tokens": "10100000",
+    "cached_input_tokens": "7100000",
+    "output_tokens": "1200000",
+    "provider_cost": "6.300000000000000000",
+    "aiu_micros": "9200000000",
+    "unpriced_count": "0",
+    "unrated_count": "2",
+    "diff_count": "1"
+  },
+  "started_by": "admin-1",
+  "started_at": "2026-07-16T01:00:00.000Z",
+  "finished_at": "2026-07-16T01:00:05.000Z",
+  "error": null
+}

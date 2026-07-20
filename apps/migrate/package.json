@@ -1,0 +1,14 @@
+{
+  "name": "@tokenpilot/migrate",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Production-only Prisma migration runner for TokenPilot",
+  "type": "module",
+  "scripts": {
+    "start": "prisma migrate deploy --config prisma.config.ts"
+  },
+  "dependencies": {
+    "dotenv": "17.2.3",
+    "prisma": "7.8.0"
+  }
+}

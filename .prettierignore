@@ -1,0 +1,17 @@
+CODEX_IMPLEMENTATION_CHECKLIST.md
+LICENSE
+node_modules
+dist
+coverage
+.turbo
+**/.next/**
+.venv
+.tokenpilot/**
+artifacts/**
+test-results/**
+playwright-report/**
+uv.lock
+pnpm-lock.yaml
+packages/contracts/generated
+packages/contracts/baseline
+packages/db/src/generated/prisma/**

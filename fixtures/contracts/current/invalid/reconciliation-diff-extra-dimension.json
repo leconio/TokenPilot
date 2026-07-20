@@ -1,0 +1,26 @@
+{
+  "id": "recon-diff-extra-dimension",
+  "run_id": "recon-run-2026-07-16",
+  "diff_type": "CH_MISSING",
+  "severity": "error",
+  "dimensions": {
+    "application_id": "application-a",
+    "granularity": "hour",
+    "time_bucket": "2026-07-15T12:00:00.000Z",
+    "virtual_model": "text.fast",
+    "model_id": "model-a",
+    "model_tag": "openai-prod-a",
+    "provider": "openai",
+    "user_id": null,
+    "environment": "production"
+  },
+  "pg_values": { "event_count": "5" },
+  "ch_values": null,
+  "delta_values": { "event_count": "-5" },
+  "sample_event_ids": ["01ARZ3NDEKTSV4RRFFQ69G5FAV"],
+  "status": "open",
+  "resolution": null,
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-07-16T01:00:05.000Z"
+}

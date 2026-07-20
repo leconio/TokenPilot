@@ -1,0 +1,6 @@
+name: tokenpilot
+
+# The implementation stays in deploy/ so the root remains easy to scan. Docker
+# Compose resolves all included paths relative to their source file.
+include:
+  - path: ./deploy/docker-compose.yml

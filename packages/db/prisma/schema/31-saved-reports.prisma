@@ -1,0 +1,33 @@
+model SavedReport {
+  id             String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId  String                     @map("application_id") @db.Uuid
+  name           String                     @db.VarChar(120)
+  kind           SavedReportKind
+  definitionJson Json                       @map("definition_json")
+  createdBy      String                     @map("created_by") @db.VarChar(256)
+  createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application    Application                @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  dashboardCards ApplicationDashboardCard[]
+
+  @@unique([applicationId, name], map: "saved_reports_name_key")
+  @@unique([applicationId, id], map: "saved_reports_application_id_key")
+  @@index([applicationId, kind, updatedAt], map: "saved_reports_kind_updated_idx")
+  @@map("saved_reports")
+}
+
+model ApplicationDashboardCard {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId String      @map("application_id") @db.Uuid
+  reportId      String      @map("report_id") @db.Uuid
+  position      Int         @default(0)
+  width         Int         @default(1)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  report        SavedReport @relation(fields: [applicationId, reportId], references: [applicationId, id], onDelete: Restrict)
+
+  @@unique([applicationId, reportId], map: "application_dashboard_cards_report_key")
+  @@index([applicationId, position, createdAt], map: "application_dashboard_cards_position_idx")
+  @@map("application_dashboard_cards")
+}

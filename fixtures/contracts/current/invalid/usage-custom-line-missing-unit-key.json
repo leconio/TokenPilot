@@ -1,0 +1,8 @@
+{
+  "usage_type": "custom_unit",
+  "quantity": "12.5",
+  "unit": "custom",
+  "source_path": "usage.custom_units[0].quantity",
+  "is_estimated": false,
+  "confidence": "sdk_reported"
+}

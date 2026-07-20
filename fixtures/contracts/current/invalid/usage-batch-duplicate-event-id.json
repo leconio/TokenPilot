@@ -1,0 +1,79 @@
+{
+  "schema_version": "2.0",
+  "batch_id": "batch_duplicate",
+  "sent_at": "2026-07-15T12:35:00.000Z",
+  "events": [
+    {
+      "schema_version": "2.0",
+      "event_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "event_time": "2026-07-15T12:34:56.123Z",
+      "user": { "user_id": "duplicate-user", "display_user": "Duplicate user" },
+      "source": {
+        "type": "sdk",
+        "name": "tokenpilot-sdk",
+        "version": "2.0.0",
+        "instance_id": "sdk-prod-01"
+      },
+      "request": {
+        "request_id": "req_01JTEST_1",
+        "attempt_id": "att_01JTEST_1",
+        "operation_id": null,
+        "parent_request_id": null,
+        "session_id": null,
+        "conversation_id": null,
+        "trace_id": null
+      },
+      "model": {
+        "model_tag": "test/model",
+        "provider": null
+      },
+      "route": null,
+      "usage": { "request_count": "1" },
+      "analytics_dimensions": {},
+      "result": {
+        "status": "unknown",
+        "http_status": null,
+        "latency_ms": null,
+        "error_class": null
+      },
+      "source_cost": null,
+      "privacy": { "contains_prompt": false, "contains_response": false }
+    },
+    {
+      "schema_version": "2.0",
+      "event_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "event_time": "2026-07-15T12:34:57.123Z",
+      "user": { "user_id": "duplicate-user", "display_user": "Duplicate user" },
+      "source": {
+        "type": "sdk",
+        "name": "tokenpilot-sdk",
+        "version": "2.0.0",
+        "instance_id": "sdk-prod-01"
+      },
+      "request": {
+        "request_id": "req_01JTEST_2",
+        "attempt_id": "att_01JTEST_2",
+        "operation_id": null,
+        "parent_request_id": null,
+        "session_id": null,
+        "conversation_id": null,
+        "trace_id": null
+      },
+      "model": {
+        "model_tag": "test/model",
+        "provider": null
+      },
+      "route": null,
+      "usage": { "request_count": "1" },
+      "analytics_dimensions": {},
+      "result": {
+        "status": "unknown",
+        "http_status": null,
+        "latency_ms": null,
+        "error_class": null
+      },
+      "source_cost": null,
+      "privacy": { "contains_prompt": false, "contains_response": false }
+    }
+  ]
+}

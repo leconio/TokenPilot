@@ -1,0 +1,33 @@
+{
+  "name": "@tokenpilot/clickhouse",
+  "version": "0.2.0",
+  "private": true,
+  "description": "ClickHouse client, health checks, and migration runner for TokenPilot",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "tokenpilot-clickhouse": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clickhouse": "node dist/cli.js",
+    "test": "vitest run test",
+    "test:integration": "CLICKHOUSE_INTEGRATION=true vitest run test/clickhouse.integration.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@clickhouse/client": "1.23.1",
+    "@tokenpilot/contracts": "workspace:*"
+  }
+}

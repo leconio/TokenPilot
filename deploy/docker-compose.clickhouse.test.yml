@@ -1,0 +1,18 @@
+services:
+  clickhouse:
+    ports:
+      - "127.0.0.1:${CLICKHOUSE_TEST_PORT:-18123}:8123"
+
+  # The ClickHouse deployment overlay augments the main stack's worker. This
+  # standalone schema drill never starts that service, but Compose still
+  # validates every merged service and therefore needs a non-pullable identity.
+  worker:
+    image: tokenpilot-clickhouse-schema-placeholder:local
+    pull_policy: never
+
+# Docker does not activate a host port for an internal-only bridge. This
+# override is for isolated remote integration tests only; the base deployment
+# keeps the database network internal and publishes no port.
+networks:
+  database:
+    internal: false

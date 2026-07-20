@@ -1,0 +1,11 @@
+{
+  "schema_version": "2.0",
+  "error_id": "01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+  "occurred_at": "2026-07-15T08:03:00Z",
+  "request_id": "req_demo",
+  "code": "UPSTREAM_FAILED",
+  "message": "The upstream request failed.",
+  "retryable": true,
+  "details": [],
+  "authorization": "Bearer secret-must-not-enter-contracts"
+}

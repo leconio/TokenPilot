@@ -1,0 +1,2 @@
+packages/clickhouse/migrations/*.sql text eol=lf
+packages/clickhouse/test/fixtures/migrations/*.sql text eol=lf

@@ -1,0 +1,307 @@
+name: supply-chain
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repository-vulnerabilities:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - name: Block High and Critical repository vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+
+  runtime-images:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api, migrate, worker, scheduler, web]
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build ${{ matrix.app }} runtime image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          build-args: |
+            APP=${{ matrix.app }}
+            CONTROL_PLANE_VERSION=0.2.0
+            VCS_REF=${{ github.sha }}
+          target: runtime
+          load: true
+          push: false
+          tags: tokenpilot-${{ matrix.app }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+      - name: Assert the final ${{ matrix.app }} image user
+        run: |
+          test "$(docker image inspect --format '{{.Config.User}}' tokenpilot-${{ matrix.app }}:${{ github.sha }})" = "1000:1000"
+          docker image inspect --format 'image_id={{.Id}} repo_digests={{json .RepoDigests}}' tokenpilot-${{ matrix.app }}:${{ github.sha }}
+      - name: Generate CycloneDX image SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: tokenpilot-${{ matrix.app }}:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: ${{ matrix.app }}.cdx.json
+          artifact-name: sbom-${{ matrix.app }}
+      - name: Block High and Critical image vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: tokenpilot-${{ matrix.app }}:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+
+  litellm-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build the non-root LiteLLM runtime image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: deploy/docker/LiteLLM.Dockerfile
+          build-args: |
+            LITELLM_BASE_IMAGE=ghcr.io/berriai/litellm:v1.92.0
+            CONTROL_PLANE_VERSION=0.2.0
+            VCS_REF=${{ github.sha }}
+          load: true
+          push: false
+          tags: tokenpilot-litellm:${{ github.sha }}
+          cache-from: type=gha,scope=litellm
+          cache-to: type=gha,mode=max,scope=litellm
+      - name: Assert the final LiteLLM image user
+        run: |
+          test "$(docker image inspect --format '{{.Config.User}}' tokenpilot-litellm:${{ github.sha }})" = "65532:65532"
+          docker image inspect --format 'image_id={{.Id}} repo_digests={{json .RepoDigests}}' tokenpilot-litellm:${{ github.sha }}
+      - name: Generate CycloneDX LiteLLM SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: tokenpilot-litellm:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: litellm.cdx.json
+          artifact-name: sbom-litellm
+      - name: Block High and Critical LiteLLM vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: tokenpilot-litellm:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+
+  release-tooling-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build the isolated release tooling image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          build-args: |
+            APP=api
+            CONTROL_PLANE_VERSION=0.2.0
+            VCS_REF=${{ github.sha }}
+          target: tooling
+          load: true
+          push: false
+          tags: tokenpilot-release-tooling:${{ github.sha }}
+          cache-from: type=gha,scope=release-tooling
+          cache-to: type=gha,mode=max,scope=release-tooling
+      - name: Assert the final release tooling image user
+        run: |
+          test "$(docker image inspect --format '{{.Config.User}}' tokenpilot-release-tooling:${{ github.sha }})" = "1000:1000"
+          docker image inspect --format 'image_id={{.Id}} repo_digests={{json .RepoDigests}}' tokenpilot-release-tooling:${{ github.sha }}
+      - name: Generate CycloneDX release tooling SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: tokenpilot-release-tooling:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: release-tooling.cdx.json
+          artifact-name: sbom-release-tooling
+      - name: Block High and Critical release tooling vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: tokenpilot-release-tooling:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+
+  datastore-images:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: postgres
+            target: postgres
+            build_args: POSTGRES_BASE_IMAGE=postgres:16.14-alpine3.24
+            expected_user: "70:70"
+          - name: redis
+            target: redis
+            build_args: REDIS_BASE_IMAGE=redis:7.4.9-alpine3.21
+            expected_user: "999:1000"
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build the non-root ${{ matrix.name }} runtime image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: deploy/docker/Datastore.Dockerfile
+          build-args: ${{ matrix.build_args }}
+          target: ${{ matrix.target }}
+          load: true
+          push: false
+          tags: tokenpilot-${{ matrix.name }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+      - name: Assert the final ${{ matrix.name }} image user
+        run: |
+          test "$(docker image inspect --format '{{.Config.User}}' tokenpilot-${{ matrix.name }}:${{ github.sha }})" = "${{ matrix.expected_user }}"
+          docker image inspect --format 'image_id={{.Id}} repo_digests={{json .RepoDigests}}' tokenpilot-${{ matrix.name }}:${{ github.sha }}
+      - name: Generate CycloneDX ${{ matrix.name }} SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: tokenpilot-${{ matrix.name }}:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: ${{ matrix.name }}.cdx.json
+          artifact-name: sbom-${{ matrix.name }}
+      - name: Block High and Critical ${{ matrix.name }} vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: tokenpilot-${{ matrix.name }}:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+
+  observability-images:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [prometheus, node-exporter]
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build the digest-locked ${{ matrix.app }} runtime image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: deploy/docker/Observability.Dockerfile
+          target: ${{ matrix.app }}
+          load: true
+          push: false
+          tags: tokenpilot-${{ matrix.app }}:${{ github.sha }}
+      - name: Record the immutable ${{ matrix.app }} image identity
+        run: docker image inspect --format 'image_id={{.Id}} repo_digests={{json .RepoDigests}}' "tokenpilot-${{ matrix.app }}:${{ github.sha }}"
+      - name: Generate CycloneDX ${{ matrix.app }} SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: tokenpilot-${{ matrix.app }}:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: ${{ matrix.app }}.cdx.json
+          artifact-name: sbom-${{ matrix.app }}
+      - name: Block High and Critical ${{ matrix.app }} vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: tokenpilot-${{ matrix.app }}:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+
+  caddy-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build non-root Caddy image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: deploy/docker/Caddy.Dockerfile
+          load: true
+          push: false
+          tags: tokenpilot-caddy:${{ github.sha }}
+      - name: Assert the final Caddy image user
+        run: |
+          test "$(docker image inspect --format '{{.Config.User}}' tokenpilot-caddy:${{ github.sha }})" = "1000:1000"
+          docker image inspect --format 'image_id={{.Id}} repo_digests={{json .RepoDigests}}' tokenpilot-caddy:${{ github.sha }}
+      - name: Generate CycloneDX Caddy SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: tokenpilot-caddy:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: caddy.cdx.json
+          artifact-name: sbom-caddy
+      - name: Block High and Critical Caddy vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: tokenpilot-caddy:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+
+  demo-provider-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build the key-free demo Provider image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: deploy/docker/FakeProvider.Dockerfile
+          build-args: NODE_IMAGE=node:24.18.0-alpine3.24
+          load: true
+          push: false
+          tags: tokenpilot-fake-provider:${{ github.sha }}
+      - name: Assert the final demo Provider image user
+        run: |
+          test "$(docker image inspect --format '{{.Config.User}}' tokenpilot-fake-provider:${{ github.sha }})" = "1000:1000"
+          docker image inspect --format 'image_id={{.Id}} repo_digests={{json .RepoDigests}}' tokenpilot-fake-provider:${{ github.sha }}
+      - name: Generate CycloneDX demo Provider SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: tokenpilot-fake-provider:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: fake-provider.cdx.json
+          artifact-name: sbom-fake-provider
+      - name: Block High and Critical demo Provider vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: tokenpilot-fake-provider:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"

@@ -1,0 +1,21 @@
+{
+  "release": "0.2.0",
+  "product": "tokenpilot",
+  "required_datastores": ["postgresql", "redis", "clickhouse"],
+  "reports_store": "clickhouse",
+  "configuration_and_quota_authority": "postgresql",
+  "clickhouse_rebuild": {
+    "mode": "fresh_only",
+    "usage_authority": "postgresql",
+    "retained_input": "pipeline_outbox",
+    "schema_conflict_action": "clear_and_create_current_schema",
+    "historical_schema_retained": false,
+    "ownership_marker_required": true
+  },
+  "acceptance": {
+    "partial_runs_allowed": false,
+    "stage_results": ["PASS", "FAIL", "BLOCKED"],
+    "production_mutation_allowed": false,
+    "isolated_teardown_required": true
+  }
+}

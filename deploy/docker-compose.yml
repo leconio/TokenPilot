@@ -1,0 +1,538 @@
+x-build-proxy-args: &build-proxy-args
+  HTTP_PROXY: "${HTTP_PROXY:-}"
+  HTTPS_PROXY: "${HTTPS_PROXY:-}"
+  ALL_PROXY: "${ALL_PROXY:-}"
+  NO_PROXY: "${NO_PROXY:-127.0.0.1,localhost},api,postgres,redis,clickhouse,fake-provider,litellm,caddy,web,worker,scheduler"
+  http_proxy: "${http_proxy:-}"
+  https_proxy: "${https_proxy:-}"
+  all_proxy: "${all_proxy:-}"
+  no_proxy: "${no_proxy:-127.0.0.1,localhost},api,postgres,redis,clickhouse,fake-provider,litellm,caddy,web,worker,scheduler"
+
+x-internal-no-proxy: &internal-no-proxy
+  NO_PROXY: "${NO_PROXY:-127.0.0.1,localhost},api,postgres,redis,clickhouse,fake-provider,litellm,caddy,web,worker,scheduler"
+  no_proxy: "${no_proxy:-127.0.0.1,localhost},api,postgres,redis,clickhouse,fake-provider,litellm,caddy,web,worker,scheduler"
+
+# Worker-only pipeline runtime settings. Instance feature flags are deliberately
+# omitted because PostgreSQL is authoritative after API bootstrap.
+x-worker-pipeline-environment: &worker-pipeline-environment
+  CLICKHOUSE_URL: "${CLICKHOUSE_URL:-http://clickhouse:8123}"
+  CLICKHOUSE_DATABASE: "${CLICKHOUSE_DATABASE:-ai_control_plane}"
+  CLICKHOUSE_USERNAME: "${CLICKHOUSE_USERNAME:-ai_control_app}"
+  CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD is required}"
+  CLICKHOUSE_SECURE: "${CLICKHOUSE_SECURE:-false}"
+  CLICKHOUSE_REQUEST_TIMEOUT_MS: "${CLICKHOUSE_REQUEST_TIMEOUT_MS:-10000}"
+  CLICKHOUSE_INSERT_BATCH_SIZE: "${CLICKHOUSE_INSERT_BATCH_SIZE:-1000}"
+  CLICKHOUSE_INSERT_FLUSH_MS: "${CLICKHOUSE_INSERT_FLUSH_MS:-1000}"
+  CLICKHOUSE_ASYNC_INSERT: "${CLICKHOUSE_ASYNC_INSERT:-true}"
+  CLICKHOUSE_WAIT_FOR_ASYNC_INSERT: "${CLICKHOUSE_WAIT_FOR_ASYNC_INSERT:-true}"
+  CLICKHOUSE_RAW_RETENTION_DAYS: "${CLICKHOUSE_RAW_RETENTION_DAYS:-90}"
+  CLICKHOUSE_LINES_RETENTION_DAYS: "${CLICKHOUSE_LINES_RETENTION_DAYS:-180}"
+  CLICKHOUSE_MINUTE_RETENTION_DAYS: "${CLICKHOUSE_MINUTE_RETENTION_DAYS:-90}"
+  CLICKHOUSE_HOURLY_RETENTION_DAYS: "${CLICKHOUSE_HOURLY_RETENTION_DAYS:-730}"
+  CLICKHOUSE_DAILY_RETENTION_DAYS: "${CLICKHOUSE_DAILY_RETENTION_DAYS:-1825}"
+  AIU_ENABLED: "${AIU_ENABLED:-false}"
+  AIU_MODE: "${AIU_MODE:-disabled}"
+  AIU_SYMBOL: "${AIU_SYMBOL:-AIU}"
+  AIU_MICRO_SCALE: "${AIU_MICRO_SCALE:-1000000}"
+  AIU_UNRATED_MODEL_POLICY: "${AIU_UNRATED_MODEL_POLICY:-allow_unrated}"
+  AIU_ATTEMPT_CHARGE_POLICY: "${AIU_ATTEMPT_CHARGE_POLICY:-final_success_only}"
+  AIU_DEFAULT_ROUNDING: "${AIU_DEFAULT_ROUNDING:-half_up}"
+  AIU_RESERVATION_SIGNING_KEY: "${AIU_RESERVATION_SIGNING_KEY:?AIU_RESERVATION_SIGNING_KEY is required}"
+  AIU_RESERVATION_KEY_VERSION: "${AIU_RESERVATION_KEY_VERSION:-current}"
+  AIU_RESERVATION_TTL_SECONDS: "${AIU_RESERVATION_TTL_SECONDS:-300}"
+  DIMENSION_MAX_KEYS: "${DIMENSION_MAX_KEYS:-32}"
+  DIMENSION_MAX_KEY_LENGTH: "${DIMENSION_MAX_KEY_LENGTH:-64}"
+  DIMENSION_MAX_VALUE_LENGTH: "${DIMENSION_MAX_VALUE_LENGTH:-256}"
+  DIMENSION_MAX_TOTAL_BYTES: "${DIMENSION_MAX_TOTAL_BYTES:-8192}"
+  DIMENSION_UNKNOWN_KEY_POLICY: "${DIMENSION_UNKNOWN_KEY_POLICY:-drop_and_record}"
+  INBOX_PAYLOAD_RETENTION_DAYS: "${INBOX_PAYLOAD_RETENTION_DAYS:-14}"
+  INBOX_PAYLOAD_CLEANUP_INTERVAL_MS: "${INBOX_PAYLOAD_CLEANUP_INTERVAL_MS:-300000}"
+  INBOX_PAYLOAD_CLEANUP_BATCH_SIZE: "${INBOX_PAYLOAD_CLEANUP_BATCH_SIZE:-500}"
+  AIU_RESERVATION_SWEEP_INTERVAL_MS: "${AIU_RESERVATION_SWEEP_INTERVAL_MS:-30000}"
+  AIU_RESERVATION_SWEEP_BATCH_SIZE: "${AIU_RESERVATION_SWEEP_BATCH_SIZE:-100}"
+  CH_SINK_MAX_RETRIES: "${CH_SINK_MAX_RETRIES:-20}"
+  RECONCILIATION_HOURLY_ENABLED: "${RECONCILIATION_HOURLY_ENABLED:-true}"
+  RECONCILIATION_DAILY_ENABLED: "${RECONCILIATION_DAILY_ENABLED:-true}"
+  RECONCILIATION_USER_HMAC_SECRET: "${RECONCILIATION_USER_HMAC_SECRET:?RECONCILIATION_USER_HMAC_SECRET is required}"
+  RECON_COST_TOLERANCE: "${RECON_COST_TOLERANCE:-0.000001}"
+  RECON_AIU_MICRO_TOLERANCE: "${RECON_AIU_MICRO_TOLERANCE:-0}"
+
+x-node-service: &node-service
+  init: true
+  read_only: true
+  user: "1000:1000"
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,mode=1777
+
+x-app-build: &app-build
+  context: ..
+  dockerfile: deploy/docker/Dockerfile
+  target: runtime
+
+services:
+  postgres:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Datastore.Dockerfile
+      target: postgres
+      args:
+        <<: *build-proxy-args
+        POSTGRES_BASE_IMAGE: ${POSTGRES_BASE_IMAGE:-postgres:16.14-alpine3.24}
+    image: ${POSTGRES_IMAGE:-tokenpilot-postgres:16.14}
+    restart: unless-stopped
+    user: "70:70"
+    read_only: true
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks: [database]
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+      - /var/run/postgresql:rw,nosuid,nodev,mode=3775,uid=70,gid=70
+
+  redis:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Datastore.Dockerfile
+      target: redis
+      args:
+        <<: *build-proxy-args
+        REDIS_BASE_IMAGE: ${REDIS_BASE_IMAGE:-redis:7.4.9-alpine3.21}
+    image: ${REDIS_IMAGE:-tokenpilot-redis:7.4.9}
+    restart: unless-stopped
+    user: "999:1000"
+    read_only: true
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    networks: [database]
+    volumes:
+      - redis-data:/data
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+
+  clickhouse:
+    image: ${CLICKHOUSE_IMAGE:-clickhouse:26.3.17.4@sha256:158dcce6f6fdc59309650aad6b79484abf4eed07d4e0bdba31d732e64b5a25fb}
+    pull_policy: ${CLICKHOUSE_PULL_POLICY:-if_not_present}
+    restart: unless-stopped
+    user: "101:101"
+    entrypoint: [/usr/local/bin/tokenpilot-clickhouse-entrypoint.sh]
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-ai_control_plane}
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_BOOTSTRAP_PASSWORD:?CLICKHOUSE_BOOTSTRAP_PASSWORD is required}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+      AI_CONTROL_CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-ai_control_plane}
+      AI_CONTROL_CLICKHOUSE_APPLICATION_USER: ${CLICKHOUSE_USERNAME:-ai_control_app}
+      AI_CONTROL_CLICKHOUSE_APPLICATION_PASSWORD: ${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD is required}
+      AI_CONTROL_CLICKHOUSE_MIGRATION_USER: ${CLICKHOUSE_MIGRATION_USERNAME:-ai_control_migrator}
+      AI_CONTROL_CLICKHOUSE_MIGRATION_PASSWORD: ${CLICKHOUSE_MIGRATION_PASSWORD:?CLICKHOUSE_MIGRATION_PASSWORD is required}
+    expose: ["8123", "9000"]
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/tokenpilot-clickhouse-healthcheck.sh"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks: [database]
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - clickhouse-logs:/var/log/clickhouse-server
+      - ./clickhouse/entrypoint/tokenpilot-clickhouse-entrypoint.sh:/usr/local/bin/tokenpilot-clickhouse-entrypoint.sh:ro
+      - ./clickhouse/healthcheck.sh:/usr/local/bin/tokenpilot-clickhouse-healthcheck.sh:ro
+      - ./clickhouse/init/001-create-least-privilege-users.sh:/docker-entrypoint-initdb.d/001-create-least-privilege-users.sh:ro
+      - ./clickhouse/config/users.d/zz-default-local-only.xml:/etc/clickhouse-server/users.d/zz-default-local-only.xml:ro
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+      - /run/clickhouse-server:rw,noexec,nosuid,nodev,mode=0755,uid=101,gid=101
+      - /etc/clickhouse-server/users.d:rw,noexec,nosuid,nodev,mode=0755,uid=101,gid=101
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+
+  clickhouse-migrate:
+    image: ${WORKER_IMAGE:-tokenpilot-worker:0.2.0}
+    pull_policy: never
+    restart: "no"
+    init: true
+    user: "1000:1000"
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+    command: ["node", "/workspace/packages/clickhouse/dist/cli.js", "up"]
+    environment:
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-ai_control_plane}
+      CLICKHOUSE_MIGRATION_USERNAME: ${CLICKHOUSE_MIGRATION_USERNAME:-ai_control_migrator}
+      CLICKHOUSE_MIGRATION_PASSWORD: ${CLICKHOUSE_MIGRATION_PASSWORD:?CLICKHOUSE_MIGRATION_PASSWORD is required}
+      CLICKHOUSE_USERNAME: ${CLICKHOUSE_USERNAME:-ai_control_app}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD is required}
+      CLICKHOUSE_SECURE: "false"
+      CLICKHOUSE_REQUEST_TIMEOUT_MS: ${CLICKHOUSE_REQUEST_TIMEOUT_MS:-10000}
+      CLICKHOUSE_MIGRATIONS_DIR: /workspace/packages/clickhouse/migrations
+    depends_on:
+      clickhouse: { condition: service_healthy }
+    networks: [database]
+
+  migrate:
+    <<: *node-service
+    build:
+      <<: *app-build
+      args:
+        <<: *build-proxy-args
+        APP: migrate
+        CONTROL_PLANE_VERSION: ${CONTROL_PLANE_VERSION:-0.2.0}
+    image: ${MIGRATE_IMAGE:-tokenpilot-migrate:0.2.0}
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # Prisma uses the dedicated default database only as a disposable shadow
+      # schema when checking that the migrated application database is exact.
+      SHADOW_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/postgres
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [database]
+
+  api:
+    <<: *node-service
+    build:
+      <<: *app-build
+      args:
+        <<: *build-proxy-args
+        APP: api
+        CONTROL_PLANE_VERSION: ${CONTROL_PLANE_VERSION:-0.2.0}
+    image: ${API_IMAGE:-tokenpilot-api:0.2.0}
+    restart: unless-stopped
+    env_file: ${ENV_FILE:-../.env}
+    environment:
+      <<: *internal-no-proxy
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      # API reads analytics with the runtime identity only. Explicit empty
+      # values override both the shared env file and any host environment.
+      CLICKHOUSE_BOOTSTRAP_PASSWORD: ""
+      CLICKHOUSE_MIGRATION_USERNAME: ""
+      CLICKHOUSE_MIGRATION_PASSWORD: ""
+    depends_on:
+      clickhouse: { condition: service_healthy }
+      clickhouse-migrate: { condition: service_completed_successfully }
+      migrate: { condition: service_completed_successfully }
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks: [application, database, executor-egress]
+
+  worker:
+    <<: *node-service
+    build:
+      <<: *app-build
+      args:
+        <<: *build-proxy-args
+        APP: worker
+        CONTROL_PLANE_VERSION: ${CONTROL_PLANE_VERSION:-0.2.0}
+    image: ${WORKER_IMAGE:-tokenpilot-worker:0.2.0}
+    restart: unless-stopped
+    environment:
+      <<: *worker-pipeline-environment
+      INSTANCE_ID: "${INSTANCE_ID:?INSTANCE_ID is required}"
+      ENVIRONMENT: "${ENVIRONMENT:?ENVIRONMENT is required}"
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      BASE_CURRENCY: "${BASE_CURRENCY:-USD}"
+      CONNECTOR_STALE_AFTER_SECONDS: "${CONNECTOR_STALE_AFTER_SECONDS:-120}"
+      EXPORT_DIRECTORY: /var/lib/tokenpilot/exports
+      WORKER_METRICS_HOST: 0.0.0.0
+      WORKER_METRICS_PORT: 9464
+    depends_on:
+      api: { condition: service_healthy }
+      clickhouse: { condition: service_healthy }
+      clickhouse-migrate: { condition: service_completed_successfully }
+      migrate: { condition: service_completed_successfully }
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:9464/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    expose: ["9464"]
+    volumes:
+      - export-data:/var/lib/tokenpilot/exports
+    networks: [application, database]
+
+  scheduler:
+    <<: *node-service
+    build:
+      <<: *app-build
+      args:
+        <<: *build-proxy-args
+        APP: scheduler
+        CONTROL_PLANE_VERSION: ${CONTROL_PLANE_VERSION:-0.2.0}
+    image: ${SCHEDULER_IMAGE:-tokenpilot-scheduler:0.2.0}
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "/workspace/apps/scheduler/dist/healthcheck.js"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks: [application, database]
+
+  web:
+    <<: *node-service
+    build:
+      <<: *app-build
+      args:
+        <<: *build-proxy-args
+        APP: web
+        CONTROL_PLANE_VERSION: ${CONTROL_PLANE_VERSION:-0.2.0}
+    image: ${WEB_IMAGE:-tokenpilot-web:0.2.0}
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:4000
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/login').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks: [application]
+
+  caddy:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Caddy.Dockerfile
+      args:
+        <<: *build-proxy-args
+    image: ${CADDY_IMAGE:-tokenpilot-caddy:0.2.0}
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    depends_on:
+      api: { condition: service_healthy }
+      web: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-Y",
+          "off",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:8080/healthz",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    ports:
+      - "${CADDY_BIND_ADDRESS:-127.0.0.1}:${HTTP_PORT:-8080}:8080"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [application, edge]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+
+  litellm:
+    build:
+      context: ..
+      dockerfile: deploy/docker/LiteLLM.Dockerfile
+      args:
+        <<: *build-proxy-args
+        LITELLM_BASE_IMAGE: ${LITELLM_BASE_IMAGE:-ghcr.io/berriai/litellm:v1.92.0}
+        CONTROL_PLANE_VERSION: ${CONTROL_PLANE_VERSION:-0.2.0}
+    image: ${LITELLM_IMAGE:-tokenpilot-litellm:1.92.0}
+    profiles: [litellm]
+    restart: unless-stopped
+    user: "65532:65532"
+    env_file: ${LITELLM_ENV_FILE:-./litellm/.env}
+    environment:
+      <<: *internal-no-proxy
+      PYTHONPATH: /opt/tokenpilot-connector
+      LITELLM_LOG: ERROR
+      AI_CONTROL_URL: http://api:4000
+    command: ["--config", "/etc/litellm/config.yaml", "--port", "4000"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=3).close()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    read_only: true
+    volumes:
+      - ./litellm/config.example.yaml:/etc/litellm/config.yaml:ro
+      - connector-spool:/var/lib/tokenpilot
+    networks: [application, executor-egress]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+
+  prometheus:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Observability.Dockerfile
+      target: prometheus
+    image: ${PROMETHEUS_IMAGE:-tokenpilot-prometheus:3.13.1}
+    pull_policy: ${OBSERVABILITY_PULL_POLICY:-build}
+    profiles: [observability]
+    restart: unless-stopped
+    user: "65534:65534"
+    read_only: true
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    networks: [application]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-Y",
+          "off",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:9090/-/healthy",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+
+  node-exporter:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Observability.Dockerfile
+      target: node-exporter
+    image: ${NODE_EXPORTER_IMAGE:-tokenpilot-node-exporter:1.12.1}
+    pull_policy: ${OBSERVABILITY_PULL_POLICY:-build}
+    profiles: [observability]
+    restart: unless-stopped
+    user: "65534:65534"
+    read_only: true
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/host/root
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+    networks: [application]
+    healthcheck:
+      test:
+        ["CMD", "wget", "-Y", "off", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:9100/"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+networks:
+  database:
+    internal: true
+  application:
+    internal: true
+  edge:
+  executor-egress:
+
+volumes:
+  postgres-data:
+  redis-data:
+  clickhouse-data:
+  clickhouse-logs:
+  export-data:
+  connector-spool:
+  caddy-data:
+  caddy-config:
+  prometheus-data:

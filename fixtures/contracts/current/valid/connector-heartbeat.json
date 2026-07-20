@@ -1,0 +1,21 @@
+{
+  "schema_version": "2.0",
+  "heartbeat_id": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+  "sent_at": "2026-07-15T08:01:00Z",
+  "connector": {
+    "instance_id": "litellm-demo-01",
+    "name": "primary-gateway",
+    "type": "litellm",
+    "version": "0.2.0"
+  },
+  "capabilities": {
+    "usage_schema": "2.0",
+    "application_users": true,
+    "privacy_mode": "content_free",
+    "durable_batch_upload": true
+  },
+  "status": "healthy",
+  "buffer_depth": 0,
+  "oldest_event_age_seconds": 0.5,
+  "last_successful_upload_at": "2026-07-15T08:00:58Z"
+}

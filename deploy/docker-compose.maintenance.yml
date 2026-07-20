@@ -1,0 +1,39 @@
+# Opt-in PostgreSQL maintenance tooling. Merge with docker-compose.yml only on the deployment host.
+services:
+  release-tooling:
+    profiles: [maintenance]
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile
+      target: tooling
+      args:
+        APP: migrate
+        CONTROL_PLANE_VERSION: ${CONTROL_PLANE_VERSION:-0.2.0}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        ALL_PROXY: ${ALL_PROXY:-}
+        NO_PROXY: "${NO_PROXY:-127.0.0.1,localhost},api,clickhouse,postgres,redis,release-tooling"
+        http_proxy: ${http_proxy:-}
+        https_proxy: ${https_proxy:-}
+        all_proxy: ${all_proxy:-}
+        no_proxy: "${no_proxy:-127.0.0.1,localhost},api,clickhouse,postgres,redis,release-tooling"
+    image: ${RELEASE_TOOLING_IMAGE:-tokenpilot-release-tooling:0.2.0}
+    init: true
+    restart: "no"
+    user: "1000:1000"
+    read_only: true
+    environment:
+      CONTROL_PLANE_VERSION: ${CONTROL_PLANE_VERSION:-0.2.0}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      NO_PROXY: "${NO_PROXY:-127.0.0.1,localhost},api,clickhouse,postgres,redis,release-tooling"
+      no_proxy: "${no_proxy:-127.0.0.1,localhost},api,clickhouse,postgres,redis,release-tooling"
+    command: ["node", "--eval", "process.exit(0)"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    volumes:
+      - ${BACKUP_HOST_PATH:?set BACKUP_HOST_PATH to an absolute mode-0700 host directory}:/backups
+    networks: [database]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777

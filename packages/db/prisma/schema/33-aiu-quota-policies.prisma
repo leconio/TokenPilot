@@ -1,0 +1,26 @@
+model AiuQuotaPolicy {
+  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId    String                @map("application_id") @db.Uuid
+  scope            AiuQuotaPolicyScope
+  userId           String?               @map("user_id") @db.Uuid
+  userGroupId      String?               @map("user_group_id") @db.Uuid
+  limitAiuMicros   BigInt                @map("limit_aiu_micros")
+  hardLimit        Boolean               @default(false) @map("hard_limit")
+  periodType       QuotaPeriodType       @default(LIFETIME) @map("period_type")
+  startsAt         DateTime?             @map("starts_at") @db.Timestamptz(6)
+  endsAt           DateTime?             @map("ends_at") @db.Timestamptz(6)
+  priority         Int                   @default(0)
+  enabled          Boolean               @default(true)
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application      Application           @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  user             ApplicationUser?      @relation(fields: [applicationId, userId], references: [applicationId, id], onDelete: Restrict)
+  userGroup        ApplicationUserGroup? @relation(fields: [applicationId, userGroupId], references: [applicationId, id], onDelete: Restrict)
+  materializations UserAiuQuota[]
+
+  @@unique([applicationId, id], map: "aiu_quota_policies_application_id_key")
+  @@unique([applicationId, userId], map: "aiu_quota_policies_application_user_key")
+  @@unique([applicationId, userGroupId], map: "aiu_quota_policies_application_group_key")
+  @@index([applicationId, scope, enabled, priority], map: "aiu_quota_policies_resolution_idx")
+  @@map("aiu_quota_policies")
+}

@@ -1,0 +1,45 @@
+[project]
+name = "tokenpilot-sdk"
+version = "0.2.0"
+description = "Trusted Python AI runtime client"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = "Apache-2.0"
+dependencies = [
+  "httpx>=0.28.1,<1",
+  "pydantic>=2.12.5,<3",
+]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.18.2,<2",
+  "pytest>=9.0.2,<10",
+  "ruff>=0.14.14,<1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.28,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "ai_control_sdk"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "RUF", "SIM", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_decorators = false

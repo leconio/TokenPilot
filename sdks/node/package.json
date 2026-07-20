@@ -1,0 +1,24 @@
+{
+  "name": "@tokenpilot/node-sdk",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Trusted server-side AI runtime client",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@tokenpilot/contracts": "workspace:*",
+    "ulid": "3.0.2"
+  }
+}

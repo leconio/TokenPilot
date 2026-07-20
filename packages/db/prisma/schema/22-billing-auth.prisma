@@ -1,0 +1,76 @@
+model User {
+  id                           String                        @id @db.Text
+  name                         String                        @db.Text
+  email                        String                        @unique(map: "user_email_key") @db.Text
+  emailVerified                Boolean                       @default(false) @map("email_verified")
+  image                        String?                       @db.Text
+  createdAt                    DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime                      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sessions                     Session[]
+  accounts                     Account[]
+  reconciliationRuns           ReconciliationRun[]           @relation("ReconciliationRunStarter")
+  deadLetterEvents             DeadLetterEvent[]             @relation("DeadLetterResolver")
+  applicationMemberships       ApplicationMember[]
+  runtimeConfigurationVersions RuntimeConfigurationVersion[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @db.Text
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  token     String   @unique(map: "session_token_key") @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  ipAddress String?  @map("ip_address") @db.Text
+  userAgent String?  @map("user_agent") @db.Text
+  userId    String   @map("user_id") @db.Text
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "session_user_id_idx")
+  @@index([expiresAt], map: "session_expires_at_idx")
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @db.Text
+  accountId             String    @map("account_id") @db.Text
+  providerId            String    @map("provider_id") @db.Text
+  userId                String    @map("user_id") @db.Text
+  accessToken           String?   @map("access_token") @db.Text
+  refreshToken          String?   @map("refresh_token") @db.Text
+  idToken               String?   @map("id_token") @db.Text
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz(6)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz(6)
+  scope                 String?   @db.Text
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId], map: "account_provider_id_account_id_key")
+  @@index([userId], map: "account_user_id_idx")
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @db.Text
+  identifier String   @db.Text
+  value      String   @db.Text
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([identifier], map: "verification_identifier_idx")
+  @@index([expiresAt], map: "verification_expires_at_idx")
+  @@map("verification")
+}
+
+model RateLimit {
+  id          String @id @db.Text
+  key         String @unique(map: "rate_limit_key_key") @db.Text
+  count       Int
+  lastRequest BigInt @map("last_request")
+
+  @@map("rate_limit")
+}

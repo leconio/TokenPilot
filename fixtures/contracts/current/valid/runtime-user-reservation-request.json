@@ -1,0 +1,12 @@
+{
+  "user_id": "user-1",
+  "display_user": "Ada",
+  "user_properties": {
+    "plan": "pro",
+    "tags": ["beta"]
+  },
+  "operation_id": "operation-1",
+  "virtual_model": "assistant",
+  "candidate_model_ids": ["00000000-0000-4000-8000-000000000101"],
+  "estimated_aiu_micros": "2500000"
+}

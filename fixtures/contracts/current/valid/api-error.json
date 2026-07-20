@@ -1,0 +1,17 @@
+{
+  "schema_version": "2.0",
+  "error_id": "01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+  "occurred_at": "2026-07-15T08:03:00Z",
+  "request_id": "req_demo",
+  "code": "VALIDATION_FAILED",
+  "message": "The request contains invalid fields.",
+  "retryable": false,
+  "details": [
+    {
+      "path": "usage.input_tokens",
+      "code": "OUT_OF_RANGE",
+      "message": "The value must be non-negative.",
+      "rejected_value": "-1"
+    }
+  ]
+}

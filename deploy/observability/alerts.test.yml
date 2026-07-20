@@ -1,0 +1,535 @@
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: operational threshold branches fire after their hold periods
+    interval: 1m
+    input_series:
+      - series: 'up{job="tokenpilot-api",instance="api:4000"}'
+        values: "1+0x60"
+      - series: 'up{job="tokenpilot-worker",instance="worker:9464"}'
+        values: "1+0x60"
+      - series: 'up{job="prometheus",instance="prometheus:9090"}'
+        values: "1+0x60"
+      - series: 'up{job="node-exporter",instance="node-exporter:9100"}'
+        values: "1+0x60"
+      - series: 'ai_control_connector_stale{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "0+0x60"
+      - series: 'ai_control_connector_last_heartbeat_age_seconds{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "600+0x60"
+      - series: 'ai_control_connector_backlog_alert{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "1+0x60"
+      - series: 'ai_control_connector_buffer_depth{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "1000+1x60"
+      - series: 'ai_control_provider_cost_unpriced_current{job="tokenpilot-api"}'
+        values: "2+0x60"
+      - series: 'ai_control_provider_cost_unpriced_total{job="tokenpilot-worker"}'
+        values: "0+1x60"
+      - series: 'ai_control_queue_failed_depth{job="tokenpilot-worker",queue="usage.price"}'
+        values: "2+0x60"
+      - series: 'ai_control_runtime_configuration_connector_acknowledgement_lag_current{job="tokenpilot-api",application_id="a8831b1e-cd42-49c5-b90f-b3a4b1abc54c",application_slug="orders",connector_instance_id="orders-api-1",connector_name="litellm"}'
+        values: "2+0x60"
+      - series: 'ai_control_runtime_configuration_acknowledgements_absent_current{job="tokenpilot-api",application_id="a8831b1e-cd42-49c5-b90f-b3a4b1abc54c",application_slug="orders"}'
+        values: "0+0x60"
+      - series: 'ai_control_db_connections{job="tokenpilot-api"}'
+        values: "90+0x60"
+      - series: 'ai_control_db_max_connections{job="tokenpilot-api"}'
+        values: "100+0x60"
+      - series: 'node_filesystem_avail_bytes{job="node-exporter",instance="host-1",device="/dev/sda1",mountpoint="/",fstype="ext4"}'
+        values: "10+0x60"
+      - series: 'node_filesystem_size_bytes{job="node-exporter",instance="host-1",device="/dev/sda1",mountpoint="/",fstype="ext4"}'
+        values: "100+0x60"
+      - series: 'node_filesystem_readonly{job="node-exporter",instance="host-1",device="/dev/sda1",mountpoint="/",fstype="ext4"}'
+        values: "0+0x60"
+      - series: 'ai_control_daily_provider_cost{job="tokenpilot-api",period="current"}'
+        values: "200+0x60"
+      - series: 'ai_control_daily_provider_cost{job="tokenpilot-api",period="previous"}'
+        values: "100+0x60"
+    alert_rule_test:
+      - eval_time: 46m
+        alertname: TokenPilotConnectorLost
+        exp_alerts:
+          - exp_labels:
+              instance_id: connector-1
+              job: tokenpilot-api
+              name: litellm
+              severity: critical
+            exp_annotations:
+              summary: TokenPilot connector heartbeat is stale
+              runbook: docs/operations.md
+      - eval_time: 46m
+        alertname: TokenPilotConnectorBacklogGrowing
+        exp_alerts:
+          - exp_labels:
+              instance_id: connector-1
+              job: tokenpilot-api
+              name: litellm
+              severity: warning
+            exp_annotations:
+              summary: Connector durable spool backlog is above threshold or growing
+              runbook: docs/operations.md
+      - eval_time: 46m
+        alertname: TokenPilotUnpricedUsage
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Usage is waiting for a valid Provider or Billable price
+              runbook: docs/operations.md
+      - eval_time: 46m
+        alertname: TokenPilotWorkerDLQNotEmpty
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: At least one BullMQ queue retains terminal failures
+              runbook: docs/operations.md
+      - eval_time: 46m
+        alertname: TokenPilotRuntimeConfigurationAcknowledgementLag
+        exp_alerts:
+          - exp_labels:
+              application_id: a8831b1e-cd42-49c5-b90f-b3a4b1abc54c
+              application_slug: orders
+              connector_instance_id: orders-api-1
+              connector_name: litellm
+              job: tokenpilot-api
+              severity: warning
+            exp_annotations:
+              summary: A connector has not applied the latest published routing configuration
+              runbook: docs/operations.md
+      - eval_time: 46m
+        alertname: TokenPilotDatabaseConnectionsHigh
+        exp_alerts:
+          - exp_labels:
+              job: tokenpilot-api
+              severity: warning
+            exp_annotations:
+              summary: PostgreSQL connection utilization exceeds 80 percent
+              runbook: docs/operations.md
+      - eval_time: 46m
+        alertname: TokenPilotDiskHighWatermark
+        exp_alerts:
+          - exp_labels:
+              device: /dev/sda1
+              fstype: ext4
+              instance: host-1
+              job: node-exporter
+              mountpoint: /
+              severity: warning
+            exp_annotations:
+              summary: A Control Plane host filesystem exceeds 85 percent utilization
+              runbook: docs/operations.md
+      - eval_time: 46m
+        alertname: TokenPilotDailyCostGrowth
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Current instance-local-day Provider cost is over 150 percent of the previous day
+              runbook: docs/operations.md
+
+  - name: a reachable API without Connector series fires the Connector absent branch
+    interval: 1m
+    input_series:
+      - series: 'up{job="tokenpilot-api",instance="api:4000"}'
+        values: "1+0x20"
+      - series: 'up{job="tokenpilot-worker",instance="worker:9464"}'
+        values: "1+0x20"
+      - series: 'up{job="prometheus",instance="prometheus:9090"}'
+        values: "1+0x20"
+      - series: 'up{job="node-exporter",instance="node-exporter:9100"}'
+        values: "1+0x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: TokenPilotConnectorMetricsMissing
+        exp_alerts:
+          - exp_labels:
+              job: tokenpilot-api
+              severity: critical
+            exp_annotations:
+              summary: API is reachable but no Connector heartbeat metric is present
+              runbook: docs/operations.md
+
+  - name: absent API target fires without misreporting a Connector-only failure
+    interval: 1m
+    input_series:
+      - series: 'up{job="tokenpilot-worker",instance="worker:9464"}'
+        values: "1+0x20"
+      - series: 'up{job="prometheus",instance="prometheus:9090"}'
+        values: "1+0x20"
+      - series: 'up{job="node-exporter",instance="node-exporter:9100"}'
+        values: "1+0x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: TokenPilotApiMetricsTargetMissing
+        exp_alerts:
+          - exp_labels:
+              job: tokenpilot-api
+              severity: critical
+            exp_annotations:
+              summary: API Prometheus scrape target is absent or down
+              runbook: docs/operations.md
+      - eval_time: 10m
+        alertname: TokenPilotConnectorMetricsMissing
+        exp_alerts: []
+
+  - name: absent Worker and node-exporter targets fire their absent branches
+    interval: 1m
+    input_series:
+      - series: 'up{job="tokenpilot-api",instance="api:4000"}'
+        values: "1+0x20"
+      - series: 'up{job="prometheus",instance="prometheus:9090"}'
+        values: "1+0x20"
+      - series: 'ai_control_connector_stale{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "0+0x20"
+      - series: 'ai_control_connector_last_heartbeat_age_seconds{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "10+0x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: TokenPilotWorkerMetricsTargetMissing
+        exp_alerts:
+          - exp_labels:
+              job: tokenpilot-worker
+              severity: critical
+            exp_annotations:
+              summary: Worker Prometheus scrape target is absent or down
+              runbook: docs/operations.md
+      - eval_time: 10m
+        alertname: TokenPilotNodeExporterMetricsTargetMissing
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              severity: critical
+            exp_annotations:
+              summary: Node exporter Prometheus scrape target is absent or down
+              runbook: docs/operations.md
+
+  - name: absent Prometheus self target fires while API and Connector series are healthy
+    interval: 1m
+    input_series:
+      - series: 'up{job="tokenpilot-api",instance="api:4000"}'
+        values: "1+0x20"
+      - series: 'up{job="tokenpilot-worker",instance="worker:9464"}'
+        values: "1+0x20"
+      - series: 'up{job="node-exporter",instance="node-exporter:9100"}'
+        values: "1+0x20"
+      - series: 'ai_control_connector_stale{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "0+0x20"
+      - series: 'ai_control_connector_last_heartbeat_age_seconds{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "10+0x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: TokenPilotPrometheusSelfTargetMissing
+        exp_alerts:
+          - exp_labels:
+              job: prometheus
+              severity: critical
+            exp_annotations:
+              summary: Prometheus self-scrape target is absent or down
+              runbook: docs/operations.md
+
+  - name: configured but down API, Worker, Prometheus, and node-exporter targets fire their down branches
+    interval: 1m
+    input_series:
+      - series: 'up{job="tokenpilot-api",instance="api:4000"}'
+        values: "0+0x20"
+      - series: 'up{job="tokenpilot-worker",instance="worker:9464"}'
+        values: "0+0x20"
+      - series: 'up{job="prometheus",instance="prometheus:9090"}'
+        values: "0+0x20"
+      - series: 'up{job="node-exporter",instance="node-exporter:9100"}'
+        values: "0+0x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: TokenPilotApiMetricsTargetMissing
+        exp_alerts:
+          - exp_labels:
+              job: tokenpilot-api
+              severity: critical
+            exp_annotations:
+              summary: API Prometheus scrape target is absent or down
+              runbook: docs/operations.md
+      - eval_time: 10m
+        alertname: TokenPilotWorkerMetricsTargetMissing
+        exp_alerts:
+          - exp_labels:
+              job: tokenpilot-worker
+              severity: critical
+            exp_annotations:
+              summary: Worker Prometheus scrape target is absent or down
+              runbook: docs/operations.md
+      - eval_time: 10m
+        alertname: TokenPilotPrometheusSelfTargetMissing
+        exp_alerts:
+          - exp_labels:
+              job: prometheus
+              severity: critical
+            exp_annotations:
+              summary: Prometheus self-scrape target is absent or down
+              runbook: docs/operations.md
+      - eval_time: 10m
+        alertname: TokenPilotNodeExporterMetricsTargetMissing
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              severity: critical
+            exp_annotations:
+              summary: Node exporter Prometheus scrape target is absent or down
+              runbook: docs/operations.md
+
+  - name: published runtime configuration without any acknowledgement fires the no-ack branch
+    interval: 1m
+    input_series:
+      - series: 'up{job="tokenpilot-api",instance="api:4000"}'
+        values: "1+0x20"
+      - series: 'up{job="tokenpilot-worker",instance="worker:9464"}'
+        values: "1+0x20"
+      - series: 'up{job="prometheus",instance="prometheus:9090"}'
+        values: "1+0x20"
+      - series: 'up{job="node-exporter",instance="node-exporter:9100"}'
+        values: "1+0x20"
+      - series: 'ai_control_connector_stale{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "0+0x20"
+      - series: 'ai_control_connector_last_heartbeat_age_seconds{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "10+0x20"
+      - series: 'ai_control_runtime_configuration_acknowledgements_absent_current{job="tokenpilot-api",application_id="a8831b1e-cd42-49c5-b90f-b3a4b1abc54c",application_slug="orders"}'
+        values: "1+0x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: TokenPilotRuntimeConfigurationAcknowledgementLag
+        exp_alerts:
+          - exp_labels:
+              application_id: a8831b1e-cd42-49c5-b90f-b3a4b1abc54c
+              application_slug: orders
+              job: tokenpilot-api
+              severity: warning
+            exp_annotations:
+              summary: A connector has not applied the latest published routing configuration
+              runbook: docs/operations.md
+
+  - name: healthy stable metrics do not fire any alert
+    interval: 1m
+    input_series:
+      - series: 'up{job="tokenpilot-api",instance="api:4000"}'
+        values: "1+0x60"
+      - series: 'up{job="tokenpilot-worker",instance="worker:9464"}'
+        values: "1+0x60"
+      - series: 'up{job="prometheus",instance="prometheus:9090"}'
+        values: "1+0x60"
+      - series: 'up{job="node-exporter",instance="node-exporter:9100"}'
+        values: "1+0x60"
+      - series: 'ai_control_connector_stale{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "0+0x60"
+      - series: 'ai_control_connector_last_heartbeat_age_seconds{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "30+0x60"
+      - series: 'ai_control_connector_backlog_alert{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "0+0x60"
+      - series: 'ai_control_connector_buffer_depth{job="tokenpilot-api",instance_id="connector-1",name="litellm"}'
+        values: "0+0x60"
+      - series: 'ai_control_provider_cost_unpriced_current{job="tokenpilot-api"}'
+        values: "0+0x60"
+      - series: 'ai_control_provider_cost_unpriced_total{job="tokenpilot-worker"}'
+        values: "0+0x60"
+      - series: 'ai_control_queue_failed_depth{job="tokenpilot-worker",queue="usage.price"}'
+        values: "0+0x60"
+      - series: 'ai_control_runtime_configuration_connector_acknowledgement_lag_current{job="tokenpilot-api",application_id="a8831b1e-cd42-49c5-b90f-b3a4b1abc54c",application_slug="orders",connector_instance_id="orders-api-1",connector_name="litellm"}'
+        values: "0+0x60"
+      - series: 'ai_control_runtime_configuration_acknowledgements_absent_current{job="tokenpilot-api",application_id="a8831b1e-cd42-49c5-b90f-b3a4b1abc54c",application_slug="orders"}'
+        values: "0+0x60"
+      - series: 'ai_control_db_connections{job="tokenpilot-api"}'
+        values: "20+0x60"
+      - series: 'ai_control_db_max_connections{job="tokenpilot-api"}'
+        values: "100+0x60"
+      - series: 'node_filesystem_avail_bytes{job="node-exporter",instance="host-1",device="/dev/sda1",mountpoint="/",fstype="ext4"}'
+        values: "50+0x60"
+      - series: 'node_filesystem_size_bytes{job="node-exporter",instance="host-1",device="/dev/sda1",mountpoint="/",fstype="ext4"}'
+        values: "100+0x60"
+      - series: 'node_filesystem_readonly{job="node-exporter",instance="host-1",device="/dev/sda1",mountpoint="/",fstype="ext4"}'
+        values: "0+0x60"
+      - series: 'ai_control_daily_provider_cost{job="tokenpilot-api",period="current"}'
+        values: "100+0x60"
+      - series: 'ai_control_daily_provider_cost{job="tokenpilot-api",period="previous"}'
+        values: "100+0x60"
+    alert_rule_test:
+      - eval_time: 46m
+        alertname: TokenPilotConnectorLost
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: TokenPilotConnectorMetricsMissing
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: TokenPilotApiMetricsTargetMissing
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: TokenPilotWorkerMetricsTargetMissing
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: TokenPilotPrometheusSelfTargetMissing
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: TokenPilotNodeExporterMetricsTargetMissing
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: TokenPilotConnectorBacklogGrowing
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: TokenPilotUnpricedUsage
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: TokenPilotWorkerDLQNotEmpty
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: TokenPilotRuntimeConfigurationAcknowledgementLag
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: TokenPilotDatabaseConnectionsHigh
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: TokenPilotDiskHighWatermark
+        exp_alerts: []
+      - eval_time: 46m
+        alertname: TokenPilotDailyCostGrowth
+        exp_alerts: []
+
+  - name: current cost and AIU pipeline thresholds trigger their runbooks
+    interval: 1m
+    input_series:
+      - series: 'ai_control_inbox_oldest_age_seconds{job="tokenpilot-api"}'
+        values: "120+0x40"
+      - series: 'ai_control_settlement_dlq_total{job="tokenpilot-worker"}'
+        values: "0+1x40"
+      - series: 'ai_control_clickhouse_health{job="tokenpilot-worker"}'
+        values: "0+0x40"
+      - series: 'ai_control_clickhouse_sink_lag_seconds{job="tokenpilot-api"}'
+        values: "45+0x40"
+      - series: 'ai_control_clickhouse_insert_failures_total{job="tokenpilot-worker"}'
+        values: "0+1x40"
+      - series: 'ai_control_clickhouse_storage_utilization_ratio{job="tokenpilot-worker"}'
+        values: "0.9+0x40"
+      - series: 'ai_control_reconciliation_runs_total{status="failed"}'
+        values: "0+1x40"
+      - series: 'ai_control_provider_cost_unpriced_total{job="tokenpilot-worker"}'
+        values: "0+3x40"
+      - series: 'ai_control_settlement_events_total{stage="provider_cost",status="completed"}'
+        values: "0+200x40"
+      - series: 'ai_control_aiu_unrated_total{job="tokenpilot-worker"}'
+        values: "0+1x40"
+      - series: 'ai_control_settlement_events_total{stage="aiu",status="completed"}'
+        values: "0+500x40"
+      - series: 'ai_control_model_unmapped_total{job="tokenpilot-worker"}'
+        values: "0+1x40"
+      - series: 'ai_control_quota_negative_balance_users{job="tokenpilot-api"}'
+        values: "1+0x40"
+      - series: 'ai_control_quota_reservation_expired_total{job="tokenpilot-worker"}'
+        values: "0+2x40"
+      - series: 'ai_control_reconciliation_cost_delta{job="tokenpilot-worker"}'
+        values: "2+0x40"
+      - series: 'ai_control_reconciliation_aiu_micro_delta{job="tokenpilot-worker"}'
+        values: "0+0x40"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TokenPilotInboxOldestAge
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: The oldest incomplete Inbox event is over 60 seconds old
+              runbook: docs/operations.md
+      - eval_time: 30m
+        alertname: TokenPilotSettlementDLQIncreasing
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Settlement is adding terminal failures to the DLQ
+              runbook: docs/operations.md
+      - eval_time: 30m
+        alertname: TokenPilotClickHouseDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: ClickHouse health checks are failing
+              runbook: docs/operations.md
+      - eval_time: 30m
+        alertname: TokenPilotClickHouseSinkLag
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: ClickHouse projection lag exceeds 30 seconds
+              runbook: docs/operations.md
+      - eval_time: 30m
+        alertname: TokenPilotClickHouseInsertFailures
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: ClickHouse inserts are failing
+              runbook: docs/operations.md
+      - eval_time: 30m
+        alertname: TokenPilotClickHouseStorageHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: ClickHouse storage utilization exceeds 85 percent
+              runbook: docs/operations.md
+      - eval_time: 30m
+        alertname: TokenPilotReconciliationConsecutiveFailures
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Three or more reconciliation runs failed in 30 minutes
+              runbook: docs/operations.md
+      - eval_time: 30m
+        alertname: TokenPilotProviderCostUnpricedRatio
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Provider-cost unpriced ratio exceeds one percent
+              runbook: docs/operations.md
+      - eval_time: 30m
+        alertname: TokenPilotAiuUnratedRatio
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: AIU unrated ratio exceeds 0.1 percent
+              runbook: docs/operations.md
+      - eval_time: 30m
+        alertname: TokenPilotModelUnmapped
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Usage events cannot resolve a model
+              runbook: docs/operations.md
+      - eval_time: 30m
+        alertname: TokenPilotQuotaNegativeBalance
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: At least one quota balance is negative
+              runbook: docs/operations.md
+      - eval_time: 30m
+        alertname: TokenPilotReservationExpirySpike
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: More than ten reservations expired in 15 minutes
+              runbook: docs/operations.md
+      - eval_time: 30m
+        alertname: TokenPilotRealtimeOfficialDelta
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Realtime and official cost or AIU projections exceed tolerance
+              runbook: docs/operations.md

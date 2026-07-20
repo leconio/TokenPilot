@@ -1,0 +1,11 @@
+{
+  "from": "2026-07-18T00:00:00.000Z",
+  "to": "2026-07-17T00:00:00.000Z",
+  "timezone": "UTC",
+  "page_size": 50,
+  "filter_match": "all",
+  "conditions": [],
+  "metric": "requests",
+  "grain": "day",
+  "group_dimension": "model_tag"
+}

@@ -1,0 +1,13 @@
+# Use this override when an existing gateway owns the public listener.
+# Caddy becomes opt-in, while Web and API remain bound to loopback by default.
+services:
+  api:
+    ports:
+      - "${EXTERNAL_GATEWAY_API_BIND_ADDRESS:-127.0.0.1}:${EXTERNAL_GATEWAY_API_PORT:-15001}:4000"
+
+  web:
+    ports:
+      - "${EXTERNAL_GATEWAY_WEB_BIND_ADDRESS:-127.0.0.1}:${EXTERNAL_GATEWAY_WEB_PORT:-15002}:3000"
+
+  caddy:
+    profiles: [bundled-ingress]

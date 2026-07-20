@@ -1,0 +1,296 @@
+{
+  "$id": "https://tokenpilot.dev/schemas/report-query.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "from": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "to": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "timezone": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "cursor": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "page_size": {
+      "$ref": "#/$defs/__schema3"
+    },
+    "filter_match": {
+      "$ref": "#/$defs/__schema4"
+    },
+    "conditions": {
+      "$ref": "#/$defs/__schema5"
+    },
+    "metric": {
+      "$ref": "#/$defs/__schema13"
+    },
+    "grain": {
+      "$ref": "#/$defs/__schema14"
+    },
+    "group_dimension": {
+      "$ref": "#/$defs/__schema15"
+    },
+    "group_property": {
+      "$ref": "#/$defs/__schema16"
+    }
+  },
+  "required": [
+    "from",
+    "to",
+    "timezone",
+    "page_size",
+    "filter_match",
+    "conditions",
+    "metric",
+    "grain",
+    "group_dimension"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?Z$"
+    },
+    "__schema1": {
+      "default": "UTC",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "__schema2": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384
+    },
+    "__schema3": {
+      "default": 50,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200
+    },
+    "__schema4": {
+      "default": "all",
+      "type": "string",
+      "enum": [
+        "all",
+        "any"
+      ]
+    },
+    "__schema5": {
+      "default": [],
+      "maxItems": 64,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema6"
+      }
+    },
+    "__schema6": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/__schema7"
+        },
+        {
+          "$ref": "#/$defs/__schema11"
+        }
+      ]
+    },
+    "__schema7": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "builtin"
+        },
+        "field": {
+          "type": "string",
+          "enum": [
+            "event_id",
+            "request_id",
+            "attempt_id",
+            "operation_id",
+            "session_id",
+            "conversation_id",
+            "user_id",
+            "display_user",
+            "user_tag",
+            "user_group",
+            "application_version",
+            "sdk_version",
+            "connector_version",
+            "config_version",
+            "virtual_model",
+            "model_id",
+            "model_tag",
+            "provider",
+            "status",
+            "schema_version",
+            "route_reason",
+            "latency_ms",
+            "cost_status",
+            "aiu_status",
+            "quota_status"
+          ]
+        },
+        "operator": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "values": {
+          "default": [],
+          "$ref": "#/$defs/__schema9"
+        }
+      },
+      "required": [
+        "kind",
+        "field",
+        "operator",
+        "values"
+      ],
+      "additionalProperties": false
+    },
+    "__schema8": {
+      "type": "string",
+      "enum": [
+        "equals",
+        "not_equals",
+        "contains",
+        "starts_with",
+        "greater_than",
+        "greater_or_equal",
+        "less_than",
+        "less_or_equal",
+        "between",
+        "one_of",
+        "contains_any",
+        "contains_all",
+        "is_set",
+        "is_not_set"
+      ]
+    },
+    "__schema9": {
+      "maxItems": 32,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema10"
+      }
+    },
+    "__schema10": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "boolean"
+        }
+      ]
+    },
+    "__schema11": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "property"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "event",
+            "user"
+          ]
+        },
+        "key": {
+          "$ref": "#/$defs/__schema12"
+        },
+        "operator": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "values": {
+          "default": [],
+          "$ref": "#/$defs/__schema9"
+        }
+      },
+      "required": [
+        "kind",
+        "scope",
+        "key",
+        "operator",
+        "values"
+      ],
+      "additionalProperties": false
+    },
+    "__schema12": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+    },
+    "__schema13": {
+      "default": "requests",
+      "type": "string",
+      "enum": [
+        "requests",
+        "tokens",
+        "unique_users",
+        "success_rate",
+        "average_latency",
+        "provider_cost",
+        "aiu"
+      ]
+    },
+    "__schema14": {
+      "default": "day",
+      "type": "string",
+      "enum": [
+        "hour",
+        "day",
+        "week",
+        "month"
+      ]
+    },
+    "__schema15": {
+      "default": "model_tag",
+      "type": "string",
+      "enum": [
+        "model_tag",
+        "virtual_model",
+        "user_id",
+        "user_tag",
+        "provider",
+        "route_reason",
+        "time",
+        "hour",
+        "day",
+        "week",
+        "month",
+        "property"
+      ]
+    },
+    "__schema16": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": [
+            "event",
+            "user"
+          ]
+        },
+        "key": {
+          "$ref": "#/$defs/__schema12"
+        }
+      },
+      "required": [
+        "scope",
+        "key"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

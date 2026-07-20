@@ -1,0 +1,17 @@
+{
+  "allowed": true,
+  "reason": "reserved",
+  "user": {
+    "id": "user-record-1",
+    "limit_aiu_micros": "10000000",
+    "used_aiu_micros": "1000000",
+    "reserved_aiu_micros": "2500000",
+    "remaining_aiu_micros": "6500000"
+  },
+  "reservation": {
+    "id": "reservation-1",
+    "token": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "reserved_aiu_micros": "2500000",
+    "expires_at": "2026-07-18T15:00:00.000Z"
+  }
+}

@@ -1,0 +1,21 @@
+model PropertyDefinition {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId     String           @map("application_id") @db.Uuid
+  key               String           @db.VarChar(128)
+  displayName       String           @map("display_name") @db.VarChar(120)
+  scope             PropertyScope
+  dataType          PropertyDataType @map("data_type")
+  allowedValuesJson Json?            @map("allowed_values_json")
+  searchable        Boolean          @default(true)
+  groupable         Boolean          @default(false)
+  sensitive         Boolean          @default(false)
+  constraintsJson   Json             @default("{}") @map("constraints_json")
+  status            PropertyStatus   @default(ACTIVE)
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application       Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, key], map: "property_definitions_application_key_key")
+  @@index([applicationId, scope, status], map: "property_definitions_application_scope_idx")
+  @@map("property_definitions")
+}

@@ -1,0 +1,36 @@
+{
+  "name": "@tokenpilot/contracts",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Canonical TokenPilot contracts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "generated"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "generate": "tsx scripts/generate-json-schema.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.28",
+    "@nestjs/swagger": "^11.4.5",
+    "nestjs-zod": "5.4.0",
+    "reflect-metadata": "~0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "$id": "https://tokenpilot.dev/schemas/runtime-user-reservation-settlement.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "reservation_token": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 4096
+    },
+    "settled_aiu_micros": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]*)$"
+    }
+  },
+  "required": [
+    "reservation_token",
+    "settled_aiu_micros"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,25 @@
+{
+  "id": "recon-diff-overflow",
+  "run_id": "recon-run-2026-07-16",
+  "diff_type": "USAGE_NORMALIZATION_MISMATCH",
+  "severity": "critical",
+  "dimensions": {
+    "application_id": "application-a",
+    "granularity": "day",
+    "time_bucket": "2026-07-15T00:00:00.000Z",
+    "virtual_model": null,
+    "model_id": null,
+    "model_tag": null,
+    "provider": null,
+    "user_id": null
+  },
+  "pg_values": { "event_count": "1" },
+  "ch_values": { "event_count": "0" },
+  "delta_values": { "event_count": "-9223372036854775809" },
+  "sample_event_ids": [],
+  "status": "open",
+  "resolution": null,
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-07-16T01:00:05.000Z"
+}

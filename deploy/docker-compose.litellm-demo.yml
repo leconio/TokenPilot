@@ -1,0 +1,61 @@
+# Optional key-free model-execution path. Merge this file with docker-compose.yml;
+# it replaces only LiteLLM's production config/env mounts and adds fake-provider.
+services:
+  fake-provider:
+    build:
+      context: ..
+      dockerfile: deploy/docker/FakeProvider.Dockerfile
+      args:
+        NODE_IMAGE: ${FAKE_PROVIDER_BASE_IMAGE:-node:24.18.0-alpine3.24}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        ALL_PROXY: ${ALL_PROXY:-}
+        NO_PROXY: "${NO_PROXY:-127.0.0.1,localhost},api,postgres,redis,clickhouse,fake-provider,litellm,caddy,web,worker,scheduler"
+        http_proxy: ${http_proxy:-}
+        https_proxy: ${https_proxy:-}
+        all_proxy: ${all_proxy:-}
+        no_proxy: "${no_proxy:-127.0.0.1,localhost},api,postgres,redis,clickhouse,fake-provider,litellm,caddy,web,worker,scheduler"
+    image: ${FAKE_PROVIDER_IMAGE:-tokenpilot-fake-provider:0.2.0}
+    profiles: [litellm-demo]
+    init: true
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    environment:
+      FAKE_PROVIDER_HOST: 0.0.0.0
+      FAKE_PROVIDER_PORT: 4100
+      # The dedicated demo primary fails by exact Provider-facing model name;
+      # every other model, including the configured fallback, remains healthy.
+      FAKE_PROVIDER_FAIL_MODELS: fake-openai-primary
+      NO_PROXY: "${NO_PROXY:-127.0.0.1,localhost},api,postgres,redis,clickhouse,fake-provider,litellm,caddy,web,worker,scheduler"
+      no_proxy: "${no_proxy:-127.0.0.1,localhost},api,postgres,redis,clickhouse,fake-provider,litellm,caddy,web,worker,scheduler"
+    command: ["node", "/app/server.mjs"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4100/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    networks: [application]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+
+  litellm:
+    profiles: [litellm-demo]
+    env_file: !override
+      - ./litellm/demo.env
+      - ${LITELLM_ENV_FILE:-./litellm/.env}
+    depends_on:
+      fake-provider: { condition: service_healthy }
+    ports:
+      - "${LITELLM_DEMO_BIND_ADDRESS:-127.0.0.1}:${LITELLM_DEMO_PORT:-4001}:4000"
+    volumes:
+      - ./litellm/config.demo.yaml:/etc/litellm/config.yaml:ro

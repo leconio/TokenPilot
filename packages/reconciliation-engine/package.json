@@ -1,0 +1,26 @@
+{
+  "name": "@tokenpilot/reconciliation-engine",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Deterministic PostgreSQL/ClickHouse reconciliation, replay, and rebuild planning",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "decimal.js": "10.6.0"
+  }
+}

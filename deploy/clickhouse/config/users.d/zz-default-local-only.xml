@@ -1,0 +1,12 @@
+<clickhouse>
+  <users>
+    <default>
+      <password remove="remove" />
+      <password_sha256_hex from_env="AI_CONTROL_CLICKHOUSE_BOOTSTRAP_PASSWORD_SHA256_HEX" />
+      <networks replace="replace">
+        <ip>127.0.0.1</ip>
+        <ip>::1</ip>
+      </networks>
+    </default>
+  </users>
+</clickhouse>

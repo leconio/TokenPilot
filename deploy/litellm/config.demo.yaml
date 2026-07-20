@@ -1,0 +1,114 @@
+# Key-free demo only. Every logical deployment uses the same local
+# OpenAI-compatible fake Provider. The api_key values are non-secret sentinels
+# required by LiteLLM's OpenAI adapter; the fake Provider ignores them.
+router_settings:
+  enable_tag_filtering: true
+  routing_strategy: simple-shuffle
+  num_retries: 0
+  fallbacks:
+    - text.fast.demo-primary: [text.fast.demo-fallback]
+
+litellm_settings:
+  turn_off_message_logging: true
+  # `callbacks` activates the request hook used for routing and quota checks.
+  # The explicit success/failure lists make every provider attempt observable,
+  # including the successful attempt after a Router fallback.
+  callbacks:
+    - ai_control_callback.proxy_handler_instance
+  success_callback:
+    - ai_control_callback.proxy_handler_instance
+  failure_callback:
+    - ai_control_callback.proxy_handler_instance
+
+model_list:
+  # Dedicated release-acceptance path. This uses separate LiteLLM model groups
+  # so the primary selection and the fallback order are deterministic. The
+  # fake Provider rejects only fake-openai-primary; fake-gemini-fallback stays
+  # healthy and returns the same deterministic token buckets as other models.
+  - model_name: text.fast.demo-primary
+    litellm_params:
+      model: openai/fake-openai-primary
+      api_base: http://fake-provider:4100/v1
+      api_key: demo-not-a-provider-credential
+      tags: ["cp:text.fast:fallback-demo"]
+      order: 1
+      weight: 100
+    model_info:
+      id: openai-fast-prod
+
+  - model_name: text.fast.demo-fallback
+    litellm_params:
+      model: openai/fake-gemini-fallback
+      api_base: http://fake-provider:4100/v1
+      api_key: demo-not-a-provider-credential
+      tags: ["cp:text.fast:fallback-demo"]
+      order: 1
+      weight: 100
+    model_info:
+      id: gemini-fast-prod
+
+  - model_name: text.fast
+    litellm_params:
+      model: openai/fake-openai-fast
+      api_base: http://fake-provider:4100/v1
+      api_key: demo-not-a-provider-credential
+      tags: ["cp:text.fast:peak", "cp:text.fast:default"]
+      order: 1
+      weight: 80
+    model_info:
+      id: openai-fast-prod
+
+  - model_name: text.fast
+    litellm_params:
+      model: openai/fake-azure-fast
+      api_base: http://fake-provider:4100/v1
+      api_key: demo-not-a-provider-credential
+      tags: ["cp:text.fast:peak", "cp:text.fast:default"]
+      order: 1
+      weight: 20
+    model_info:
+      id: azure-fast-fallback
+
+  - model_name: text.fast
+    litellm_params:
+      model: openai/fake-gemini-fast
+      api_base: http://fake-provider:4100/v1
+      api_key: demo-not-a-provider-credential
+      tags: ["cp:text.fast:peak", "cp:text.fast:default"]
+      order: 2
+      weight: 100
+    model_info:
+      id: gemini-fast-prod
+
+  - model_name: text.fast
+    litellm_params:
+      model: openai/fake-gemini-fast
+      api_base: http://fake-provider:4100/v1
+      api_key: demo-not-a-provider-credential
+      tags: ["cp:text.fast:offpeak"]
+      order: 1
+      weight: 100
+    model_info:
+      id: gemini-fast-prod
+
+  - model_name: text.fast
+    litellm_params:
+      model: openai/fake-openai-fast
+      api_base: http://fake-provider:4100/v1
+      api_key: demo-not-a-provider-credential
+      tags: ["cp:text.fast:offpeak"]
+      order: 2
+      weight: 100
+    model_info:
+      id: openai-fast-prod
+
+  - model_name: text.fast
+    litellm_params:
+      model: openai/fake-azure-fast
+      api_base: http://fake-provider:4100/v1
+      api_key: demo-not-a-provider-credential
+      tags: ["cp:text.fast:emergency"]
+      order: 1
+      weight: 100
+    model_info:
+      id: azure-fast-fallback

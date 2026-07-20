@@ -1,0 +1,7 @@
+export const API_CONFIGURATION = Symbol("API_CONFIGURATION");
+export const DATABASE_CLIENT = Symbol("DATABASE_CLIENT");
+export const REDIS_CLIENT = Symbol("REDIS_CLIENT");
+export const CLICKHOUSE_CLIENT = Symbol("CLICKHOUSE_CLIENT");
+export const EXPORT_QUEUE = Symbol("EXPORT_QUEUE");
+export const MAINTENANCE_QUEUE = Symbol("MAINTENANCE_QUEUE");
+export const RECONCILIATION_QUEUE = Symbol("RECONCILIATION_QUEUE");

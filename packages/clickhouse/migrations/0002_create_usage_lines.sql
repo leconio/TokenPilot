@@ -1,0 +1,72 @@
+-- Current empty-database baseline statement 0002.
+-- Creates normalized usage buckets written explicitly by the sink; no raw-payload parsing MV is used.
+CREATE TABLE usage_lines
+(
+    application_id String,
+    instance_id String,
+    environment LowCardinality(String),
+    application_version LowCardinality(String),
+    sdk_version LowCardinality(String),
+    connector_version LowCardinality(String),
+    config_version LowCardinality(String),
+    event_date Date DEFAULT toDate(event_time),
+    event_time DateTime64(3, 'UTC'),
+    usage_line_id String,
+    event_id String,
+    request_id String,
+    attempt_id String,
+    operation_id String,
+    session_id String,
+    conversation_id String,
+    trace_id String,
+    user_id String,
+    display_user String,
+    user_tags Array(String),
+    virtual_model LowCardinality(String),
+    model_id String,
+    model_tag LowCardinality(String),
+    provider LowCardinality(String),
+    status LowCardinality(String),
+    route_reason LowCardinality(String),
+    usage_type LowCardinality(String),
+    quantity Decimal(38, 9),
+    unit LowCardinality(String),
+    unit_key String DEFAULT '',
+    is_estimated UInt8,
+    confidence LowCardinality(String),
+    source_path String,
+    analytics_dimensions Map(String, String),
+    event_text_properties Map(String, String),
+    event_number_properties Map(String, Float64),
+    event_boolean_properties Map(String, UInt8),
+    event_datetime_properties Map(String, DateTime64(3, 'UTC')),
+    event_enum_properties Map(String, String),
+    event_text_list_properties Map(String, Array(String)),
+    user_text_properties Map(String, String),
+    user_number_properties Map(String, Float64),
+    user_boolean_properties Map(String, UInt8),
+    user_datetime_properties Map(String, DateTime64(3, 'UTC')),
+    user_enum_properties Map(String, String),
+    user_text_list_properties Map(String, Array(String)),
+    sink_delivery_id String,
+    source_outbox_id String,
+    inserted_at DateTime64(3, 'UTC') DEFAULT now64(3)
+)
+ENGINE = MergeTree
+PARTITION BY toYYYYMM(event_date)
+ORDER BY
+(
+    application_id,
+    instance_id,
+    event_date,
+    event_time,
+    user_id,
+    model_tag,
+    request_id,
+    attempt_id,
+    usage_type,
+    unit_key,
+    usage_line_id
+)
+TTL event_time + toIntervalDay(180) DELETE
+SETTINGS index_granularity = 8192;

@@ -1,0 +1,114 @@
+enum DeploymentEnvironment {
+  DEVELOPMENT @map("development")
+  TEST        @map("test")
+  STAGING     @map("staging")
+  PRODUCTION  @map("production")
+
+  @@map("deployment_environment")
+}
+
+enum ApiKeyStatus {
+  ACTIVE  @map("active")
+  REVOKED @map("revoked")
+  EXPIRED @map("expired")
+
+  @@map("api_key_status")
+}
+
+enum ApplicationStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+
+  @@map("application_status")
+}
+
+enum ApplicationRole {
+  OWNER   @map("owner")
+  ADMIN   @map("admin")
+  ANALYST @map("analyst")
+  VIEWER  @map("viewer")
+
+  @@map("application_role")
+}
+
+enum ApplicationUserStatus {
+  ACTIVE  @map("active")
+  BLOCKED @map("blocked")
+
+  @@map("application_user_status")
+}
+
+enum PropertyScope {
+  EVENT @map("event")
+  USER  @map("user")
+
+  @@map("property_scope")
+}
+
+enum PropertyDataType {
+  TEXT      @map("text")
+  NUMBER    @map("number")
+  BOOLEAN   @map("boolean")
+  DATETIME  @map("datetime")
+  ENUM      @map("enum")
+  TEXT_LIST @map("text_list")
+
+  @@map("property_data_type")
+}
+
+enum PropertyStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+
+  @@map("property_status")
+}
+
+enum SavedReportKind {
+  USAGE @map("usage")
+  COST  @map("cost")
+  AIU   @map("aiu")
+
+  @@map("saved_report_kind")
+}
+
+enum PolicyAcknowledgementState {
+  RECEIVED @map("received")
+  APPLIED  @map("applied")
+  REJECTED @map("rejected")
+
+  @@map("policy_acknowledgement_state")
+}
+
+enum BackgroundJobType {
+  USAGE_LEDGER     @map("usage.ledger")
+  EXPORTS_GENERATE @map("exports.generate")
+  MAINTENANCE      @map("maintenance")
+
+  @@map("background_job_type")
+}
+
+enum BackgroundJobStatus {
+  QUEUED    @map("queued")
+  RUNNING   @map("running")
+  COMPLETED @map("completed")
+  FAILED    @map("failed")
+
+  @@map("background_job_status")
+}
+
+enum ConnectorStatus {
+  HEALTHY  @map("healthy")
+  DEGRADED @map("degraded")
+  STALE    @map("stale")
+
+  @@map("connector_status")
+}
+
+enum PublicationStatus {
+  DRAFT     @map("draft")
+  PUBLISHED @map("published")
+  RETIRED   @map("retired")
+  UNKNOWN   @map("unknown")
+
+  @@map("publication_status")
+}

@@ -1,0 +1,722 @@
+{
+  "$id": "https://tokenpilot.dev/schemas/normalized-usage.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "event_id": {
+      "$ref": "#/$defs/EventId"
+    },
+    "event_time": {
+      "$ref": "#/$defs/__schema3"
+    },
+    "application_version": {
+      "$ref": "#/$defs/__schema4"
+    },
+    "sdk_version": {
+      "$ref": "#/$defs/__schema5"
+    },
+    "connector_version": {
+      "$ref": "#/$defs/__schema6"
+    },
+    "config_version": {
+      "$ref": "#/$defs/__schema7"
+    },
+    "user": {
+      "$ref": "#/$defs/__schema8"
+    },
+    "event_properties": {
+      "$ref": "#/$defs/__schema9"
+    },
+    "user_properties": {
+      "$ref": "#/$defs/__schema14"
+    },
+    "source": {
+      "$ref": "#/$defs/__schema15"
+    },
+    "request": {
+      "$ref": "#/$defs/__schema16"
+    },
+    "model": {
+      "$ref": "#/$defs/__schema18"
+    },
+    "route": {
+      "$ref": "#/$defs/__schema20"
+    },
+    "analytics_dimensions": {
+      "$ref": "#/$defs/AnalyticsDimensions"
+    },
+    "result": {
+      "$ref": "#/$defs/__schema24"
+    },
+    "source_cost": {
+      "$ref": "#/$defs/__schema25"
+    },
+    "privacy": {
+      "$ref": "#/$defs/__schema26"
+    },
+    "normalization": {
+      "$ref": "#/$defs/__schema27"
+    },
+    "usage_lines": {
+      "$ref": "#/$defs/__schema29"
+    }
+  },
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_time",
+    "user",
+    "source",
+    "request",
+    "model",
+    "route",
+    "analytics_dimensions",
+    "result",
+    "source_cost",
+    "privacy",
+    "normalization",
+    "usage_lines"
+  ],
+  "additionalProperties": false,
+  "title": "Normalized Usage",
+  "description": "A normalized usage event with exclusive, rating-ready line items.",
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "const": "2.0"
+    },
+    "EventId": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/__schema1"
+        },
+        {
+          "$ref": "#/$defs/__schema2"
+        }
+      ],
+      "title": "Event ID",
+      "description": "A globally idempotent ULID or UUIDv7 event identifier."
+    },
+    "__schema1": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "__schema2": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-7[0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$"
+    },
+    "__schema3": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?Z$"
+    },
+    "__schema4": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "__schema5": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "__schema6": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "__schema7": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "__schema8": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "display_user": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "user_id"
+      ],
+      "additionalProperties": false
+    },
+    "__schema9": {
+      "$ref": "#/$defs/__schema10"
+    },
+    "__schema10": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/__schema11"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema12"
+      }
+    },
+    "__schema11": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+    },
+    "__schema12": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "maxItems": 32,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema13"
+          }
+        }
+      ]
+    },
+    "__schema13": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "__schema14": {
+      "$ref": "#/$defs/__schema10"
+    },
+    "__schema15": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/UsageSourceType"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "instance_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "version",
+        "instance_id"
+      ],
+      "additionalProperties": false
+    },
+    "UsageSourceType": {
+      "type": "string",
+      "enum": [
+        "gateway",
+        "sdk",
+        "import",
+        "reconciler",
+        "unknown"
+      ]
+    },
+    "__schema16": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "$ref": "#/$defs/__schema17"
+        },
+        "attempt_id": {
+          "$ref": "#/$defs/__schema17"
+        },
+        "operation_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/__schema17"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parent_request_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/__schema17"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/__schema17"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conversation_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/__schema17"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trace_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/__schema17"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reservation_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/__schema17"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "request_id",
+        "attempt_id",
+        "operation_id",
+        "parent_request_id",
+        "session_id",
+        "conversation_id",
+        "trace_id"
+      ],
+      "additionalProperties": false
+    },
+    "__schema17": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$"
+    },
+    "__schema18": {
+      "type": "object",
+      "properties": {
+        "virtual_model": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 120,
+              "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/__schema17"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_tag": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "provider": {
+          "$ref": "#/$defs/__schema19"
+        }
+      },
+      "required": [
+        "model_tag"
+      ],
+      "additionalProperties": false
+    },
+    "__schema19": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema20": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "configuration_version": {
+              "$ref": "#/$defs/__schema19"
+            },
+            "rule": {
+              "$ref": "#/$defs/__schema19"
+            },
+            "reason": {
+              "$ref": "#/$defs/__schema19"
+            },
+            "tags": {
+              "maxItems": 16,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema21"
+              }
+            },
+            "fallback_from": {
+              "$ref": "#/$defs/__schema19"
+            },
+            "is_final_success_attempt": {
+              "type": "boolean"
+            },
+            "is_user_visible_operation": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "configuration_version",
+            "rule",
+            "reason",
+            "tags",
+            "fallback_from",
+            "is_final_success_attempt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema21": {
+      "type": "string",
+      "maxLength": 200,
+      "pattern": "^cp:[a-z0-9][a-z0-9._-]*(?::[a-z0-9][a-z0-9._-]*)+$"
+    },
+    "AnalyticsDimensions": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema23"
+      },
+      "title": "Analytics Dimensions",
+      "description": "Custom dimensions used only for usage analysis and reports.",
+      "maxProperties": 32
+    },
+    "__schema22": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "__schema23": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 256
+        },
+        {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "boolean"
+        }
+      ]
+    },
+    "__schema24": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/ResultStatus"
+        },
+        "http_status": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 599
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latency_ms": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_class": {
+          "$ref": "#/$defs/__schema19"
+        }
+      },
+      "required": [
+        "status",
+        "http_status",
+        "latency_ms",
+        "error_class"
+      ],
+      "additionalProperties": false
+    },
+    "ResultStatus": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failure",
+        "cancelled",
+        "timeout",
+        "unknown"
+      ]
+    },
+    "__schema25": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "$ref": "#/$defs/Decimal38Scale18"
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "is_estimated": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "amount",
+            "currency",
+            "is_estimated"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "Decimal38Scale18": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]{0,19})(?:\\.[0-9]{1,18})?$"
+    },
+    "__schema26": {
+      "type": "object",
+      "properties": {
+        "contains_prompt": {
+          "type": "boolean",
+          "const": false
+        },
+        "contains_response": {
+          "type": "boolean",
+          "const": false
+        }
+      },
+      "required": [
+        "contains_prompt",
+        "contains_response"
+      ],
+      "additionalProperties": false
+    },
+    "__schema27": {
+      "type": "object",
+      "properties": {
+        "normalizer_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "normalizer_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "missing_usage_fields": {
+          "maxItems": 32,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema28"
+          }
+        },
+        "warnings": {
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NormalizationWarning"
+          }
+        }
+      },
+      "required": [
+        "normalizer_name",
+        "normalizer_version",
+        "missing_usage_fields",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "__schema28": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "NormalizationWarning": {
+      "type": "string",
+      "enum": [
+        "model_unmapped",
+        "unknown"
+      ]
+    },
+    "__schema29": {
+      "minItems": 1,
+      "maxItems": 64,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema30"
+      }
+    },
+    "__schema30": {
+      "type": "object",
+      "properties": {
+        "usage_type": {
+          "$ref": "#/$defs/UsageType"
+        },
+        "quantity": {
+          "$ref": "#/$defs/Decimal38Scale9"
+        },
+        "unit": {
+          "$ref": "#/$defs/UsageUnit"
+        },
+        "unit_key": {
+          "$ref": "#/$defs/__schema31"
+        },
+        "source_path": {
+          "$ref": "#/$defs/__schema32"
+        },
+        "is_estimated": {
+          "$ref": "#/$defs/__schema33"
+        },
+        "confidence": {
+          "$ref": "#/$defs/UsageConfidence"
+        }
+      },
+      "required": [
+        "usage_type",
+        "quantity",
+        "unit",
+        "source_path",
+        "is_estimated",
+        "confidence"
+      ],
+      "additionalProperties": false
+    },
+    "UsageType": {
+      "type": "string",
+      "enum": [
+        "uncached_input_token",
+        "cache_read_input_token",
+        "cache_write_input_token",
+        "output_token",
+        "reasoning_output_token",
+        "input_image",
+        "output_image",
+        "input_audio_second",
+        "output_audio_second",
+        "input_video_second",
+        "output_video_second",
+        "embedding_token",
+        "request",
+        "custom_unit",
+        "unknown"
+      ],
+      "title": "Usage Type",
+      "description": "A mutually exclusive canonical usage bucket."
+    },
+    "Decimal38Scale9": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]{0,28})(?:\\.[0-9]{1,9})?$"
+    },
+    "UsageUnit": {
+      "type": "string",
+      "enum": [
+        "token",
+        "image",
+        "second",
+        "request",
+        "custom",
+        "unknown"
+      ]
+    },
+    "__schema31": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+    },
+    "__schema32": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?:[A-Za-z0-9_.$-]|\\u005b|\\u005d)+$"
+    },
+    "__schema33": {
+      "type": "boolean"
+    },
+    "UsageConfidence": {
+      "type": "string",
+      "enum": [
+        "exact_provider_response",
+        "gateway_reported",
+        "sdk_reported",
+        "estimated"
+      ]
+    }
+  }
+}

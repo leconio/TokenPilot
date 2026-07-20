@@ -1,0 +1,44 @@
+{
+  "schema_version": "2.0",
+  "application_id": "00000000-0000-4000-8000-000000000099",
+  "version": "runtime-current",
+  "etag": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "signature": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "expires_at": "2026-07-19T14:00:00.000Z",
+  "routing": {
+    "assistant": {
+      "virtual_model_id": "00000000-0000-4000-8000-000000000100",
+      "configuration_version": 7,
+      "configuration_etag": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "published_at": "2026-07-18T14:00:00.000Z",
+      "timezone": "Asia/Shanghai",
+      "default": {
+        "route_tag": "cp:assistant:default",
+        "selection_mode": "ordered",
+        "targets": [
+          {
+            "model_id": "00000000-0000-4000-8000-000000000101",
+            "model_tag": "openai/gpt-5-mini",
+            "provider": "openai",
+            "route_tag": "cp:assistant:default",
+            "fallback_order": 0,
+            "weight": 1
+          }
+        ]
+      },
+      "rules": []
+    }
+  },
+  "aiu": {
+    "enabled": true,
+    "mode": "observe",
+    "unrated_model_policy": "alert_only"
+  },
+  "access": {
+    "application_enabled": true,
+    "blocked_user_ids": ["blocked-user"]
+  },
+  "dimensions": {
+    "analytics_allowed_keys": ["client", "region"]
+  }
+}

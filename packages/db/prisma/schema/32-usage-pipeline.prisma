@@ -1,0 +1,218 @@
+model UsageEventRegistry {
+  id                         String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId              String                  @map("application_id") @db.Uuid
+  applicationVersion         String?                 @map("application_version") @db.VarChar(64)
+  sdkVersion                 String?                 @map("sdk_version") @db.VarChar(64)
+  connectorVersion           String?                 @map("connector_version") @db.VarChar(64)
+  configVersion              String?                 @map("config_version") @db.VarChar(64)
+  externalUserId             String                  @map("external_user_id") @db.VarChar(256)
+  userName                   String?                 @map("user_name") @db.VarChar(256)
+  eventPropertiesJson        Json?                   @map("event_properties_json")
+  userPropertiesJson         Json?                   @map("user_properties_json")
+  applicationUserId          String                  @map("application_user_id") @db.Uuid
+  virtualModel               String?                 @map("virtual_model") @db.VarChar(120)
+  realModelId                String?                 @map("model_id") @db.Uuid
+  modelTag                   String                  @map("model_tag") @db.VarChar(256)
+  reservationId              String?                 @map("reservation_id") @db.Uuid
+  eventId                    String                  @map("event_id") @db.VarChar(36)
+  schemaVersion              String                  @map("schema_version") @db.VarChar(32)
+  payloadHash                String                  @map("payload_hash") @db.Char(64)
+  requestId                  String                  @map("request_id") @db.VarChar(256)
+  attemptId                  String                  @map("attempt_id") @db.VarChar(256)
+  operationId                String?                 @map("operation_id") @db.VarChar(256)
+  instanceId                 String                  @map("instance_id") @db.VarChar(256)
+  provider                   String?                 @db.VarChar(120)
+  resultStatus               String                  @map("result_status") @db.VarChar(32)
+  routeReason                String?                 @map("route_reason") @db.VarChar(256)
+  fallbackFrom               String?                 @map("fallback_from") @db.VarChar(256)
+  eventTime                  DateTime                @map("event_time") @db.Timestamptz(6)
+  receivedAt                 DateTime                @default(now()) @map("received_at") @db.Timestamptz(6)
+  sourceType                 String                  @map("source_type") @db.VarChar(64)
+  processingStage            PipelineStage           @default(RECEIVED) @map("processing_stage")
+  clickhouseRawSyncedAt      DateTime?               @map("clickhouse_raw_synced_at") @db.Timestamptz(6)
+  clickhouseOfficialSyncedAt DateTime?               @map("clickhouse_official_synced_at") @db.Timestamptz(6)
+  analyticsDimensionsJson    Json?                   @map("analytics_dimensions_json")
+  lastError                  String?                 @map("last_error") @db.Text
+  createdAt                  DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application                Application             @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  applicationUser            ApplicationUser         @relation(fields: [applicationId, applicationUserId], references: [applicationId, id], onDelete: Restrict)
+  realModel                  ModelDefinition?        @relation(fields: [applicationId, realModelId], references: [applicationId, id], onDelete: Restrict)
+  inbox                      IngestionInbox?
+  applicationRating          ApplicationUsageRating?
+
+  @@unique([applicationId, eventId], map: "usage_event_registry_application_event_key")
+  @@index([payloadHash], map: "usage_event_registry_payload_hash_idx")
+  @@index([applicationId, eventTime, eventId], map: "usage_event_registry_application_time_idx")
+  @@index([applicationId, externalUserId, eventTime], map: "usage_event_registry_application_user_idx")
+  @@index([requestId, attemptId], map: "usage_event_registry_request_attempt_idx")
+  @@index([processingStage, receivedAt], map: "usage_event_registry_stage_received_idx")
+  @@index([eventTime, eventId], map: "usage_event_registry_event_time_idx")
+  @@index([applicationId, modelTag, eventTime], map: "usage_event_registry_application_model_idx")
+  @@index([resultStatus, eventTime], map: "usage_event_registry_status_time_idx")
+  @@map("usage_event_registry")
+}
+
+model IngestionInbox {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId     String             @map("application_id") @db.Uuid
+  eventId           String             @map("event_id") @db.VarChar(36)
+  payloadJson       Json?              @map("payload_json")
+  status            InboxStatus        @default(PENDING)
+  stage             PipelineStage      @default(RECEIVED)
+  attemptCount      Int                @default(0) @map("attempt_count")
+  availableAt       DateTime           @default(now()) @map("available_at") @db.Timestamptz(6)
+  nextRetryAt       DateTime?          @map("next_retry_at") @db.Timestamptz(6)
+  leaseOwner        String?            @map("lease_owner") @db.VarChar(256)
+  leaseExpiresAt    DateTime?          @map("lease_expires_at") @db.Timestamptz(6)
+  lastError         String?            @map("last_error") @db.Text
+  completedAt       DateTime?          @map("completed_at") @db.Timestamptz(6)
+  payloadPurgeAfter DateTime?          @map("payload_purge_after") @db.Timestamptz(6)
+  payloadPurgedAt   DateTime?          @map("payload_purged_at") @db.Timestamptz(6)
+  replayIntentJson  Json?              @map("replay_intent_json")
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application       Application        @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  eventRegistry     UsageEventRegistry @relation(fields: [applicationId, eventId], references: [applicationId, eventId], onDelete: Restrict)
+  deadLetterEvents  DeadLetterEvent[]
+
+  @@unique([applicationId, eventId], map: "ingestion_inbox_application_event_key")
+  @@unique([applicationId, id], map: "ingestion_inbox_application_id_key")
+  @@index([status, availableAt, leaseExpiresAt], map: "ingestion_inbox_status_available_lease_idx")
+  @@index([applicationId, status, availableAt], map: "ingestion_inbox_application_status_idx")
+  @@index([stage, status, createdAt], map: "ingestion_inbox_stage_status_created_idx")
+  @@index([payloadPurgeAfter], map: "ingestion_inbox_payload_purge_idx")
+  @@map("ingestion_inbox")
+}
+
+model PipelineOutbox {
+  id               BigInt            @id @default(autoincrement())
+  applicationId    String            @map("application_id") @db.Uuid
+  aggregateType    String            @map("aggregate_type") @db.VarChar(120)
+  aggregateId      String            @map("aggregate_id") @db.VarChar(256)
+  eventType        String            @map("event_type") @db.VarChar(120)
+  payloadJson      Json              @map("payload_json")
+  status           OutboxStatus      @default(PENDING)
+  idempotencyKey   String            @map("idempotency_key") @db.VarChar(256)
+  replayOfOutboxId BigInt?           @map("replay_of_outbox_id")
+  attemptCount     Int               @default(0) @map("attempt_count")
+  availableAt      DateTime          @default(now()) @map("available_at") @db.Timestamptz(6)
+  nextRetryAt      DateTime?         @map("next_retry_at") @db.Timestamptz(6)
+  leaseOwner       String?           @map("lease_owner") @db.VarChar(256)
+  leaseExpiresAt   DateTime?         @map("lease_expires_at") @db.Timestamptz(6)
+  lastError        String?           @map("last_error") @db.Text
+  sentAt           DateTime?         @map("sent_at") @db.Timestamptz(6)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application      Application       @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  deadLetterEvents DeadLetterEvent[]
+
+  @@unique([applicationId, id], map: "pipeline_outbox_application_id_key")
+  @@unique([applicationId, idempotencyKey], map: "pipeline_outbox_application_idempotency_key")
+  @@index([applicationId, status, availableAt, id], map: "pipeline_outbox_application_status_idx")
+  @@index([status, availableAt, id], map: "pipeline_outbox_status_available_idx")
+  @@index([aggregateType, aggregateId, id], map: "pipeline_outbox_aggregate_idx")
+  @@index([replayOfOutboxId], map: "pipeline_outbox_replay_of_idx")
+  @@index([leaseExpiresAt], map: "pipeline_outbox_lease_expires_idx")
+  @@map("pipeline_outbox")
+}
+
+model ClickhouseSyncState {
+  pipelineName  String               @id @map("pipeline_name") @db.VarChar(120)
+  lastOutboxId  BigInt?              @map("last_outbox_id")
+  lastEventTime DateTime?            @map("last_event_time") @db.Timestamptz(6)
+  lastSuccessAt DateTime?            @map("last_success_at") @db.Timestamptz(6)
+  lagSeconds    BigInt               @default(0) @map("lag_seconds")
+  status        ClickhouseSyncStatus @default(HEALTHY)
+  lastError     String?              @map("last_error") @db.Text
+  updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, updatedAt], map: "clickhouse_sync_state_status_updated_idx")
+  @@map("clickhouse_sync_state")
+}
+
+model DeadLetterEvent {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId  String           @map("application_id") @db.Uuid
+  eventId        String?          @map("event_id") @db.VarChar(36)
+  inboxId        String?          @map("inbox_id") @db.Uuid
+  outboxId       BigInt?          @map("outbox_id")
+  stage          PipelineStage
+  errorCode      String           @map("error_code") @db.VarChar(120)
+  errorClass     String           @map("error_class") @db.VarChar(120)
+  errorMessage   String           @map("error_message") @db.Text
+  detailsJson    Json             @default("{}") @map("details_json")
+  status         DeadLetterStatus @default(OPEN)
+  attemptCount   Int              @default(0) @map("attempt_count")
+  replayCount    Int              @default(0) @map("replay_count")
+  nextRetryAt    DateTime?        @map("next_retry_at") @db.Timestamptz(6)
+  firstFailedAt  DateTime         @default(now()) @map("first_failed_at") @db.Timestamptz(6)
+  lastFailedAt   DateTime         @default(now()) @map("last_failed_at") @db.Timestamptz(6)
+  resolution     String?          @db.Text
+  resolvedBy     String?          @map("resolved_by") @db.Text
+  resolvedAt     DateTime?        @map("resolved_at") @db.Timestamptz(6)
+  retentionUntil DateTime?        @map("retention_until") @db.Timestamptz(6)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application    Application      @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  inbox          IngestionInbox?  @relation(fields: [applicationId, inboxId], references: [applicationId, id], onDelete: Restrict)
+  outbox         PipelineOutbox?  @relation(fields: [applicationId, outboxId], references: [applicationId, id], onDelete: Restrict)
+  resolver       User?            @relation("DeadLetterResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, status, nextRetryAt, firstFailedAt], map: "dead_letter_events_application_status_idx")
+  @@index([eventId, stage, status], map: "dead_letter_events_event_stage_idx")
+  @@index([outboxId, stage, status], map: "dead_letter_events_outbox_stage_idx")
+  @@index([retentionUntil], map: "dead_letter_events_retention_idx")
+  @@map("dead_letter_events")
+}
+
+model ReconciliationRun {
+  id             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId  String                  @map("application_id") @db.Uuid
+  idempotencyKey String?                 @unique(map: "reconciliation_runs_idempotency_key_key") @map("idempotency_key") @db.VarChar(256)
+  runType        ReconciliationRunType   @map("run_type")
+  rangeStart     DateTime                @map("range_start") @db.Timestamptz(6)
+  rangeEnd       DateTime                @map("range_end") @db.Timestamptz(6)
+  status         ReconciliationRunStatus @default(QUEUED)
+  pgWatermark    DateTime?               @map("pg_watermark") @db.Timestamptz(6)
+  chWatermark    DateTime?               @map("ch_watermark") @db.Timestamptz(6)
+  scopeJson      Json                    @default("{}") @map("scope_json")
+  summaryJson    Json                    @default("{\"event_count\":\"0\",\"input_tokens\":\"0\",\"cached_input_tokens\":\"0\",\"output_tokens\":\"0\",\"provider_cost\":\"0\",\"aiu_micros\":\"0\",\"unpriced_count\":\"0\",\"unrated_count\":\"0\",\"diff_count\":\"0\"}") @map("summary_json")
+  startedBy      String?                 @map("started_by") @db.Text
+  startedAt      DateTime                @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt     DateTime?               @map("finished_at") @db.Timestamptz(6)
+  error          String?                 @db.Text
+  starter        User?                   @relation("ReconciliationRunStarter", fields: [startedBy], references: [id], onDelete: SetNull)
+  application    Application             @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  diffs          ReconciliationDiff[]
+
+  @@index([applicationId, status, startedAt], map: "reconciliation_runs_application_status_idx")
+  @@index([applicationId, rangeStart, rangeEnd], map: "reconciliation_runs_application_range_idx")
+  @@map("reconciliation_runs")
+}
+
+model ReconciliationDiff {
+  id                 String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId              String                   @map("run_id") @db.Uuid
+  diffType           ReconciliationDiffType   @map("diff_type")
+  severity           ReconciliationSeverity
+  dimensionsJson     Json?                    @map("dimensions_json")
+  pgValuesJson       Json?                    @map("pg_values_json")
+  chValuesJson       Json?                    @map("ch_values_json")
+  deltaValuesJson    Json                     @map("delta_values_json")
+  sampleEventIdsJson Json                     @default("[]") @map("sample_event_ids_json")
+  differenceCount    BigInt                   @default(0) @map("difference_count")
+  amount             Decimal?                 @db.Decimal(38, 18)
+  explanation        String                   @default("") @db.Text
+  status             ReconciliationDiffStatus @default(OPEN)
+  resolution         String?                  @db.Text
+  resolvedBy         String?                  @map("resolved_by") @db.Text
+  resolvedAt         DateTime?                @map("resolved_at") @db.Timestamptz(6)
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  run                ReconciliationRun        @relation(fields: [runId], references: [id], onDelete: Restrict)
+
+  @@index([runId, severity, status], map: "reconciliation_diffs_run_severity_idx")
+  @@index([runId, diffType, status], map: "reconciliation_diffs_run_type_status_idx")
+  @@index([diffType, status, createdAt], map: "reconciliation_diffs_type_status_idx")
+  @@map("reconciliation_diffs")
+}

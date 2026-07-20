@@ -1,0 +1,92 @@
+x-control-plane-version: ${CONTROL_PLANE_VERSION:-0.2.0}
+
+services:
+  clickhouse:
+    image: ${CLICKHOUSE_IMAGE:-clickhouse:26.3.17.4@sha256:158dcce6f6fdc59309650aad6b79484abf4eed07d4e0bdba31d732e64b5a25fb}
+    pull_policy: ${CLICKHOUSE_PULL_POLICY:-if_not_present}
+    restart: unless-stopped
+    user: "101:101"
+    entrypoint: [/usr/local/bin/tokenpilot-clickhouse-entrypoint.sh]
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-ai_control_plane}
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_BOOTSTRAP_PASSWORD:?CLICKHOUSE_BOOTSTRAP_PASSWORD is required}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+      AI_CONTROL_CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-ai_control_plane}
+      AI_CONTROL_CLICKHOUSE_APPLICATION_USER: ${CLICKHOUSE_USERNAME:-ai_control_app}
+      AI_CONTROL_CLICKHOUSE_APPLICATION_PASSWORD: ${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD is required}
+      AI_CONTROL_CLICKHOUSE_MIGRATION_USER: ${CLICKHOUSE_MIGRATION_USERNAME:-ai_control_migrator}
+      AI_CONTROL_CLICKHOUSE_MIGRATION_PASSWORD: ${CLICKHOUSE_MIGRATION_PASSWORD:?CLICKHOUSE_MIGRATION_PASSWORD is required}
+    expose: ["8123", "9000"]
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/tokenpilot-clickhouse-healthcheck.sh"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks: [database]
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - clickhouse-logs:/var/log/clickhouse-server
+      - ./clickhouse/entrypoint/tokenpilot-clickhouse-entrypoint.sh:/usr/local/bin/tokenpilot-clickhouse-entrypoint.sh:ro
+      - ./clickhouse/healthcheck.sh:/usr/local/bin/tokenpilot-clickhouse-healthcheck.sh:ro
+      - ./clickhouse/init/001-create-least-privilege-users.sh:/docker-entrypoint-initdb.d/001-create-least-privilege-users.sh:ro
+      - ./clickhouse/config/users.d/zz-default-local-only.xml:/etc/clickhouse-server/users.d/zz-default-local-only.xml:ro
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+      - /run/clickhouse-server:rw,noexec,nosuid,nodev,mode=0755,uid=101,gid=101
+      - /etc/clickhouse-server/users.d:rw,noexec,nosuid,nodev,mode=0755,uid=101,gid=101
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+
+  clickhouse-migrate:
+    image: ${WORKER_IMAGE:-tokenpilot-worker:0.2.0}
+    pull_policy: never
+    restart: "no"
+    init: true
+    user: "1000:1000"
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+    command: ["node", "/workspace/packages/clickhouse/dist/cli.js", "up"]
+    environment:
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-ai_control_plane}
+      CLICKHOUSE_MIGRATION_USERNAME: ${CLICKHOUSE_MIGRATION_USERNAME:-ai_control_migrator}
+      CLICKHOUSE_MIGRATION_PASSWORD: ${CLICKHOUSE_MIGRATION_PASSWORD:?CLICKHOUSE_MIGRATION_PASSWORD is required}
+      CLICKHOUSE_USERNAME: ${CLICKHOUSE_USERNAME:-ai_control_app}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD is required}
+      CLICKHOUSE_SECURE: "false"
+      CLICKHOUSE_REQUEST_TIMEOUT_MS: ${CLICKHOUSE_REQUEST_TIMEOUT_MS:-10000}
+      CLICKHOUSE_MIGRATIONS_DIR: /workspace/packages/clickhouse/migrations
+    depends_on:
+      clickhouse: { condition: service_healthy }
+    networks: [database]
+
+  worker:
+    depends_on:
+      clickhouse-migrate: { condition: service_completed_successfully }
+
+networks:
+  database:
+    internal: true
+
+volumes:
+  clickhouse-data:
+  clickhouse-logs:

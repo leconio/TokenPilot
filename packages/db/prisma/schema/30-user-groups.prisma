@@ -1,0 +1,74 @@
+model ApplicationUserGroup {
+  id                String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId     String                           @map("application_id") @db.Uuid
+  name              String                           @db.VarChar(120)
+  description       String?                          @db.VarChar(500)
+  definitionJson    Json                             @map("definition_json")
+  definitionVersion Int                              @default(1) @map("definition_version")
+  refreshMinutes    Int?                             @map("refresh_minutes")
+  enabled           Boolean                          @default(true)
+  lastEvaluatedAt   DateTime?                        @map("last_evaluated_at") @db.Timestamptz(6)
+  createdAt         DateTime                         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  application       Application                      @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  evaluations       ApplicationUserGroupEvaluation[]
+  quotaPolicy       AiuQuotaPolicy?
+
+  @@unique([applicationId, name], map: "application_user_groups_name_key")
+  @@unique([applicationId, id], map: "application_user_groups_application_id_key")
+  @@index([applicationId, enabled, updatedAt], map: "application_user_groups_enabled_idx")
+  @@map("application_user_groups")
+}
+
+model ApplicationUserGroupEvaluation {
+  id                String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId     String                           @map("application_id") @db.Uuid
+  groupId           String                           @map("group_id") @db.Uuid
+  definitionVersion Int                              @map("definition_version")
+  memberCount       Int                              @map("member_count")
+  evaluatedAt       DateTime                         @default(now()) @map("evaluated_at") @db.Timestamptz(6)
+  application       Application                      @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  group             ApplicationUserGroup             @relation(fields: [applicationId, groupId], references: [applicationId, id], onDelete: Restrict)
+  members           ApplicationUserGroupMember[]
+  bulkActions       ApplicationUserGroupBulkAction[]
+
+  @@unique([applicationId, id], map: "application_user_group_evaluations_application_id_key")
+  @@unique([applicationId, id, groupId], map: "application_user_group_evaluations_group_id_key")
+  @@index([applicationId, groupId, evaluatedAt], map: "application_user_group_evaluations_group_idx")
+  @@map("application_user_group_evaluations")
+}
+
+model ApplicationUserGroupMember {
+  applicationId String                         @map("application_id") @db.Uuid
+  evaluationId  String                         @map("evaluation_id") @db.Uuid
+  groupId       String                         @map("group_id") @db.Uuid
+  userId        String                         @map("user_id") @db.Uuid
+  matchedAt     DateTime                       @default(now()) @map("matched_at") @db.Timestamptz(6)
+  evaluation    ApplicationUserGroupEvaluation @relation(fields: [applicationId, evaluationId, groupId], references: [applicationId, id, groupId], onDelete: Restrict)
+  user          ApplicationUser                @relation(fields: [applicationId, userId], references: [applicationId, id], onDelete: Restrict)
+
+  @@id([evaluationId, userId])
+  @@index([applicationId, groupId, userId], map: "application_user_group_members_group_user_idx")
+  @@index([applicationId, userId, matchedAt], map: "application_user_group_members_user_idx")
+  @@map("application_user_group_members")
+}
+
+model ApplicationUserGroupBulkAction {
+  id            String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId String                         @map("application_id") @db.Uuid
+  groupId       String                         @map("group_id") @db.Uuid
+  evaluationId  String                         @map("evaluation_id") @db.Uuid
+  action        String                         @db.VarChar(32)
+  reason        String                         @db.VarChar(500)
+  actorId       String                         @map("actor_id") @db.VarChar(256)
+  targetCount   Int                            @map("target_count")
+  successCount  Int                            @map("success_count")
+  failureCount  Int                            @map("failure_count")
+  resultJson    Json                           @map("result_json")
+  createdAt     DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
+  application   Application                    @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  evaluation    ApplicationUserGroupEvaluation @relation(fields: [applicationId, evaluationId, groupId], references: [applicationId, id, groupId], onDelete: Restrict)
+
+  @@index([applicationId, groupId, createdAt], map: "application_user_group_actions_group_idx")
+  @@map("application_user_group_bulk_actions")
+}

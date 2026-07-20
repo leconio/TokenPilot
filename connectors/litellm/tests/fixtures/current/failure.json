@@ -1,0 +1,29 @@
+{
+  "standard_logging_object": {
+    "id": "attempt-fallback-primary",
+    "status": "failure",
+    "model": "anthropic/claude-sonnet-4-20260514",
+    "model_id": "anthropic-primary-prod",
+    "model_group": "text.fast",
+    "startTime": "2026-07-16T02:10:00.000Z",
+    "endTime": "2026-07-16T02:10:00.120Z",
+    "error_information": {
+      "error_class": "RateLimitError",
+      "error_code": 429,
+      "error_str": "PRIVATE_PROVIDER_ERROR_BODY",
+      "llm_provider": "anthropic"
+    }
+  },
+  "litellm_params": {
+    "metadata": {
+      "cp": {
+        "context_version": "runtime-v42",
+        "user_id": "user_123",
+        "display_user": "Ada",
+        "operation_id": "op_fallback_01",
+        "request_id": "req_fallback_01",
+        "trace_id": "trace_fallback_01"
+      }
+    }
+  }
+}

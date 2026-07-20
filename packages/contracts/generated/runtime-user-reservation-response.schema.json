@@ -1,0 +1,120 @@
+{
+  "$id": "https://tokenpilot.dev/schemas/runtime-user-reservation-response.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "allowed": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "reason": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "user": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "reservation": {
+      "$ref": "#/$defs/__schema5"
+    }
+  },
+  "required": [
+    "allowed",
+    "reason",
+    "user",
+    "reservation"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "boolean"
+    },
+    "__schema1": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "__schema2": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "limit_aiu_micros": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/__schema4"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "used_aiu_micros": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "reserved_aiu_micros": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "remaining_aiu_micros": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/__schema4"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "limit_aiu_micros",
+        "used_aiu_micros",
+        "reserved_aiu_micros",
+        "remaining_aiu_micros"
+      ],
+      "additionalProperties": false
+    },
+    "__schema3": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$"
+    },
+    "__schema4": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]*)$"
+    },
+    "__schema5": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema3"
+            },
+            "token": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 4096
+            },
+            "reserved_aiu_micros": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "expires_at": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?Z$"
+            }
+          },
+          "required": [
+            "id",
+            "token",
+            "reserved_aiu_micros",
+            "expires_at"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

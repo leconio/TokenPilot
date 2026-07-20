@@ -1,0 +1,5 @@
+# Remote-only acceptance extensions for the fresh isolated stack.
+services:
+  prometheus:
+    volumes:
+      - ./observability/alerts.test.yml:/etc/prometheus/alerts.test.yml:ro
