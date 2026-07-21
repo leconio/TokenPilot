@@ -11,8 +11,8 @@ current product behavior kept in the repository.
   reports, and audit records.
 - Application-scoped users populated automatically from reported `user_id` and optional
   `display_user`, with manual administration, tags, groups, quota reset, and access suspension.
-- LiteLLM-tag models with reported-cost-first conditional fallbacks and independent AIU rates for
-  each usage dimension.
+- Connection-backed real models for LiteLLM, OpenAI-compatible services, and Anthropic, with
+  reported-cost-first conditional fallbacks and independent AIU rates for each usage dimension.
 - Virtual models with conditional routes, ordered fallbacks, temporary rules, signed runtime
   snapshots, and connector acknowledgements.
 - Typed event and user properties, ClickHouse-backed event search, saved reports, dashboards, and
@@ -35,7 +35,7 @@ current product behavior kept in the repository.
 ### Security
 
 - Application identity comes from the application key and cannot be selected by an event body.
-- Provider keys stay in the user's LiteLLM environment.
+- Provider keys stay in the application or LiteLLM runtime environment.
 - Prompt and response bodies are excluded by default, while sensitive typed fields are masked and
   permission-controlled.
 - Cross-application object references, runtime snapshots, exports, and machine keys are rejected.
