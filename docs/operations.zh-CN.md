@@ -10,7 +10,7 @@ curl --fail http://127.0.0.1:8080/healthz
 curl --fail http://127.0.0.1:8080/health/ready
 ```
 
-存活检查只表示进程还在运行；就绪检查要求 PostgreSQL、Redis 和 ClickHouse 同时正常。即使 SDK 或外部 LiteLLM 还能用最后一次成功配置访问模型服务，只要就绪检查失败，就应该按服务故障处理。
+存活检查表示进程还在运行。就绪检查还要求 PostgreSQL、Redis 和 ClickHouse 正常。即使 SDK 或外部 LiteLLM 还能使用最后一次配置访问模型服务，就绪检查失败仍属于服务故障。
 
 故障期间重点查看这些页面：
 
@@ -26,11 +26,11 @@ docker compose logs --since 30m api worker scheduler web caddy
 docker compose logs --since 30m postgres redis clickhouse
 ```
 
-日志中不应出现提示词、模型回复、密钥或原始用户身份。完整日志只能保存在受限运维系统，并设置明确保留时间。
+日志中不应出现提示词、模型回复、密钥或原始用户身份。详细日志只能保存在受限运维系统，并设置明确保留时间。
 
 ## 备份
 
-在同一个运维时间窗口备份所有权威和统计存储：
+在同一个运维时间窗口备份配置和统计存储：
 
 ```bash
 ./scripts/backup-postgres.sh --output /secure/backups
@@ -38,7 +38,7 @@ docker compose logs --since 30m postgres redis clickhouse
 ./scripts/operations/backup-redis.sh --output /secure/backups
 ```
 
-生成的清单和校验值要与备份一起保存。备份存储应加密，并定期在隔离项目中恢复验证。没有实际恢复过的备份不能算已验证备份。
+生成的清单和校验值要与备份一起保存。备份位置应加密，并在依赖这份备份前用隔离项目做一次恢复测试。
 
 LiteLLM Connector spool 是本地持久传输状态。只在 Connector 停止时备份，或者使用 SQLite 安全备份命令：
 
@@ -50,7 +50,7 @@ python scripts/connector-spool-admin.py backup \
 
 ## 恢复演练
 
-不要恢复到正在运行的项目。创建一个新的隔离 Compose 项目和空卷，使用文档脚本恢复三个存储，然后验证：
+使用新的隔离 Compose 项目和空卷，不要恢复到正在运行的项目。按文档脚本恢复三个存储，然后检查：
 
 1. 所有服务都变成就绪；
 2. PostgreSQL 配置和额度指纹一致；
@@ -63,7 +63,7 @@ python scripts/connector-spool-admin.py backup \
 
 ### PostgreSQL 不可用
 
-配置写入、计算权威、额度决定和就绪检查都会失败。不要发布策略，也不要手工写两份数据。恢复 PostgreSQL，检查数据库结构和所有权，然后让持久队列继续处理。
+配置写入、成本与 AI Unit 计算、额度决定和就绪检查都会失败。不要发布策略，也不要手工写两份数据。恢复 PostgreSQL，检查数据库结构和所有权，然后让持久队列继续处理。
 
 ### Redis 不可用
 
@@ -75,7 +75,7 @@ python scripts/connector-spool-admin.py backup \
 
 ## 全新重建 ClickHouse
 
-受保护的重建工具只能用于已经明确声明所有权的隔离数据库。它会暂停 sink，删除冲突的隔离结构，创建当前结构，重放 PostgreSQL Outbox 中保留的事件，逐项核对投影身份和聚合结果，验证通过后才恢复。任何失败都会保持暂停，等待检查。
+重建工具只能用于属于当前测试的隔离数据库。它会暂停 sink，替换冲突结构，重放 PostgreSQL Outbox 中保留的事件，再检查投影记录和聚合结果。检查通过后恢复投递；失败时保持暂停。
 
 ## 常见告警
 

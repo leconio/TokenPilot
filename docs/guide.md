@@ -2,83 +2,70 @@
 
 [中文](guide.zh-CN.md)
 
-## The problem TokenPilot solves
+## Purpose
 
-An AI application usually starts with one model name and one Provider key. As it grows, the team
-needs stable answers to questions that individual Provider dashboards cannot answer:
+Provider dashboards show account-level usage. An application often needs a separate view by user,
+feature, and model attempt. It may also need a stable model name, its own usage unit, and a per-user
+allowance. TokenPilot stores those rules and results in one place.
 
-- Which application, feature, and user consumed the tokens?
-- How much did every attempt cost, including failed primary attempts before a fallback?
-- How can application code keep one model name while Providers and model versions change?
-- How can different model usage types become one product-defined AI Unit?
-- How much AI Unit remains for a user, and how can concurrent calls respect that allowance?
+Applications can use the Node SDK, Python SDK, LiteLLM Connector, or manual reporting. The SDKs and
+Connector report model attempts without prompt or response content. They keep a local queue for
+temporary upload failures and cache the last valid routing configuration.
 
-TokenPilot gives teams one place to define these rules. Applications can call models through the
-TokenPilot Node or Python SDK, continue using LiteLLM, or report calls made by another client. The
-SDKs and LiteLLM Connector send content-free attempt events and keep a local durable queue during a
-temporary outage. Published routing is cached locally, so an already applied policy remains usable
-if the control service is briefly unavailable.
-
-## The main product areas
+## Main parts
 
 ### Applications and users
 
-Every application has an independent home page, user list, fields, access keys, reports, quotas,
-and published routing state. A call must provide `user_id`; `display_user` is the recommended human
-name. New users can be discovered from calls or added in the console. Typed custom fields support
-product-specific dimensions such as `next_action`, `parse_context`, and voice mode without sending
-prompts or responses.
+Each application has its own home page, users, fields, keys, reports, allowances, and published
+routing. Calls require `user_id`; `display_user` is the optional name shown in the console. A user
+can arrive with the first usage event or be added manually. Typed custom fields can store values
+such as `next_action`, `parse_context`, or voice mode.
 
 ### Connections and real models
 
-A **connection** tells a trusted runtime how to reach a model service. It records the protocol,
-endpoint, capabilities, and the environment-variable name that contains the credential; TokenPilot
-does not store the credential value. A **real model** is a callable Provider model on that
-connection. Its request name, Provider-cost fallback rules, and AI Unit conversion rates live
-together.
+A connection records how the calling process reaches LiteLLM or a provider API. It stores the
+protocol, endpoint, capabilities, and the name of a local credential variable. It does not store the
+credential value. A real model joins that connection to the model name sent in the request. Cost
+rules and AI Unit rates belong to the real model.
 
 ### Virtual models and routing
 
-A **virtual model** is the stable name used by application code, such as `fast-text` or
-`deep-reasoning`. Its candidates point to real models and can express default order, fallback,
-time windows, user or user-group conditions, and temporary overrides. Publishing creates an
-immutable revision. Trusted runtimes download and validate it, then acknowledge the exact revision
-they applied.
+A virtual model is the stable name used by application code, such as `fast-text` or
+`deep-reasoning`. It points to real models and defines their order, weights, schedules, user
+conditions, and temporary switches. Publishing creates a fixed revision. Calling processes report
+which revision they applied.
 
-Applications therefore keep requesting the same virtual model while the real Provider or model can
-change through a published policy. A call that includes image or audio input only considers
-candidates that declare the corresponding capability.
+The application keeps the same virtual model name when a policy changes the provider or real model.
+Image or audio requests use only candidates that declare the required capability.
 
 ### Analytics and saved reports
 
-The console shows calls, attempt chains, token lines, latency, errors, Provider cost, AI Unit usage,
-and configuration coverage. Filters can combine time, application, user, user tags, virtual model,
-real model, Provider, custom fields, and result. Saved analyses can be added to each application's
-dashboard. Reports always read ClickHouse; PostgreSQL stores configuration and operational state.
+The console shows calls, fallback attempts, Token usage, latency, errors, provider cost, and AI Unit.
+Filters can combine built-in fields with typed custom fields. Saved analyses can be placed on the
+current application's dashboard. Reports read ClickHouse; configuration and operational state stay
+in PostgreSQL.
 
 ### Provider cost, AI Unit, and user allowance
 
-Provider cost answers how much the model service charged. The exact amount reported by an SDK or
-Connector wins. Ordered conditions on built-in fields or custom properties can calculate a fallback
-amount when the caller cannot report one. AI Unit remains a separate product-defined conversion for
-measuring and granting usage; its input, output, cache, reasoning, image, audio, and custom rates do
-not change when cost rules change. Missing coverage is shown as unpriced or unrated usage, never
-silently converted to zero.
+Provider cost is the amount charged for a model attempt. TokenPilot uses the amount reported by the
+caller when present. Otherwise, the first matching cost rule calculates a fallback. AI Unit uses a
+separate rate card for product usage and allowances. Editing a cost rule does not change AI Unit.
+Missing rules are shown as unpriced or unrated usage, not zero.
 
-Each application user can receive an AI Unit allowance. Enforcement reserves a conservative amount
-before a call, settles it to the actual rated usage afterward, and releases it when no attempt is
-made. Blocking and allowance resets are explicit, audited operations; history is not deleted.
+Each application user can have an AI Unit allowance. Enforcement reserves an estimate before a call
+and settles the actual amount afterward. If no call starts, it releases the reservation. Blocking a
+user or resetting an allowance writes an audit record and keeps the usage history.
 
-## Privacy and reliability boundaries
+## Boundaries
 
 - TokenPilot needs messages only in the calling process to invoke the Provider; reporting excludes
   prompt and response bodies.
 - Provider credentials stay in runtime environment variables or the team's existing secret store.
-- SQLite-backed SDK and Connector queues retry content-free events with stable identifiers.
+- SDK and Connector queues use SQLite and stable event IDs for retries.
 - PostgreSQL and ClickHouse are both required: they have distinct configuration and analytics jobs.
 - A rejected publication never replaces the last successfully applied policy.
 
-## Recommended adoption path
+## Suggested setup order
 
 1. Deploy TokenPilot and complete first-run setup.
 2. Create an application and its application key.
@@ -90,5 +77,5 @@ made. Blocking and allowance resets are explicit, audited operations; history is
 8. Grant user allowances in measurement mode, then enable warnings or enforcement after identity
    and rate coverage are complete.
 
-This sequence keeps the first integration observable and easy to correct without treating missing
-data as valid data.
+Check the first real call before enabling allowance enforcement. Missing cost or AI Unit rules stay
+visible and should be fixed before they are used for decisions.

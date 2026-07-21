@@ -2,11 +2,11 @@
 
 [English](integration.md)
 
-TokenPilot 支持三种同等接入方式：Node SDK、Python SDK 和 LiteLLM Connector。它们读取同一份已发布虚拟模型策略，也使用同一种不含业务内容的用量事件。选择最贴近现有应用的方式即可，统计和 AIU 口径不会改变。
+可以选择 Node SDK、Python SDK 或 LiteLLM Connector。三种方式读取同一份虚拟模型策略，也上报相同的用量字段。统计和 AI Unit 计算方式没有区别。
 
 ## 1. 准备应用
 
-完成首次配置并选择应用后，保存只显示一次的应用密钥。它包含读取与确认运行配置、预留 AIU、上报 Connector 状态和上传用量所需的权限。密钥只属于一个应用，不要跨应用共用，也不要自行在事件中添加 `application_id`。
+完成首次配置并选择应用后，保存只显示一次的应用密钥。它包含读取配置、预留 AIU、上报 Connector 状态和上传用量所需的权限。密钥只属于一个应用，不要跨应用共用，也不要在事件中添加 `application_id`。
 
 在**模型**中按下面顺序配置：
 
@@ -17,7 +17,7 @@ TokenPilot 支持三种同等接入方式：Node SDK、Python SDK 和 LiteLLM Co
 5. 创建 `customer-support` 这样的虚拟模型，排列首选与备用模型，并按需添加时间或用户条件。
 6. 发布。发布中心会一次返回全部校验问题。
 
-服务商凭据只放在应用或 LiteLLM 进程中。TokenPilot 不要求上传凭据，已发布配置也不会包含凭据值。
+服务商凭据留在应用或 LiteLLM 进程中。TokenPilot 不要求上传，也不会把凭据值写入已发布配置。
 
 ## 2. Node SDK
 
@@ -56,7 +56,7 @@ console.log(answer.target.request_model);
 pilot.close();
 ```
 
-流式调用使用 `chatStream()`，取消请求时传入 `signal`。如果应用已经有官方 SDK Client，可以按连接 ID 注册适配器，复用已有代理、连接池和重试配置。完整说明见 [`sdks/node/README.md`](../sdks/node/README.md)。
+流式调用使用 `chatStream()`，取消请求时传入 `signal`。如果应用已经有官方 SDK Client，可以按连接 ID 注册适配器，复用已有代理、连接池和重试配置。用法见 [`sdks/node/README.md`](../sdks/node/README.md)。
 
 ## 3. Python SDK
 
@@ -95,7 +95,7 @@ print(answer.target.request_model)
 pilot.close()
 ```
 
-`AsyncAiRuntimeClient` 支持异步调用和异步流。已有服务商 Client 可以包装成连接适配器。完整说明见 [`sdks/python/README.md`](../sdks/python/README.md)。
+`AsyncAiRuntimeClient` 支持异步调用和异步流。已有服务商 Client 可以包装成连接适配器。用法见 [`sdks/python/README.md`](../sdks/python/README.md)。
 
 ## 4. LiteLLM Connector
 
@@ -142,7 +142,7 @@ response = await litellm.acompletion(
 
 不要在 LiteLLM YAML 中再维护一套业务分流。首选模型、权重、条件和备用顺序都由 TokenPilot 管理；只有选中 LiteLLM 连接时，Connector 才把真实模型的 `request_model` 转换为 LiteLLM 模型名。
 
-请持久化本地缓冲和最后可用配置目录。无效更新会被原子拒绝，上一份有效策略继续工作。使用 `AI_CONTROL_POLICY_REQUIRED=true` 时，当前配置和未过期的最后可用配置都不存在才会拒绝请求。
+持久化本地缓冲和最后有效配置目录。更新无效时，Connector 继续使用上一份策略。设置 `AI_CONTROL_POLICY_REQUIRED=true` 后，当前策略和未过期的本地策略都不存在时会拒绝请求。
 LiteLLM 能提供 `response_cost` 时，Connector 会把它作为本次尝试的实际成本上报。
 
 ## 用户与自定义字段
@@ -153,12 +153,12 @@ LiteLLM 能提供 `response_cost` 时，Connector 会把它作为本次尝试的
 
 ## 额度与结算
 
-严格额度模式会在任何服务商调用前预留一个保守估算值。用户已拉闸或剩余额度不足时，不会产生模型成本。成功事件会带上预留标识和实际用量；处理链路按真实命中的模型计算最终 AIU，并把估算值校准为实际值。失败或取消会释放未使用额度。状态变更和事件重放都可以安全重试。
+严格额度模式会在服务商调用前预留估算值。用户已拉闸或剩余额度不足时，不会发出调用，也不会产生模型成本。成功事件带上预留标识和实际用量，Worker 再把估算值结算为最终 AIU。失败或取消会释放未使用额度。这些操作可以安全重试。
 
 ## 无需重新部署的配置切换
 
-`start()` 使用 ETag 定时拉取，并且只应用签名正确、属于当前应用的配置。把 `customer-support` 从 LiteLLM 发布到已经注册的直连连接后，下一次请求就会使用新连接，虚拟模型名不变，进程也不用重启。第一次引入新服务商时，仍需先在应用中准备相应的凭据引用或 Client。
+`start()` 使用 ETag 检查更新，只接受签名正确且属于当前应用的配置。把 `customer-support` 从 LiteLLM 切换到已经注册的直连连接后，下一次请求就会使用新连接，不需要重启或修改代码。把新服务商加入路由前，先在应用中准备对应的凭据引用或 Client。
 
 ## 手动上报
 
-暂未实现完整适配器的服务可以使用 SDK 的 `recordUsage` / `record_usage`。调用方需要提供稳定的事件与尝试标识、实际计量、虚拟模型和候选真实模型 ID。服务已经返回实际或估算金额时，Node 传入 `sourceCost`，Python 传入 `SourceCost`。SDK 仍会校验当前应用用户、已发布路由和隐私白名单，并通过可靠缓冲上报，不能借此绕过应用隔离。实际上报金额优先于成本备用规则；AI Unit 仍根据用量独立换算。
+暂未实现模型适配器的服务可以使用 SDK 的 `recordUsage` / `record_usage`。调用方需要提供稳定的事件与尝试标识、实际计量、虚拟模型和候选真实模型 ID。服务已经返回实际或估算金额时，Node 传入 `sourceCost`，Python 传入 `SourceCost`。SDK 仍会校验当前应用用户、已发布路由和隐私白名单，并通过本地缓冲上报，不能借此绕过应用隔离。实际上报金额优先于成本备用规则；AI Unit 仍根据用量独立换算。

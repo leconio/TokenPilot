@@ -2,11 +2,11 @@
 
 [English](deployment.md)
 
-TokenPilot 从仓库根目录部署到安装了 Docker Compose 的 Linux 主机。只处理源码的 Mac 不需要也不应启动本机容器环境。
+在安装了 Docker Compose 的 Linux 主机上，从仓库根目录运行 TokenPilot。只处理源码的 Mac 不需要容器环境。
 
 ## 必需服务
 
-根目录 `compose.yaml` 引用 `deploy/docker-compose.yml` 中维护的正式实现，启动下面这些服务：
+根目录 `compose.yaml` 会加载 `deploy/docker-compose.yml` 并启动：
 
 - PostgreSQL：保存应用、配置、用户、计算结果、额度和审计；
 - Redis：持久任务和短期协调；
@@ -26,9 +26,9 @@ cd tokenpilot
 ./scripts/init-env.sh
 ```
 
-脚本会创建权限为 0600 的 `.env`、生成相互独立的随机密钥，并拒绝覆盖已有文件。请检查外部地址、时区、币种、入口监听、保留时间和 AIU 行为。这里仅保存部署设置；应用和应用密钥在服务启动后通过 Web 创建。
+脚本会创建权限为 0600 的 `.env`，生成相互独立的随机密钥，并保留已有文件。请检查外部地址、时区、币种、入口监听、保留时间和 AIU 设置。应用和应用密钥在 Web 页面创建，不写入 `.env`。
 
-脚本还会核对最终权限；文件系统不能真正落实 0600 时，会删除文件并停止。在 WSL 中应把正式部署目录放在发行版自己的 Linux 文件系统，例如 `~/tokenpilot`。除非已经启用 DrvFS metadata 且 `stat` 确认权限为 0600，否则不要把 `.env` 放在 `/mnt/c` 或 `/mnt/e`。把发行版 VHDX 迁移到其他盘后，这套 Linux 文件系统也会随之迁移。
+脚本会检查文件权限。文件系统不能落实 0600 时，它会删除 `.env` 并停止。在 WSL 中，把部署目录放在发行版自己的 Linux 文件系统，例如 `~/tokenpilot`。只有启用 DrvFS metadata 且 `stat` 确认权限为 0600 时，才能使用 `/mnt/c` 或 `/mnt/e`。迁移发行版 VHDX 时，这套 Linux 文件系统也会一起移动。
 
 如果镜像或依赖下载需要代理，只在部署主机环境或 `.env` 中配置：
 
@@ -40,20 +40,19 @@ NO_PROXY=127.0.0.1,localhost,api,web,worker,scheduler,postgres,redis,clickhouse,
 
 ## 启动
 
-`.env` 正确后，标准命令即可直接使用：
+`.env` 准备好后运行：
 
 ```bash
 docker compose up -d --build --wait
 ```
 
-`pnpm deploy` 会先检查 Linux、`.env`、占位密钥、Docker Compose 和渲染结果，再执行相同部署，并删除已经成功退出的迁移任务容器。两种方式都可以重复运行。迁移任务必须成功完成，应用服务才会进入健康状态。
+`pnpm deploy` 会额外检查主机、`.env`、占位密钥、Docker Compose 和渲染结果，然后执行相同部署。它还会删除成功退出的一次性迁移容器。两种命令都可以重复运行。迁移完成后，应用服务才会进入健康状态。
 
 默认打开 `http://127.0.0.1:8080`。首次配置页面会先检查所需数据连接，再要求创建管理员和第一个应用，并创建相互独立的用量密钥与运行密钥；原始密钥只显示一次。
 
 ## 网络暴露
 
-默认 `CADDY_BIND_ADDRESS=127.0.0.1` 只监听回环地址。改成 `0.0.0.0` 前，请先配置 TLS、防火墙、反向代理信任和适合当前网络的访问策略。不要开放 PostgreSQL、Redis 或 ClickHouse 端口。
-宿主机绝不能开放 5432、6379、8123 或 9000 端口；所有数据服务都应留在 Compose 私有网络中。
+默认 `CADDY_BIND_ADDRESS=127.0.0.1` 只监听回环地址。改成 `0.0.0.0` 前，请先配置 TLS、防火墙、可信代理和当前网络的访问控制。PostgreSQL、Redis 和 ClickHouse 应留在 Compose 私有网络中，不要开放 5432、6379、8123 或 9000 端口。
 浏览器访问的公开地址是 HTTPS 时，应设置 `WEB_SESSION_COOKIE_SECURE=true`。只有可信开发网络里的纯 HTTP 直连部署才设置为 `false`。
 
 ## 使用已有网关
@@ -82,7 +81,7 @@ docker compose --project-name tokenpilot \
 
 ## 开发阶段的数据结构
 
-项目只面向全新的当前数据库，不提供旧结构兼容。隔离开发或验收环境需要更换结构时，应删除它自己带标签的卷后重新创建。验收不能删除或复用正式数据卷。
+项目目前从空数据库开始，不支持旧结构。隔离开发或验收环境更换结构时，删除该环境带标签的卷后重新创建。验收不能删除或复用正式数据卷。
 
 ```bash
 docker compose ps

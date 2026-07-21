@@ -2,13 +2,12 @@
 
 [中文](deployment.zh-CN.md)
 
-TokenPilot is deployed from the repository root on a Linux host with Docker Compose. A source-only
-Mac workstation does not need and should not start a container runtime.
+Run TokenPilot from the repository root on a Linux host with Docker Compose. A Mac used only for
+source work does not need a container runtime.
 
 ## Required services
 
-The root `compose.yaml` includes the maintained implementation in `deploy/docker-compose.yml` and
-starts only the documented stack:
+The root `compose.yaml` loads `deploy/docker-compose.yml` and starts:
 
 - PostgreSQL for applications, configuration, users, ratings, quota, and audit;
 - Redis for durable jobs and short-lived coordination;
@@ -31,15 +30,14 @@ cd tokenpilot
 ./scripts/init-env.sh
 ```
 
-The script creates a mode-0600 `.env`, generates independent secrets, and refuses to overwrite an
-existing file. Review public URLs, timezone, currency, ingress binding, retention, and AIU behavior.
-The file contains deployment settings only: applications and application keys are created in the
-Web console after startup.
+The script creates `.env` with mode 0600, generates separate secrets, and does not overwrite an
+existing file. Review the public URLs, timezone, currency, ingress binding, retention, and AIU
+settings. Applications and application keys are created in the Web console, not in `.env`.
 
-The script also verifies the resulting permission and removes the file if the filesystem cannot
-enforce mode 0600. On WSL, keep the deployment directory in the distro's Linux filesystem, such as
-`~/tokenpilot`. Do not place `.env` under `/mnt/c` or `/mnt/e` unless DrvFS metadata is enabled and
-`stat` confirms mode 0600. Moving the distro VHDX to another drive moves this Linux filesystem too.
+The script checks the file mode and removes `.env` if the filesystem cannot enforce 0600. On WSL,
+keep the deployment under the distro's Linux filesystem, such as `~/tokenpilot`. Use `/mnt/c` or
+`/mnt/e` only when DrvFS metadata is enabled and `stat` confirms mode 0600. Moving the distro VHDX
+to another drive also moves this Linux filesystem.
 
 If image or package downloads require a proxy, add it only to the deployment host environment or
 `.env`:
@@ -52,16 +50,16 @@ NO_PROXY=127.0.0.1,localhost,api,web,worker,scheduler,postgres,redis,clickhouse,
 
 ## Start
 
-The standard command is sufficient after `.env` is valid:
+After `.env` is ready, run:
 
 ```bash
 docker compose up -d --build --wait
 ```
 
-`pnpm deploy` runs the same deployment after checking Linux, `.env`, placeholders, Docker Compose,
-and the rendered configuration, then removes successful one-shot migration containers. Both
-commands are repeatable. Migration jobs must finish successfully before application services become
-healthy.
+`pnpm deploy` performs the same deployment with extra checks for the host, `.env`, placeholders,
+Docker Compose, and the rendered configuration. It also removes successful one-time migration
+containers. Both commands can be run again. Application services become healthy only after the
+migrations finish.
 
 Open `http://127.0.0.1:8080` unless `HTTP_PORT` or the bind address was changed. The first-run screen
 checks required data connections, then asks for the administrator and first application. It creates
@@ -70,10 +68,8 @@ separate usage and runtime keys and displays their raw values once.
 ## Network exposure
 
 The default `CADDY_BIND_ADDRESS=127.0.0.1` exposes only loopback. Before setting it to `0.0.0.0`, add
-TLS, firewall rules, reverse-proxy trust configuration, and an access policy appropriate to the
-network. Do not publish PostgreSQL, Redis, or ClickHouse ports.
-Never publish ports 5432, 6379, 8123, or 9000 on the host; keep every datastore on its private
-Compose network.
+TLS, firewall rules, trusted-proxy settings, and access control for the network. Keep PostgreSQL,
+Redis, and ClickHouse on private Compose networks. Do not publish ports 5432, 6379, 8123, or 9000.
 Set `WEB_SESSION_COOKIE_SECURE=true` whenever the browser-facing origin is HTTPS. Set it to `false`
 only for a direct HTTP deployment on a trusted development network.
 
@@ -108,9 +104,9 @@ An HTTPS gateway also requires `WEB_SESSION_COOKIE_SECURE=true`.
 
 ## Data and upgrades during development
 
-This project targets fresh current databases. There is no old-schema compatibility path. For an
-isolated development or acceptance installation, remove its labeled volumes when the schema is
-intentionally replaced and start again. Never remove or reuse production volumes for acceptance.
+The project currently starts from empty databases and does not support old schemas. When a schema
+changes in an isolated development or test installation, remove that installation's labeled volumes
+and start again. Do not remove or reuse production volumes for acceptance tests.
 
 ```bash
 docker compose ps

@@ -1,48 +1,33 @@
 # TokenPilot
 
-**Self-hosted Token analytics, model routing, and AI Unit design for AI applications.**
+**A self-hosted tool for Token analytics, model routing, and AI Unit rules.**
 
 [简体中文](README.zh-CN.md) · [Documentation](docs/README.md) · [Contributing](CONTRIBUTING.md) · [Apache-2.0](LICENSE)
 
 > [!WARNING]
-> **TokenPilot is under active development.** APIs, database schemas, deployment defaults, and SDK
-> contracts may change without backward compatibility. It is suitable for evaluation and controlled
-> environments, but is not yet recommended as the sole source of truth for production billing.
+> **TokenPilot is under active development.** APIs, database schemas, deployment settings, and SDK
+> contracts may change without backward compatibility. Use it for evaluation and controlled
+> environments. Do not use it as the only record for production billing yet.
 
-## Why TokenPilot
+## What TokenPilot does
 
-Shipping an AI feature is easy; operating it across users, models, providers, and applications is
-not. Product teams still need consistent answers to questions such as:
+TokenPilot keeps model usage, routing, and AI Unit rules in one self-hosted control plane. It can:
 
-- Which users, features, and models are driving token usage and provider cost?
-- How do we express product usage in a stable unit when providers price models differently?
-- How do we enforce per-user quotas without putting provider credentials in another service?
-- How do we route a stable product-facing model name to real models, schedules, and fallbacks?
-- How do we keep usage collection reliable when the control plane is temporarily unavailable?
+- report Token usage, latency, errors, provider cost, and AI Unit by application, user, model,
+  feature, or custom field;
+- register LiteLLM, OpenAI-compatible, and Anthropic connections without storing provider keys;
+- route a stable virtual model name to real models by order, weight, time, user condition, or
+  temporary override;
+- record an amount reported by the caller, or calculate a fallback amount from ordered rules;
+- calculate AI Unit separately from cost and enforce a per-user allowance;
+- save filters and reports to each application's dashboard.
 
-TokenPilot provides a self-hosted control plane for those concerns. Its Node and Python SDKs, and
-its optional LiteLLM Connector, send content-free usage events to the same pipeline. TokenPilot
-records actual provider cost or applies conditional fallbacks, calculates product-defined **AI
-Units**, maintains user quotas, and publishes runtime routing policies to applications without
-changing the virtual model name used in code.
+Applications connect through the Node SDK, Python SDK, or LiteLLM Connector. Each client keeps a
+local SQLite queue so temporary control-plane outages do not lose usage events. Published routing
+is cached locally and can continue using its last valid version during a short outage.
 
-TokenPilot does **not** proxy model traffic or require Provider API keys. Prompts, responses, tool
-arguments, and Provider credentials stay in your application or LiteLLM environment.
-
-## What it provides
-
-- Usage analytics by application, user, model, provider, feature, and custom property.
-- Token, request, latency, error, provider-cost, and AI Unit dashboards.
-- Call connections for LiteLLM, OpenAI-compatible services, and Anthropic, plus a real-model catalog
-  with reported-cost-first fallback rules and independent AI Unit rates.
-- Virtual models with candidate models, fallback order, schedules, conditions, and temporary
-  overrides.
-- Per-user quotas with reservation, settlement, release, reset, and hard-limit modes.
-- Trusted Node and Python execution SDKs, plus an optional LiteLLM callback Connector; every path
-  uses a crash-safe local SQLite spool and background retries.
-- Runtime policy snapshots with validation, ETag polling, acknowledgements, and last-known-good
-  recovery.
-- Node and Python SDKs plus a Chinese and English administration console.
+TokenPilot does not proxy model traffic. Prompts, responses, tool arguments, and provider keys stay
+in the application or LiteLLM process.
 
 ## How it works
 
@@ -62,12 +47,11 @@ flowchart LR
   WEB["Web console"] --> API
 ```
 
-Before a model call, the SDK or Connector translates a virtual model into a real model and call
-connection, then applies quota rules. It can move between registered LiteLLM and direct connections
-and use the published fallback sequence without an application redeploy. After every real model
-attempt, it allowlists usage fields, commits the event to a local SQLite WAL spool, and uploads it.
-Workers rate actual usage, reconcile quota settlement, and deliver analytics outside the model
-response path.
+Before a call, the SDK or Connector resolves the virtual model to a real model and connection, then
+checks the user's allowance. A published policy can switch between registered LiteLLM and direct
+connections without changing application code. After each attempt, the client keeps only allowed
+usage fields, writes the event to its local SQLite queue, and uploads it. The Worker calculates cost
+and AI Unit outside the model response path.
 
 PostgreSQL owns configuration, users, quotas, and rating decisions. Redis coordinates jobs and
 short-lived runtime state. ClickHouse serves analytics and reports. All three are required by the
@@ -75,13 +59,12 @@ current deployment.
 
 ## Project status
 
-The current `0.x` series is a development release. The core end-to-end flow is implemented and
-covered by automated contract, integration, and acceptance tests, but the project has not declared
-a stable API or migration-compatibility policy yet.
+The current `0.x` series is a development release. Automated contract, integration, and acceptance
+tests cover the main workflow, but the API and database schema are not stable yet.
 
-Before production use, evaluate the failure modes, retention settings, rate definitions, backup
-procedures, and security controls in your own environment. Keep an independent provider usage or
-cost record for reconciliation. See the [changelog](CHANGELOG.md) for notable changes.
+Before production use, test failure handling, retention, rates, backups, and access controls in your
+own environment. Keep the provider's own usage or cost record for reconciliation. See the
+[changelog](CHANGELOG.md) for changes.
 
 ## Quick start
 
@@ -121,25 +104,23 @@ ClickHouse are not published by the default Compose project. See the
 
 ## Connect an application
 
-For a new application, the Node or Python SDK is the shortest path: call `chat` with a virtual model
-name and register credentials or an existing Provider client locally. The same code keeps working
-when a published policy switches between registered connections. LiteLLM users can instead install
-the custom Connector; it participates in pre-call routing and quota decisions and records success
-and failure callbacks.
+For a new application, use the Node or Python SDK and call `chat` with a virtual model name.
+Credentials and existing provider clients stay in the application. A new policy can switch between
+registered connections without changing that call. Existing LiteLLM applications can install the
+Connector for routing, allowance checks, and usage reporting.
 
-See the [integration guide](docs/integration.md) for Node, Python, LiteLLM, and manual-reporting
-examples. The repository includes a fake Provider, so the full path can be evaluated without a real
-Provider key.
+The [integration guide](docs/integration.md) has Node, Python, LiteLLM, and manual-reporting
+examples. The included fake provider can test the full path without a real provider key.
 
 ## AI Unit
 
-An AI Unit is a product-defined usage unit, independent of a provider's currency. A team can assign
-different weights to a request, input tokens, cached tokens, reasoning tokens, output tokens, and
-other supported metrics. TokenPilot records the rate snapshot used by each decision so later rate
-changes do not rewrite historical usage.
+An AI Unit is a product-defined usage unit. It is separate from provider currency. A rate card can
+assign different weights to requests, input, cache, reasoning, output, and other supported usage.
+Each result keeps the rate-card version used at the time, so later edits do not change history.
 
 AI Unit is a measurement and quota mechanism, not a payment processor or customer invoicing
-system. Read [Concepts and calculations](docs/concepts.md) for the data model and authority rules.
+system. Read [Concepts and calculations](docs/concepts.md) for the data model, calculations, and
+storage responsibilities.
 
 ## Development
 
@@ -175,7 +156,7 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [development guide](docs/d
 ## Security
 
 Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md). Never include API
-keys, Provider credentials, prompts, responses, or production usage payloads in public issues.
+keys, provider credentials, prompts, responses, or production usage payloads in public issues.
 
 ## License
 

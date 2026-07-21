@@ -2,16 +2,15 @@
 
 [中文](integration.zh-CN.md)
 
-TokenPilot supports three equal paths: the Node SDK, the Python SDK, and the LiteLLM Connector.
-They read the same published virtual-model policy and send the same content-free usage event. Pick
-the path already closest to the application; reports and AIU calculations do not change.
+Choose the Node SDK, Python SDK, or LiteLLM Connector. All three read the same virtual-model policy
+and report the same usage fields. The reports and AI Unit calculations are the same for each path.
 
 ## 1. Prepare the application
 
-Complete first-run Setup, select the application, and keep the generated application key. The key
-is displayed once and includes the scopes needed to read and acknowledge runtime configuration,
-reserve AIU, send Connector heartbeats, and upload usage. A key is bound to one application; never
-share it across applications or put an `application_id` in reported events.
+Complete first-run Setup, select the application, and save the generated application key. It is
+shown once and has the permissions required for configuration, AIU reservation, Connector status,
+and usage upload. The key belongs to one application. Do not share it across applications or add
+`application_id` to reported events.
 
 In **Models**, configure in this order:
 
@@ -23,8 +22,8 @@ In **Models**, configure in this order:
    add schedule or user conditions if needed.
 6. Publish. The release page returns all validation problems together.
 
-Provider credentials are configured only in the application or LiteLLM process. TokenPilot never
-asks for them and published configuration never contains them.
+Keep provider credentials in the application or LiteLLM process. TokenPilot does not request or
+publish their values.
 
 ## 2. Node SDK
 
@@ -155,9 +154,9 @@ Do not duplicate business routing in LiteLLM YAML. TokenPilot owns the preferred
 conditions, and fallback order; the Connector translates each published real model's
 `request_model` only when the selected connection is LiteLLM.
 
-Persist the spool and last-known-good directories. An invalid update is rejected atomically and the
-last valid policy continues to serve requests. With `AI_CONTROL_POLICY_REQUIRED=true`, requests
-fail closed when neither current nor unexpired last-known-good configuration is available.
+Persist the spool and last-valid-policy directories. If an update is invalid, the Connector keeps
+the previous policy. With `AI_CONTROL_POLICY_REQUIRED=true`, it rejects requests when it has neither
+a current policy nor an unexpired saved policy.
 LiteLLM's `response_cost` is reported as the attempt's source cost when it is available.
 
 ## Users and custom fields
@@ -174,23 +173,21 @@ application policy; reserved content and credential keys are always rejected.
 
 ## Quota and settlement
 
-In hard-limit mode, the runtime reserves a conservative estimated amount before any Provider call.
-A blocked application user or insufficient quota stops the call before model cost is created.
-Success reports the reservation ID with measured usage; the processing pipeline rates the actual
-real model and reconciles the estimate to final AIU. Failure or cancellation releases the unused
-reservation. All transitions and event replays are idempotent.
+In hard-limit mode, the runtime reserves an estimated amount before the provider call. A blocked
+user or insufficient allowance stops the call before it creates model cost. On success, the event
+includes the reservation ID and measured usage; the Worker settles the estimate to final AIU.
+Failure or cancellation releases the unused reservation. These operations can be retried safely.
 
 ## Configuration changes without redeploying
 
-`start()` polls with ETag and applies only signed, application-bound configuration. When a newly
-published policy moves `customer-support` from LiteLLM to a registered direct connection, the next
-request uses that connection without changing the virtual model name or restarting the process.
-Introducing a new Provider still requires its credential reference or client to be configured in
-the application before publishing a route to it.
+`start()` checks for updates with ETag and accepts only signed configuration for the current
+application. If a new policy moves `customer-support` from LiteLLM to a registered direct
+connection, the next request uses it without a restart or code change. Before adding a new provider
+to a route, configure its credential reference or client in the application.
 
 ## Manual usage reporting
 
-Use SDK `recordUsage` / `record_usage` only for a service that cannot yet use a full adapter. The
+Use SDK `recordUsage` / `record_usage` only for a service that cannot yet use a model adapter. The
 caller supplies stable event and attempt IDs, measured counters, a virtual model, and a candidate
 real-model ID. Include `sourceCost` in Node or `SourceCost` in Python when the service returns an
 actual or estimated amount. The SDK still enforces the active application user, published route,

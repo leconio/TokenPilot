@@ -2,9 +2,9 @@
 
 [中文](tutorial.zh-CN.md)
 
-This tutorial takes a new installation from an empty console to one application, a directly called
-model with fallback, content-free reporting, cost and AI Unit analytics, and a user allowance. The
-Node and Python examples run natively on macOS and do not need a local container runtime.
+This tutorial configures one application, calls a virtual model with fallback, checks cost and AI
+Unit reports, and sets a user allowance. The Node and Python examples run on macOS without a local
+container runtime.
 
 ## 1. Finish setup and create an application
 
@@ -28,7 +28,7 @@ names, not credential values, and is safe to run more than once.
 
 ## 2. Define reportable fields
 
-Open **Fields** and add only the product dimensions you intend to search or report:
+Open **Fields** and add only values that you plan to search or use in a report:
 
 | Scope | Field           | Type    |
 | ----- | --------------- | ------- |
@@ -37,9 +37,8 @@ Open **Fields** and add only the product dimensions you intend to search or repo
 | User  | `parse_context` | text    |
 | User  | `voice_type`    | text    |
 
-Mark sensitive dimensions as sensitive. Undefined fields and values of the wrong type are rejected,
-which keeps searches and saved reports trustworthy. Prompts and model responses are not custom
-fields and must not be reported.
+Mark sensitive fields as sensitive. TokenPilot rejects undefined fields and values of the wrong
+type. Do not report prompts or model responses as custom fields.
 
 ## 3. Add a connection and real models
 
@@ -92,9 +91,10 @@ OPENAI_API_KEY='provider-key' \
 uv run --project sdks/python python examples/python-sdk/app.py
 ```
 
-The SDK downloads the published candidates, reserves AI Unit when enforcement is enabled, calls the
-real model, falls back only when allowed, settles actual usage, and queues one content-free event
-per attempt. See [Integration guide](integration.md) for complete code and adapter examples.
+The SDK downloads the published candidates and checks the allowance. It calls the selected real
+model, tries the next allowed candidate after a supported failure, settles actual usage, and queues
+one usage event per attempt. See the [integration guide](integration.md) for more code and
+adapter examples.
 
 If the application already uses LiteLLM, use the separate
 [`litellm-local`](../examples/litellm-local/README.md) example. It exercises the same reporting and
@@ -102,8 +102,8 @@ published virtual-model behavior without moving Provider credentials into TokenP
 
 ## 6. Verify users and analytics
 
-Open **Users**. The reported `user_id` now exists automatically and `display_user` is shown as its
-human name. You can also add a user manually with only `user_id`.
+Open **Users**. The reported `user_id` appears automatically, and `display_user` is its name in the
+console. You can also add a user manually with only `user_id`.
 
 Check **Usage**, **Model cost**, and **AI Unit**. Combine filters for the example user, virtual model,
 real model, attempt result, and a custom field. The event detail should show token lines, the full

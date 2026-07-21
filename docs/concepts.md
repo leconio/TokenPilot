@@ -4,10 +4,10 @@
 
 ## Usage event
 
-The Connector sends one event per model attempt. An event has stable identifiers, model identity,
-token and request lines, timing, outcome, route reason, and trusted product context. It never needs
-prompt or response content. The Registry accepts an event ID once; retries return the original
-result instead of creating another charge.
+Every integration sends one event for each model attempt. The event contains stable IDs, model
+identity, measured usage, timing, result, route reason, and allowed product fields. It does not
+contain prompts or responses. Reusing an event ID returns the first result instead of recording the
+attempt twice.
 
 Common usage lines are:
 
@@ -20,41 +20,35 @@ Common usage lines are:
 
 ## Application, connection, real model, and virtual model
 
-An **application** is the isolation boundary. Its users, fields, reports, model settings, and API
-key never cross into another application.
+| Term          | Meaning                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| Application   | The boundary for users, fields, reports, model settings, and API keys.                     |
+| Connection    | How the calling process reaches LiteLLM, an OpenAI-compatible service, or Anthropic.       |
+| Real model    | A connection plus the model name sent to that service. Cost and AI Unit rules attach here. |
+| Virtual model | The stable name used by application code. It selects and orders one or more real models.   |
 
-A **call connection** describes how the application reaches a model service. It can point to
-LiteLLM, an OpenAI-compatible service, or Anthropic. TokenPilot stores only a local credential
-reference such as `OPENAI_API_KEY`; the value stays in the application environment.
-
-A **real model** combines a connection with the model name sent on the wire. Provider-cost fallback
-rules and AI Unit rates bind to this record, so the same Provider model reached through two
-connections is represented by two real models.
-
-A **virtual model** is the stable name used by business code. It owns the preferred real model,
-fallback order, weights, schedules, user conditions, and temporary switches. Publishing a new
-policy can change the selected registered connection without changing application code.
+TokenPilot stores a credential reference such as `OPENAI_API_KEY`, not the credential value. If the
+same provider model is available through two connections, create two real models so their routing
+and accounting stay separate.
 
 ## Provider cost
 
-The amount reported by the calling SDK or Connector is authoritative for an attempt. This supports
-Provider pricing that depends on account agreements, batches, service tiers, promotions, or other
-conditions that cannot be represented by one fixed token price. The event records the amount,
-currency, and whether the amount is estimated.
+When the caller reports a cost, TokenPilot uses that amount for the attempt. This covers account
+agreements, batch rates, service tiers, promotions, and other pricing that does not fit one fixed
+Token price. The event also records the currency and whether the amount is estimated.
 
-When the caller cannot report an amount, an ordered list of conditional rules can provide a
-fallback. A rule can match built-in call fields or typed event and user properties. The first
-matching rule contributes an optional fixed amount plus configured amounts for the usage types it
-contains:
+When the caller cannot report an amount, TokenPilot checks the cost rules in order. A rule can use
+built-in call fields or typed event and user properties. The first match adds an optional fixed
+amount to the configured usage amounts:
 
 ```text
 rule cost = fixed amount + sum(quantity × amount per unit)
 ```
 
-If neither a reported amount nor a matching rule exists, the attempt is marked unpriced. An empty
-fallback list is valid when every caller reports cost. Provider cost retains the reported currency;
-rule-calculated cost uses the application's currency. An official result can replace a provisional
-result by writing a signed delta, while history remains immutable.
+If there is no reported amount and no rule matches, the attempt is unpriced. The rule list can stay
+empty when callers always report cost. Reported cost keeps its own currency; a rule uses the
+application currency. A later official result writes a signed adjustment instead of changing the
+earlier record.
 
 ## AI Unit
 
@@ -72,9 +66,9 @@ The internal value is an integer number of micro-AIU. Rounding occurs once at th
 boundary, never through floating-point arithmetic. The published rate snapshot, rounding mode, and
 attempt policy are stored with the decision.
 
-Provider cost and AI Unit are intentionally independent. Changing cost reporting or cost rules does
-not change AI Unit conversion, allowance, reservation, or enforcement. Coverage pages show both
-gaps independently.
+Provider cost and AI Unit are separate. Changing cost reporting or a cost rule does not change AI
+Unit conversion, allowance, reservation, or enforcement. The console shows missing cost and missing
+AI Unit rules separately.
 
 ## Virtual model and routing
 
@@ -86,9 +80,8 @@ A virtual model is the stable model name exposed to application code. It owns al
 - zero or more temporary overrides with explicit expiry;
 - a monotonically increasing policy revision.
 
-The SDK pulls the policy with an ETag and acknowledges the exact revision it applied. It keeps an
-atomic last-known-good file for a bounded outage. A malformed or expired policy is never silently
-accepted.
+The SDK uses an ETag when it checks for policy updates and reports the revision it applied. It keeps
+the last valid policy in a local file for short outages. It rejects malformed or expired policies.
 
 ## Quota lifecycle
 
@@ -100,12 +93,13 @@ check → reserve → call model → settle
 expired reservation ────────→ expire
 ```
 
-Every transition is idempotent. The authoritative balance and journal live in PostgreSQL. ClickHouse
-receives analytical projections but never decides whether a request is allowed.
+Every transition is idempotent. The balance and journal used for access decisions live in
+PostgreSQL. ClickHouse receives analytical projections but does not decide whether a request is
+allowed.
 
 ## Data ownership
 
-| Data                                             | Authority                            |
+| Data                                             | Stored in                            |
 | ------------------------------------------------ | ------------------------------------ |
 | Model catalog, cost rules, rates, policies, keys | PostgreSQL                           |
 | Rating decisions, quota, reservations, journals  | PostgreSQL                           |
@@ -113,8 +107,8 @@ receives analytical projections but never decides whether a request is allowed.
 | Reports and dashboards                           | ClickHouse                           |
 | SDK or Connector retry buffer                    | Local SQLite spool beside the caller |
 
-Reports do not fall back to PostgreSQL. A ClickHouse failure is visible as an unavailable report,
-which is safer than returning a different or incomplete number.
+Reports do not fall back to PostgreSQL. When ClickHouse is unavailable, the report returns an error
+instead of a number from a different data source.
 
 TokenPilot does not proxy model traffic. The Node/Python SDK can call a registered connection
 directly, while the LiteLLM Connector keeps LiteLLM in the request path. Both send the same event

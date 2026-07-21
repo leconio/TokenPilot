@@ -2,7 +2,7 @@
 
 [中文文档](README.zh-CN.md) · [Project README](../README.md)
 
-Start with the document that matches what you are doing:
+Choose a document by task:
 
 | Goal                                       | Read                          |
 | ------------------------------------------ | ----------------------------- |
@@ -15,5 +15,5 @@ Start with the document that matches what you are doing:
 | Call the HTTP API                          | [API reference](api.md)       |
 | Work on the source code                    | [Development](development.md) |
 
-The English and Chinese documents describe the same supported workflow. Examples intentionally use
-placeholder hosts and secrets. Never copy a sample secret into a real environment.
+Each guide is available in English and Chinese. Examples use placeholder hosts and secrets. Replace
+them before running the examples.

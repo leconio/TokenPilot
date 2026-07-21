@@ -2,15 +2,14 @@
 
 [中文](api.zh-CN.md)
 
-TokenPilot exposes a strict HTTP API for usage ingestion, application administration, reports, and
-trusted runtime configuration. Model traffic goes directly from the Node SDK, Python SDK, or
-LiteLLM to the configured model service; TokenPilot does not implement a model-completion endpoint.
+The HTTP API receives usage, manages applications, serves reports, and publishes configuration to
+SDKs and Connectors. Model requests go from the Node SDK, Python SDK, or LiteLLM to the configured
+model service. TokenPilot has no model-completion endpoint.
 
 ## Authentication and application binding
 
-Server clients send `Authorization: Bearer <application-key>`. A key belongs to exactly one
-application, is displayed only when created, and is stored as a hash. Its scopes should cover only
-one access plane:
+Server clients send `Authorization: Bearer <application-key>`. A key belongs to one application, is
+shown only when created, and is stored as a hash. Create separate keys for these uses:
 
 - ingestion: `usage:write` and Connector heartbeat;
 - runtime: configuration read, acknowledgement, and AIU reservation operations;
@@ -22,16 +21,16 @@ The Web console uses an authenticated cookie session plus CSRF protection for mu
 
 ## Usage ingestion
 
-`POST /usage-events/batch` accepts a strict content-free batch. `user.user_id` is required and
-`user.display_user` is recommended. A successful event automatically creates or updates that user
-inside the key's application. The same `user_id` in another application is an independent user.
+`POST /usage-events/batch` accepts a batch of usage events without model content. `user.user_id` is
+required and `user.display_user` is recommended. A successful event automatically creates or
+updates that user inside the key's application. The same `user_id` in another application is an
+independent user.
 
-The event includes time, request and attempt identifiers, source and application versions, the
-connection, real-model request name, optional virtual model, token and multimodal quantities,
-optional Provider-reported `source_cost`, result fields, and typed custom properties. `source_cost`
-contains a non-negative decimal `amount`, a three-letter `currency`, and `is_estimated`. Prompts,
-responses, messages, tool arguments, cookies, authorization headers, and Provider credentials are
-rejected or removed before durable intake.
+An event can include time, request and attempt IDs, client and application versions, model identity,
+measured usage, result fields, typed custom properties, and an optional `source_cost` reported by
+the provider client. `source_cost` contains a non-negative decimal `amount`, a three-letter
+`currency`, and `is_estimated`. The API rejects or removes prompts, responses, messages, tool
+arguments, cookies, authorization headers, and provider credentials before storage.
 
 Idempotency is scoped by `application_id + event_id`:
 
@@ -57,13 +56,13 @@ The following families are bound to `/applications/:applicationSlug`:
 | Reports        | `/reports/*`, saved reports, and dashboard cards                       |
 
 Creating a user requires only `user_id`; `display_user`, tags, and typed properties are optional.
-`user_id` is immutable. Blocking a user, resetting quota, or applying a group action requires an
-auditable reason where the operation is destructive or access-affecting.
+`user_id` cannot be changed. Blocking a user, resetting an allowance, or running a group action
+requires a reason when it changes access or usage.
 
-`PUT /models/:id/cost-rules` publishes the complete ordered fallback rule list. Each rule has a
-name, `all` or `any` conditions, an optional `fixed_amount`, and zero or more `rates` containing an
-actual `amount_per_unit`. Sending an empty list is valid and means reported amounts only. These
-rules are consulted only when an event has no `source_cost`; they never change `/models/:id/aiu`.
+`PUT /models/:id/cost-rules` replaces the model's ordered fallback rule list. Each rule has a name,
+`all` or `any` conditions, an optional `fixed_amount`, and zero or more `rates` containing an actual
+`amount_per_unit`. Sending an empty list is valid and means reported amounts only. These rules are
+consulted only when an event has no `source_cost`; they do not change `/models/:id/aiu`.
 
 ## Reports and search
 
@@ -75,10 +74,10 @@ Report routes are application-scoped:
 
 Queries accept a UTC time range, timezone, match-all or match-any conditions, optional grouping,
 and bounded pagination. Conditions cover built-in fields and enabled typed properties. Reports read
-ClickHouse only and include a watermark and lag. If analytics are unavailable, the API returns an
-unavailable error instead of substituting PostgreSQL data or a fabricated zero.
+ClickHouse and include its watermark and lag. If ClickHouse is unavailable, the API returns an
+error. It does not substitute PostgreSQL data or zero.
 
-## Trusted runtime
+## Runtime
 
 | Method and path                                    | Purpose                                                         |
 | -------------------------------------------------- | --------------------------------------------------------------- |
@@ -100,6 +99,6 @@ validated against the persisted application, user, operation, state, and expiry.
 | `GET /metrics`      | Prometheus operational metrics.                                   |
 
 Request objects reject unknown properties unless a bounded property map is explicitly declared.
-Exact costs, quantities, and AIU values use decimal or integer strings. Error envelopes never echo
-secrets, prompt content, response content, or raw payloads. The running OpenAPI document and
-`packages/contracts` are the field-level authority.
+Costs, quantities, and AIU values use decimal or integer strings to preserve precision. Error
+responses do not include secrets, prompt content, response content, or raw payloads. Field
+definitions are in the running OpenAPI document and `packages/contracts`.

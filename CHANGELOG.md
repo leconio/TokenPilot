@@ -1,20 +1,20 @@
 # Changelog
 
-TokenPilot follows Semantic Versioning and Conventional Commits. This file describes only the
-current product behavior kept in the repository.
+TokenPilot uses Semantic Versioning and Conventional Commits. This file lists the behavior in the
+current source tree.
 
-## 0.2.0 — 2026-07-18
+## 0.2.0, 2026-07-18
 
 ### Added
 
-- Multi-application isolation for configuration, keys, events, users, models, AIU, routing,
-  reports, and audit records.
-- Application-scoped users populated automatically from reported `user_id` and optional
-  `display_user`, with manual administration, tags, groups, quota reset, and access suspension.
+- Separate configuration, keys, events, users, models, AIU, routing, reports, and audit records for
+  each application.
+- Application users created from reported `user_id` and optional `display_user`, with manual
+  editing, tags, groups, allowance reset, and blocking.
 - Connection-backed real models for LiteLLM, OpenAI-compatible services, and Anthropic, with
   reported-cost-first conditional fallbacks and independent AIU rates for each usage dimension.
-- Virtual models with conditional routes, ordered fallbacks, temporary rules, signed runtime
-  snapshots, and connector acknowledgements.
+- Virtual models with conditions, ordered fallbacks, temporary rules, signed runtime configuration,
+  and client acknowledgements.
 - Typed event and user properties, ClickHouse-backed event search, saved reports, dashboards, and
   user-group analysis.
 - Node and Python SDKs, a LiteLLM connector, and a native Python example for reporting usage from a
@@ -24,11 +24,11 @@ current product behavior kept in the repository.
 
 ### Architecture
 
-- PostgreSQL is authoritative for configuration, users, model cost, AIU quotas, ledgers, audit,
-  and reconciliation state.
-- ClickHouse is the required analytical store for events, searches, groups, and reports.
-- Redis coordinates application-scoped jobs, leases, and short-lived runtime state.
-- PostgreSQL Inbox and Outbox records provide the durable hand-off to ClickHouse.
+- PostgreSQL stores configuration, users, model cost, AIU allowances, journals, audit, and
+  reconciliation state.
+- ClickHouse stores the data used by event search, user groups, and reports.
+- Redis coordinates jobs, leases, and short-lived runtime state.
+- PostgreSQL Inbox and Outbox records provide the durable handoff to ClickHouse.
 - A new installation starts from one current empty-database schema; no database compatibility or
   downgrade path is maintained during development.
 
