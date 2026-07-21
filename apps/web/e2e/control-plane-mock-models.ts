@@ -98,17 +98,32 @@ export function handleMockModel(
       affects_routing: virtualModels.length > 0,
     });
   }
-  const match = suffix.match(/^\/models\/([^/]+)\/(rates|cost|aiu)$/u);
+  const match = suffix.match(/^\/models\/([^/]+)\/(rates|cost-rules|aiu)$/u);
   if (match === null) return problem(route, 404, "Model not found");
   const model = items.find((item) => item.id === match[1]);
   if (!model) return problem(route, 404, "Model not found");
   const rates = {
     model: present(model, connections),
+    cost_currency: "USD",
     cost: {
       version: 1,
       currency: "USD",
       effective_from: mockNow,
-      rates: { request: "0", input_per_million: "1", output_per_million: "2" },
+      source_priority: "reported_first",
+      rules: [
+        {
+          id: "00000000-0000-4000-8000-000000000299",
+          name: "Default fallback",
+          priority: 0,
+          match: "all",
+          conditions: [],
+          fixed_amount: "0",
+          rates: [
+            { usage_type: "uncached_input_token", amount_per_unit: "0.000001" },
+            { usage_type: "output_token", amount_per_unit: "0.000002" },
+          ],
+        },
+      ],
     },
     aiu: {
       version: 1,

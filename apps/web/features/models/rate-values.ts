@@ -1,7 +1,6 @@
 import type { EditableRates, RateField, RateValues } from "./types";
 
 export const rateFields = [
-  "request",
   "input_per_million",
   "cache_read_per_million",
   "cache_write_per_million",
@@ -19,7 +18,6 @@ export const rateFields = [
 
 export function emptyEditableRates(): EditableRates {
   return {
-    request: "",
     input_per_million: "",
     cache_read_per_million: "",
     cache_write_per_million: "",
@@ -46,14 +44,10 @@ export function editableRates(values: RateValues | undefined): EditableRates {
   } as EditableRates;
 }
 
-export function rateRequestBody(values: EditableRates, kind: "cost" | "aiu") {
+export function rateRequestBody(values: EditableRates) {
   return {
     ...Object.fromEntries(
-      rateFields.flatMap((field) =>
-        kind === "aiu" && field === "request"
-          ? []
-          : [[field, values[field] === "" ? null : values[field]]],
-      ),
+      rateFields.map((field) => [field, values[field] === "" ? null : values[field]]),
     ),
     custom_units: values.custom_units,
   };

@@ -13,7 +13,7 @@ TokenPilot 支持三种同等接入方式：Node SDK、Python SDK 和 LiteLLM Co
 1. 新增调用连接：LiteLLM、OpenAI 兼容服务或 Anthropic。
 2. 填写 `OPENAI_API_KEY` 这样的凭据引用。它只是应用本地查找名称，不是密钥值。
 3. 新增真实模型。每条记录把一个连接与实际发送给该服务的模型名称绑定起来。
-4. 给真实模型配置 AI Cost 和 AI Unit 单价。
+4. 发布 AI Unit 换算率；只有调用端不能上报成本时，才配置条件备用规则。
 5. 创建 `customer-support` 这样的虚拟模型，排列首选与备用模型，并按需添加时间或用户条件。
 6. 发布。发布中心会一次返回全部校验问题。
 
@@ -143,6 +143,7 @@ response = await litellm.acompletion(
 不要在 LiteLLM YAML 中再维护一套业务分流。首选模型、权重、条件和备用顺序都由 TokenPilot 管理；只有选中 LiteLLM 连接时，Connector 才把真实模型的 `request_model` 转换为 LiteLLM 模型名。
 
 请持久化本地缓冲和最后可用配置目录。无效更新会被原子拒绝，上一份有效策略继续工作。使用 `AI_CONTROL_POLICY_REQUIRED=true` 时，当前配置和未过期的最后可用配置都不存在才会拒绝请求。
+LiteLLM 能提供 `response_cost` 时，Connector 会把它作为本次尝试的实际成本上报。
 
 ## 用户与自定义字段
 
@@ -160,4 +161,4 @@ response = await litellm.acompletion(
 
 ## 手动上报
 
-暂未实现完整适配器的服务可以使用 SDK 的 `recordUsage` / `record_usage`。调用方需要提供稳定的事件与尝试标识、实际计量、虚拟模型和候选真实模型 ID。SDK 仍会校验当前应用用户、已发布路由和隐私白名单，并通过可靠缓冲上报，不能借此绕过应用隔离。
+暂未实现完整适配器的服务可以使用 SDK 的 `recordUsage` / `record_usage`。调用方需要提供稳定的事件与尝试标识、实际计量、虚拟模型和候选真实模型 ID。服务已经返回实际或估算金额时，Node 传入 `sourceCost`，Python 传入 `SourceCost`。SDK 仍会校验当前应用用户、已发布路由和隐私白名单，并通过可靠缓冲上报，不能借此绕过应用隔离。实际上报金额优先于成本备用规则；AI Unit 仍根据用量独立换算。

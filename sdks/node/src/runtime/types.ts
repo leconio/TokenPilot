@@ -119,11 +119,13 @@ export interface AiProviderChatResponse {
   readonly response: unknown;
   readonly httpStatus?: number;
   readonly usage?: UsageEvent["usage"];
+  readonly sourceCost?: NonNullable<UsageEvent["source_cost"]>;
 }
 
 export interface AiProviderStreamPart<T = unknown> {
   readonly value: T;
   readonly usage?: UsageEvent["usage"];
+  readonly sourceCost?: NonNullable<UsageEvent["source_cost"]>;
 }
 
 export interface AiProviderChatStreamResponse<T = unknown> {
@@ -157,6 +159,12 @@ export interface RecordUsageInput {
   readonly latencyMs?: number | null;
   readonly errorClass?: string | null;
   readonly fallbackFrom?: string | null;
+  /** Exact or estimated amount returned by the model service for this attempt. */
+  readonly sourceCost?: Readonly<{
+    readonly amount: string;
+    readonly currency: string;
+    readonly isEstimated?: boolean;
+  }>;
   readonly usage: UsageEvent["usage"];
 }
 

@@ -104,6 +104,7 @@ export async function executeChat<T>(
             httpStatus: result.status,
             latencyMs,
             usage: result.usage,
+            sourceCost: result.sourceCost,
             final: true,
             reservationId: reservation.token?.id ?? null,
           }),

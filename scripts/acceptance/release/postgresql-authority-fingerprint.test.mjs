@@ -54,6 +54,8 @@ test("fingerprint covers the complete current application authority", () => {
     "application_usage_ratings",
     "model_definitions",
     "model_cost_versions",
+    "model_cost_rules",
+    "model_cost_rule_items",
     "model_aiu_versions",
     "user_aiu_quotas",
     "user_aiu_ledger_entries",
@@ -70,7 +72,7 @@ test("fingerprint covers the complete current application authority", () => {
   ]) {
     assert.ok(AUTHORITY_TABLES.includes(table), `${table} must be fingerprinted`);
   }
-  assert.equal(AUTHORITY_TABLES.length, 44);
+  assert.equal(AUTHORITY_TABLES.length, 45);
   assert.deepEqual(AUTHORITY_TABLES, [...new Set(AUTHORITY_TABLES)].sort());
 });
 

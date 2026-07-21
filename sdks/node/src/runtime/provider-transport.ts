@@ -7,6 +7,7 @@ export interface ProviderResult<T> {
   readonly response: T;
   readonly status: number;
   readonly usage: UsageEvent["usage"];
+  readonly sourceCost: UsageEvent["source_cost"];
 }
 
 export class AiProviderRequestError extends Error {
@@ -45,6 +46,7 @@ export async function requestProvider<T>(
         response: result.response as T,
         status: result.httpStatus ?? 200,
         usage: result.usage ?? { request_count: "1" },
+        sourceCost: result.sourceCost ?? null,
       };
     } catch (error) {
       if (error instanceof AiProviderRequestError) throw error;
@@ -125,6 +127,7 @@ export async function requestProvider<T>(
       response: value as T,
       status: response.status,
       usage: anthropic ? anthropicUsage(value) : openAiUsage(value),
+      sourceCost: null,
     };
   } catch (error) {
     throw providerFailure(error, input, signal);

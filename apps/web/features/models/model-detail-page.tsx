@@ -11,8 +11,10 @@ import { PageHeading } from "@/features/shared/components/page-heading";
 import { PageState } from "@/features/shared/components/page-state";
 import { useLocale } from "@/i18n/locale-provider";
 import { controlApi } from "@/lib/api";
+import { costRulesRequestBody, editableCostRules, type EditableCostRule } from "./cost-rule-values";
 import { ModelInsights } from "./model-insights";
-import { ModelRateCard } from "./model-rate-card";
+import { ModelAiuRateCard } from "./model-rate-card";
+import { ModelCostRulesCard } from "./model-cost-rules-card";
 import { ModelStatusControl } from "./model-status-control";
 import { editableRates, emptyEditableRates, rateRequestBody } from "./rate-values";
 import type { ModelDefinition, ModelRates } from "./types";
@@ -24,7 +26,7 @@ export function ModelDetailPage() {
   const modelId = match?.[2] ?? "";
   const path = `/applications/${slug}/models/${modelId}`;
   const client = useQueryClient();
-  const [cost, setCost] = useState(emptyEditableRates);
+  const [costRules, setCostRules] = useState<EditableCostRule[]>([]);
   const [aiu, setAiu] = useState(emptyEditableRates);
   const rates = useQuery({
     queryKey: ["model-rates", slug, modelId],
@@ -40,15 +42,15 @@ export function ModelDetailPage() {
 
   useEffect(() => {
     if (rates.data === undefined) return;
-    setCost(editableRates(rates.data.cost?.rates));
+    setCostRules(editableCostRules(rates.data.cost?.rules));
     setAiu(editableRates(rates.data.aiu?.rates));
   }, [rates.data]);
 
-  const saveCost = useMutation({
+  const saveCostRules = useMutation({
     mutationFn: () =>
-      controlApi<ModelRates>(`${path}/cost`, {
+      controlApi<ModelRates>(`${path}/cost-rules`, {
         method: "PUT",
-        body: JSON.stringify(rateRequestBody(cost, "cost")),
+        body: JSON.stringify(costRulesRequestBody(costRules)),
       }),
     onSuccess: async () => client.invalidateQueries({ queryKey: ["model-rates", slug, modelId] }),
   });
@@ -56,7 +58,7 @@ export function ModelDetailPage() {
     mutationFn: () =>
       controlApi<ModelRates>(`${path}/aiu`, {
         method: "PUT",
-        body: JSON.stringify(rateRequestBody(aiu, "aiu")),
+        body: JSON.stringify(rateRequestBody(aiu)),
       }),
     onSuccess: async () => client.invalidateQueries({ queryKey: ["model-rates", slug, modelId] }),
   });
@@ -100,21 +102,16 @@ export function ModelDetailPage() {
       />
       {details.data === undefined ? null : <ModelInsights model={details.data} />}
       <div className="grid gap-4 xl:grid-cols-2">
-        <ModelRateCard
-          kind="cost"
+        <ModelCostRulesCard
           version={rates.data.cost?.version ?? null}
-          currency={rates.data.cost?.currency}
-          values={cost}
-          saving={saveCost.isPending}
-          error={saveCost.error?.message}
-          onChange={(field, value) => setCost((current) => ({ ...current, [field]: value }))}
-          onCustomUnitsChange={(custom_units) =>
-            setCost((current) => ({ ...current, custom_units }))
-          }
-          onSave={() => saveCost.mutate()}
+          currency={rates.data.cost_currency}
+          values={costRules}
+          saving={saveCostRules.isPending}
+          error={saveCostRules.error?.message}
+          onChange={setCostRules}
+          onSave={() => saveCostRules.mutate()}
         />
-        <ModelRateCard
-          kind="aiu"
+        <ModelAiuRateCard
           version={rates.data.aiu?.version ?? null}
           values={aiu}
           saving={saveAiu.isPending}

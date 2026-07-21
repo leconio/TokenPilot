@@ -54,12 +54,24 @@ reconciled by the processing pipeline.
 
 Register an adapter by connection ID when an application already has an official SDK client,
 custom proxy, connection pool, or enterprise retry policy. The adapter receives the selected real
-model and can return normalized usage. Registering by connection ID takes precedence over a
-driver-wide adapter.
+model and can return normalized usage plus the actual amount charged for that attempt:
+
+```ts
+return {
+  response,
+  usage: { uncached_input_tokens: "820", output_tokens: "91" },
+  sourceCost: { amount: "0.00472", currency: "USD", isEstimated: false },
+};
+```
+
+Registering by connection ID takes precedence over a driver-wide adapter. Streaming adapters can
+attach `sourceCost` to the part where the final amount becomes available.
 
 Use `recordUsage()` for a service without a full adapter. It still requires an active user context,
 a published virtual model, a valid candidate real-model ID, and caller-generated idempotency IDs.
-It cannot bypass application isolation or report message content.
+Pass `sourceCost` there when the service exposes an amount. It cannot bypass application isolation
+or report message content. Reported cost takes precedence over Web fallback rules and does not
+change AI Unit conversion.
 
 ## Reliability and privacy
 

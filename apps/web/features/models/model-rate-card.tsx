@@ -64,10 +64,8 @@ function Field({
   );
 }
 
-export function ModelRateCard({
-  kind,
+export function ModelAiuRateCard({
   version,
-  currency,
   values,
   saving,
   error,
@@ -75,9 +73,7 @@ export function ModelRateCard({
   onCustomUnitsChange,
   onSave,
 }: Readonly<{
-  kind: "cost" | "aiu";
   version: number | null;
-  currency?: string | undefined;
   values: Readonly<EditableRates>;
   saving: boolean;
   error?: string | undefined;
@@ -85,35 +81,20 @@ export function ModelRateCard({
   onCustomUnitsChange: (values: EditableRates["custom_units"]) => void;
   onSave: () => void;
 }>) {
-  const cost = kind === "cost";
   const { text } = useLocale();
-  const prefix = cost ? "cost" : "aiu";
+  const prefix = "aiu";
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{cost ? "模型花费" : "AIU 单价"}</CardTitle>
+        <CardTitle>{text("AIU 单价", "AIU pricing")}</CardTitle>
         <CardDescription>
-          {cost
-            ? text(
-                `记录服务商价格${currency ? `，币种为 ${currency}` : ""}。`,
-                `Record provider rates${currency ? ` in ${currency}` : ""}.`,
-              )
-            : "定义每种用量折算成多少 AIU。"}
+          {text("定义每种用量折算成多少 AIU。", "Define how each usage type converts to AIU.")}
         </CardDescription>
         {version === null ? null : (
           <CardAction>{text(`版本 ${version}`, `Version ${version}`)}</CardAction>
         )}
       </CardHeader>
       <CardContent className="form-grid">
-        {cost ? (
-          <Field
-            field="request"
-            label="每次请求"
-            prefix={prefix}
-            value={values.request}
-            onChange={onChange}
-          />
-        ) : null}
         <Field
           field="input_per_million"
           label="输入（每百万 Token）"
@@ -145,11 +126,7 @@ export function ModelRateCard({
                 onChange={onChange}
               />
             ))}
-            <CustomRateFields
-              kind={kind}
-              values={values.custom_units}
-              onChange={onCustomUnitsChange}
-            />
+            <CustomRateFields values={values.custom_units} onChange={onCustomUnitsChange} />
           </CollapsibleContent>
         </Collapsible>
         {error ? <p className="text-sm text-destructive md:col-span-2">{error}</p> : null}

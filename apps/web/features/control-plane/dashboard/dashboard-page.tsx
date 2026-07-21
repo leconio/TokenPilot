@@ -145,7 +145,7 @@ export function DashboardPage() {
   const issues = [
     {
       count: overview?.unpriced_events ?? 0,
-      label: "条调用还没有成本价格",
+      label: "条调用还没有统计花费",
       href: usageIssueHref(applicationPath, selectedRange, "cost_status", "equals", ["unpriced"]),
     },
     {
@@ -283,8 +283,8 @@ export function DashboardPage() {
                 {(
                   [
                     [
-                      "录入模型和价格",
-                      "填写 LiteLLM 名称、模型花费与 AIU 单价",
+                      "录入真实模型",
+                      "填写调用名称，按需配置成本备用规则和 AIU 换算率",
                       `${applicationPath}/models`,
                     ],
                     [

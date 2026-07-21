@@ -1,48 +1,127 @@
 import { describe, expect, it } from "vitest";
 
+import type { NormalizedUsage } from "@tokenpilot/contracts";
 import { Prisma } from "@tokenpilot/db";
 
 import { rateApplicationAiu, rateApplicationCost } from "../../src/application-usage/rating.js";
 
+function normalized(
+  usageLines: readonly {
+    readonly usage_type: string;
+    readonly quantity: string;
+    readonly unit_key?: string;
+  }[],
+  overrides: {
+    readonly sourceCost?: NormalizedUsage["source_cost"];
+    readonly eventProperties?: Readonly<Record<string, string | number | boolean>>;
+    readonly userProperties?: Readonly<Record<string, string | number | boolean>>;
+    readonly provider?: string;
+  } = {},
+): NormalizedUsage {
+  return {
+    schema_version: "2.0",
+    event_id: "01J00000000000000000000000",
+    event_time: "2026-07-20T00:00:00.000Z",
+    user: { user_id: "user-1", display_user: "Ada" },
+    event_properties: overrides.eventProperties,
+    user_properties: overrides.userProperties,
+    source: { type: "sdk", name: "test", version: "1", instance_id: "instance-1" },
+    request: {
+      request_id: "request-1",
+      attempt_id: "attempt-1",
+      attempt_index: 0,
+      is_final_attempt: true,
+      operation_id: null,
+      parent_request_id: null,
+      session_id: null,
+      conversation_id: null,
+      trace_id: null,
+    },
+    model: {
+      virtual_model: "assistant",
+      model_id: "00000000-0000-4000-8000-000000000001",
+      connection_id: "00000000-0000-4000-8000-000000000002",
+      connection_driver: "openai_compatible",
+      request_model: "openai/gpt-test",
+      provider: overrides.provider ?? "openai",
+    },
+    route: null,
+    analytics_dimensions: {},
+    result: { status: "success", http_status: 200, latency_ms: 100, error_class: null },
+    source_cost: overrides.sourceCost ?? null,
+    privacy: { contains_prompt: false, contains_response: false },
+    normalization: {
+      normalizer_name: "test",
+      normalizer_version: "1",
+      missing_usage_fields: [],
+      warnings: [],
+    },
+    usage_lines: usageLines.map((line) => ({
+      ...line,
+      unit: line.usage_type.includes("token")
+        ? "token"
+        : line.usage_type === "request"
+          ? "request"
+          : line.usage_type === "custom_unit"
+            ? "custom"
+            : line.usage_type.includes("image")
+              ? "image"
+              : "second",
+      source_path: "test",
+      is_estimated: false,
+      confidence: "sdk_reported",
+    })),
+  } as NormalizedUsage;
+}
+
 describe("application model rating", () => {
-  it("prices input, cached input, and output with the real model's published rates", () => {
+  it("calculates cost from the first matching real-model rule", () => {
     const result = rateApplicationCost(
       {
         id: "cost-current",
         currency: "USD",
-        items: [
+        rules: [
           {
-            id: "input-rate",
-            usageType: "uncached_input_token",
-            unitKey: "",
-            unitSize: new Prisma.Decimal(1_000),
-            unitPrice: new Prisma.Decimal("0.002"),
-          },
-          {
-            id: "cache-rate",
-            usageType: "cache_read_input_token",
-            unitKey: "",
-            unitSize: new Prisma.Decimal(1_000),
-            unitPrice: new Prisma.Decimal("0.0002"),
-          },
-          {
-            id: "output-rate",
-            usageType: "output_token",
-            unitKey: "",
-            unitSize: new Prisma.Decimal(1_000),
-            unitPrice: new Prisma.Decimal("0.008"),
+            id: "rule-default",
+            name: "Default",
+            priority: 0,
+            matchMode: "all",
+            conditionsJson: [],
+            fixedAmount: null,
+            items: [
+              {
+                id: "input-rate",
+                usageType: "uncached_input_token",
+                unitKey: "",
+                amountPerUnit: new Prisma.Decimal("0.000002"),
+              },
+              {
+                id: "cache-rate",
+                usageType: "cache_read_input_token",
+                unitKey: "",
+                amountPerUnit: new Prisma.Decimal("0.0000002"),
+              },
+              {
+                id: "output-rate",
+                usageType: "output_token",
+                unitKey: "",
+                amountPerUnit: new Prisma.Decimal("0.000008"),
+              },
+            ],
           },
         ],
       },
-      [
+      normalized([
         { usage_type: "uncached_input_token", quantity: "1000" },
         { usage_type: "cache_read_input_token", quantity: "500" },
         { usage_type: "output_token", quantity: "250" },
-      ],
+      ]),
     );
 
     expect(result).toMatchObject({
       status: "official",
+      source: "rule",
+      ruleId: "rule-default",
       currency: "USD",
       total: "0.004100000000000000",
     });
@@ -120,17 +199,26 @@ describe("application model rating", () => {
       {
         id: "cost-current",
         currency: "USD",
-        items: [
+        rules: [
           {
-            id: "request-rate",
-            usageType: "request",
-            unitKey: "",
-            unitSize: new Prisma.Decimal(1),
-            unitPrice: new Prisma.Decimal("0.01"),
+            id: "request-rule",
+            name: "Request",
+            priority: 0,
+            matchMode: "all",
+            conditionsJson: [],
+            fixedAmount: null,
+            items: [
+              {
+                id: "request-rate",
+                usageType: "request",
+                unitKey: "",
+                amountPerUnit: new Prisma.Decimal("0.01"),
+              },
+            ],
           },
         ],
       },
-      [{ usage_type: "request", quantity: "2" }],
+      normalized([{ usage_type: "request", quantity: "2" }]),
     );
     const aiu = rateApplicationAiu({ id: "aiu-current", items: [] }, [
       { usage_type: "request", quantity: "2" },
@@ -150,31 +238,38 @@ describe("application model rating", () => {
       {
         id: "cost-multimodal",
         currency: "USD",
-        items: [
+        rules: [
           {
-            id: "image-cost",
-            usageType: "input_image",
-            unitKey: "",
-            unitSize: new Prisma.Decimal(1),
-            unitPrice: new Prisma.Decimal("0.01"),
-          },
-          {
-            id: "audio-cost",
-            usageType: "input_audio_second",
-            unitKey: "",
-            unitSize: new Prisma.Decimal(1),
-            unitPrice: new Prisma.Decimal("0.002"),
-          },
-          {
-            id: "gpu-cost",
-            usageType: "custom_unit",
-            unitKey: "gpu_millisecond",
-            unitSize: new Prisma.Decimal(1_000),
-            unitPrice: new Prisma.Decimal("0.04"),
+            id: "multimodal-rule",
+            name: "Multimodal",
+            priority: 0,
+            matchMode: "all",
+            conditionsJson: [],
+            fixedAmount: null,
+            items: [
+              {
+                id: "image-cost",
+                usageType: "input_image",
+                unitKey: "",
+                amountPerUnit: new Prisma.Decimal("0.01"),
+              },
+              {
+                id: "audio-cost",
+                usageType: "input_audio_second",
+                unitKey: "",
+                amountPerUnit: new Prisma.Decimal("0.002"),
+              },
+              {
+                id: "gpu-cost",
+                usageType: "custom_unit",
+                unitKey: "gpu_millisecond",
+                amountPerUnit: new Prisma.Decimal("0.00004"),
+              },
+            ],
           },
         ],
       },
-      usage,
+      normalized(usage),
     );
     const aiu = rateApplicationAiu(
       {
@@ -215,20 +310,108 @@ describe("application model rating", () => {
     ]);
   });
 
-  it("does not silently ignore a multimodal or custom unit with no matching rate", () => {
+  it("marks cost unpriced when no reported amount or conditional rule is available", () => {
     const usage = [
       { usage_type: "output_video_second", quantity: "1" },
       { usage_type: "custom_unit", unit_key: "tool_call", quantity: "2" },
     ];
-    const cost = rateApplicationCost({ id: "cost-partial", currency: "USD", items: [] }, usage);
+    const cost = rateApplicationCost(
+      { id: "cost-partial", currency: "USD", rules: [] },
+      normalized(usage),
+    );
     const aiu = rateApplicationAiu({ id: "aiu-partial", items: [] }, usage);
 
     expect(cost).toMatchObject({ status: "unpriced", total: null });
     expect(aiu).toMatchObject({ status: "unrated", totalMicros: null });
-    expect(cost.lines).toEqual([
-      expect.objectContaining({ usage_type: "output_video_second", rate_item_id: null }),
-      expect.objectContaining({ unit_key: "tool_call", rate_item_id: null }),
-    ]);
+    expect(cost.lines).toEqual([]);
     expect(aiu.lines).toHaveLength(2);
+  });
+
+  it("uses a source-reported amount before evaluating fallback rules", () => {
+    const result = rateApplicationCost(
+      {
+        id: "cost-current",
+        currency: "CNY",
+        rules: [
+          {
+            id: "fallback-rule",
+            name: "Fallback",
+            priority: 0,
+            matchMode: "all",
+            conditionsJson: [],
+            fixedAmount: new Prisma.Decimal("99"),
+            items: [],
+          },
+        ],
+      },
+      normalized([{ usage_type: "output_token", quantity: "10" }], {
+        sourceCost: { amount: "0.0125", currency: "USD", is_estimated: false },
+      }),
+    );
+
+    expect(result).toMatchObject({
+      status: "official",
+      source: "reported",
+      versionId: null,
+      ruleId: null,
+      currency: "USD",
+      total: "0.012500000000000000",
+      lines: [],
+    });
+  });
+
+  it("matches built-in and custom properties in priority order", () => {
+    const result = rateApplicationCost(
+      {
+        id: "cost-current",
+        currency: "USD",
+        rules: [
+          {
+            id: "enterprise-rule",
+            name: "Enterprise voice",
+            priority: 0,
+            matchMode: "all",
+            conditionsJson: [
+              { kind: "builtin", field: "provider", operator: "equals", values: ["openai"] },
+              {
+                kind: "property",
+                scope: "user",
+                key: "tier",
+                operator: "equals",
+                values: ["enterprise"],
+              },
+              {
+                kind: "property",
+                scope: "event",
+                key: "voice_seconds",
+                operator: "greater_or_equal",
+                values: [10],
+              },
+            ],
+            fixedAmount: new Prisma.Decimal("0.25"),
+            items: [],
+          },
+          {
+            id: "default-rule",
+            name: "Default",
+            priority: 1,
+            matchMode: "all",
+            conditionsJson: [],
+            fixedAmount: new Prisma.Decimal("1"),
+            items: [],
+          },
+        ],
+      },
+      normalized([{ usage_type: "request", quantity: "1" }], {
+        eventProperties: { voice_seconds: 30 },
+        userProperties: { tier: "enterprise" },
+      }),
+    );
+
+    expect(result).toMatchObject({
+      source: "rule",
+      ruleId: "enterprise-rule",
+      total: "0.250000000000000000",
+    });
   });
 });

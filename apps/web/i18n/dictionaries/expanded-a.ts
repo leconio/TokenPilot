@@ -95,8 +95,6 @@ export const expandedTranslationsA = {
     "Use another candidate on selected days and times. Higher rules take priority.",
   基本信息: "Basic information",
   "填写服务端已有变量名，例如": "Enter an existing server variable name, for example",
-  "填写每次请求、输入和输出成本即可；缓存与思考 Token 会自动使用对应价格。":
-    "Enter per-request, input, and output costs. Cache and reasoning tokens use the matching price automatically.",
   多模态: "Multimodal",
   天: "days",
   失败后尝试顺序: "Fallback order",

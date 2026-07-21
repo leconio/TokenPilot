@@ -11,6 +11,7 @@ from .chat_types import AiChatAttempt, AsyncChatClient, SyncChatClient
 from .context import ResolvedAiRuntimeContext, new_ulid
 from .contracts import RuntimeCallConnection, RuntimeRouteTarget
 from .routing import RuntimeRouteContext, RuntimeRouteSelection
+from .source_cost import SourceCost, source_cost_payload
 
 
 def route_and_targets(
@@ -94,6 +95,7 @@ def usage_event(
     connection: RuntimeCallConnection,
     attempt: AiChatAttempt,
     usage: Mapping[str, str],
+    source_cost: SourceCost | None = None,
     *,
     final: bool,
     reservation_id: str | None,
@@ -156,7 +158,7 @@ def usage_event(
             "latency_ms": attempt.latency_ms,
             "error_class": None if attempt.status == "success" else f"provider_{attempt.status}",
         },
-        "source_cost": None,
+        "source_cost": source_cost_payload(source_cost),
         "privacy": {"contains_prompt": False, "contains_response": False},
         "usage": dict(usage),
     }

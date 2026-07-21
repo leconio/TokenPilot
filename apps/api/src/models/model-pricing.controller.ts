@@ -14,10 +14,10 @@ export class ModelPricingController {
     return this.pricing.get(id);
   }
 
-  @Put("cost")
+  @Put("cost-rules")
   @RequireMachineScope("pricing:write")
-  saveCost(@Param("id") id: string, @Body() body: unknown) {
-    return this.pricing.saveCost(id, body);
+  saveCostRules(@Param("id") id: string, @Body() body: unknown) {
+    return this.pricing.saveCostRules(id, body);
   }
 
   @Put("aiu")

@@ -80,6 +80,10 @@ const numericOperators: readonly AnalysisOperator[] = [
 const commonFields: readonly AnalysisFieldDefinition[] = [
   field("event_id", "事件 ID", "输入事件 ID", "TEXT", equalityOperators, true),
   field("request_id", "请求 ID", "输入请求 ID", "TEXT", equalityOperators, true),
+  field("attempt_id", "尝试 ID", "输入尝试 ID", "TEXT", equalityOperators, true),
+  field("operation_id", "操作 ID", "输入操作 ID", "TEXT", equalityOperators, true),
+  field("session_id", "会话 ID", "输入会话 ID", "TEXT", equalityOperators, true),
+  field("conversation_id", "对话 ID", "输入对话 ID", "TEXT", equalityOperators, true),
   field("model_id", "模型 ID", "输入模型 ID", "TEXT", equalityOperators, true),
   field("request_model", "模型标识", "搜索模型标识", "TEXT", textOperators),
   field("virtual_model", "虚拟模型", "搜索虚拟模型", "TEXT", textOperators),
@@ -91,7 +95,12 @@ const commonFields: readonly AnalysisFieldDefinition[] = [
   field("display_user", "用户名", "搜索用户名", "TEXT", textOperators, true),
   field("user_tag", "用户标签", "选择用户标签", "ENUM", equalityOperators),
   field("user_group", "用户组", "选择用户组", "ENUM", ["equals", "not_equals", "one_of"]),
+  field("application_version", "应用版本", "输入应用版本", "TEXT", textOperators, true),
+  field("sdk_version", "SDK 版本", "输入 SDK 版本", "TEXT", textOperators, true),
+  field("connector_version", "连接程序版本", "输入连接程序版本", "TEXT", textOperators, true),
+  field("config_version", "配置版本", "输入配置版本", "TEXT", textOperators, true),
   field("status", "调用结果", "选择调用结果", "ENUM", equalityOperators),
+  field("schema_version", "数据版本", "输入数据版本", "TEXT", equalityOperators, true),
   field("latency_ms", "耗时（毫秒）", "输入毫秒数", "NUMBER", numericOperators, true),
 ];
 

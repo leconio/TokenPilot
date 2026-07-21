@@ -34,7 +34,8 @@ prompts or responses.
 A **connection** tells a trusted runtime how to reach a model service. It records the protocol,
 endpoint, capabilities, and the environment-variable name that contains the credential; TokenPilot
 does not store the credential value. A **real model** is a callable Provider model on that
-connection. Its request name, Provider cost rates, and AI Unit conversion rates live together.
+connection. Its request name, Provider-cost fallback rules, and AI Unit conversion rates live
+together.
 
 ### Virtual models and routing
 
@@ -57,11 +58,12 @@ dashboard. Reports always read ClickHouse; PostgreSQL stores configuration and o
 
 ### Provider cost, AI Unit, and user allowance
 
-Provider cost answers how much the model service charged. AI Unit is the product-defined unit used
-to measure and grant model usage. Input, output, cache, reasoning, image, audio, and other supported
-usage lines can have different rates on each real model. Both calculations preserve the exact
-published rate snapshot used for the event. Missing coverage is shown as unpriced or unrated usage,
-never silently converted to zero.
+Provider cost answers how much the model service charged. The exact amount reported by an SDK or
+Connector wins. Ordered conditions on built-in fields or custom properties can calculate a fallback
+amount when the caller cannot report one. AI Unit remains a separate product-defined conversion for
+measuring and granting usage; its input, output, cache, reasoning, image, audio, and custom rates do
+not change when cost rules change. Missing coverage is shown as unpriced or unrated usage, never
+silently converted to zero.
 
 Each application user can receive an AI Unit allowance. Enforcement reserves a conservative amount
 before a call, settles it to the actual rated usage afterward, and releases it when no attempt is
@@ -81,7 +83,7 @@ made. Blocking and allowance resets are explicit, audited operations; history is
 1. Deploy TokenPilot and complete first-run setup.
 2. Create an application and its application key.
 3. Define the event and user fields that the application is allowed to report.
-4. Add a connection and its real models, then publish complete cost and AI Unit rates.
+4. Add a connection and its real models, configure cost fallbacks if needed, and publish AI Unit rates.
 5. Create a virtual model, simulate representative requests, and publish it.
 6. Integrate the Node SDK, Python SDK, or LiteLLM Connector and verify a real call.
 7. Review users, attempt chains, cost, AI Unit, and saved reports.

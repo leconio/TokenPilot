@@ -3,6 +3,7 @@ import { commonTranslations } from "./dictionaries/common";
 import { configurationTranslations } from "./dictionaries/configuration";
 import { expandedTranslationsA } from "./dictionaries/expanded-a";
 import { expandedTranslationsB } from "./dictionaries/expanded-b";
+import { modelCostTranslations } from "./dictionaries/model-cost";
 import { productTranslations } from "./dictionaries/product";
 import { systemTranslations } from "./dictionaries/system";
 import { userQuotaTranslations } from "./dictionaries/user-quota";
@@ -16,6 +17,7 @@ const exactTranslations: Readonly<Record<string, string>> = {
   ...systemTranslations,
   ...expandedTranslationsA,
   ...expandedTranslationsB,
+  ...modelCostTranslations,
   ...userQuotaTranslations,
   ...productTranslations,
 };

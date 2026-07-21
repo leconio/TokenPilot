@@ -28,8 +28,10 @@ inside the key's application. The same `user_id` in another application is an in
 
 The event includes time, request and attempt identifiers, source and application versions, the
 connection, real-model request name, optional virtual model, token and multimodal quantities,
-result fields, and typed custom properties. Prompts, responses, messages, tool arguments, cookies,
-authorization headers, and Provider credentials are rejected or removed before durable intake.
+optional Provider-reported `source_cost`, result fields, and typed custom properties. `source_cost`
+contains a non-negative decimal `amount`, a three-letter `currency`, and `is_estimated`. Prompts,
+responses, messages, tool arguments, cookies, authorization headers, and Provider credentials are
+rejected or removed before durable intake.
 
 Idempotency is scoped by `application_id + event_id`:
 
@@ -45,7 +47,7 @@ The following families are bound to `/applications/:applicationSlug`:
 | -------------- | ---------------------------------------------------------------------- |
 | Applications   | `GET/POST /applications`, `GET/PATCH /applications/:applicationSlug`   |
 | Connections    | `/connections`, `/connections/:id`, and `/connections/:id/check`       |
-| Models         | `/models`, `/models/:id`, `/models/:id/cost`, `/models/:id/aiu`        |
+| Models         | `/models`, `/models/:id`, `/models/:id/cost-rules`, `/models/:id/aiu`  |
 | Virtual models | `/virtual-models`, candidate routes, rules, reorder, and simulation    |
 | Typed fields   | `/properties`                                                          |
 | Users          | `/users`, `/users/:id`, quota, reset, and AIU journal                  |
@@ -57,6 +59,11 @@ The following families are bound to `/applications/:applicationSlug`:
 Creating a user requires only `user_id`; `display_user`, tags, and typed properties are optional.
 `user_id` is immutable. Blocking a user, resetting quota, or applying a group action requires an
 auditable reason where the operation is destructive or access-affecting.
+
+`PUT /models/:id/cost-rules` publishes the complete ordered fallback rule list. Each rule has a
+name, `all` or `any` conditions, an optional `fixed_amount`, and zero or more `rates` containing an
+actual `amount_per_unit`. Sending an empty list is valid and means reported amounts only. These
+rules are consulted only when an event has no `source_cost`; they never change `/models/:id/aiu`.
 
 ## Reports and search
 

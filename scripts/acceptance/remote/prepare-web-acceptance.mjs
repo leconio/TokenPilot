@@ -250,13 +250,22 @@ const fallback = await mutate(
 for (const model of [primary, fallback]) {
   if (typeof model?.id !== "string") throw new Error("Acceptance model creation failed");
   await mutate(
-    `${appPath}/models/${model.id}/cost`,
+    `${appPath}/models/${model.id}/cost-rules`,
     {
-      request: "0.1",
-      input_per_million: "1000",
-      cache_read_per_million: "500",
-      output_per_million: "2000",
-      reasoning_per_million: "4000",
+      rules: [
+        {
+          name: "Acceptance fallback",
+          match: "all",
+          conditions: [],
+          fixed_amount: "0.1",
+          rates: [
+            { usage_type: "uncached_input_token", amount_per_unit: "0.001" },
+            { usage_type: "cache_read_input_token", amount_per_unit: "0.0005" },
+            { usage_type: "output_token", amount_per_unit: "0.002" },
+            { usage_type: "reasoning_output_token", amount_per_unit: "0.004" },
+          ],
+        },
+      ],
     },
     session,
     "PUT",

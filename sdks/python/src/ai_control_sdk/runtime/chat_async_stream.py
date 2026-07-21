@@ -25,6 +25,7 @@ from .provider_transport import (
     stream_request,
     stream_usage,
 )
+from .source_cost import SourceCost
 
 
 async def execute_async_chat_stream(
@@ -79,6 +80,7 @@ async def execute_async_chat_stream(
             attempt_id = f"att_{new_ulid()}"
             started = time.perf_counter()
             measured = {"request_count": "1"}
+            source_cost: SourceCost | None = None
             status: int | None = None
             emitted = False
             try:
@@ -127,6 +129,8 @@ async def execute_async_chat_stream(
                     async for part in adapted.stream:
                         emitted = True
                         merge_usage(measured, part.usage)
+                        if part.source_cost is not None:
+                            source_cost = part.source_cost
                         yield part.value
                 attempt = AiChatAttempt(
                     attempt_id,
@@ -148,6 +152,7 @@ async def execute_async_chat_stream(
                         connection,
                         attempt,
                         measured,
+                        source_cost,
                         final=True,
                         reservation_id=token.id if token is not None else None,
                     )
@@ -183,6 +188,7 @@ async def execute_async_chat_stream(
                         connection,
                         attempt,
                         measured,
+                        source_cost,
                         final=True,
                         reservation_id=token.id if token is not None else None,
                     )
@@ -230,6 +236,7 @@ async def execute_async_chat_stream(
                         connection,
                         attempt,
                         measured,
+                        source_cost,
                         final=final,
                         reservation_id=token.id if token is not None else None,
                     )

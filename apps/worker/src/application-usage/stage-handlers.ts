@@ -85,6 +85,7 @@ export class ApplicationUsageStageHandlers implements PipelineStageHandlers {
     normalized: NormalizedUsage,
     resolution: PipelineResolutionArtifact,
   ): Promise<CostRatingArtifact> {
+    if (normalized.source_cost !== null) return rateApplicationCost(null, normalized);
     const version =
       resolution.modelId === null
         ? null
@@ -95,10 +96,10 @@ export class ApplicationUsageStageHandlers implements PipelineStageHandlers {
               status: { in: [PublicationStatus.PUBLISHED, PublicationStatus.RETIRED] },
               effectiveFrom: { lte: new Date(normalized.event_time) },
             },
-            include: { items: true },
+            include: { rules: { include: { items: true } } },
             orderBy: [{ effectiveFrom: "desc" }, { version: "desc" }],
           });
-    return rateApplicationCost(version, normalized.usage_lines);
+    return rateApplicationCost(version, normalized);
   }
 
   async rateAiu(

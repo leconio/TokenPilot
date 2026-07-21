@@ -11,6 +11,7 @@ import httpx
 
 from .contracts import RuntimeCallConnection, RuntimeRouteTarget, RuntimeUserReservation
 from .routing import RuntimeRouteContext, RuntimeRouteSelection
+from .source_cost import SourceCost
 
 ChatMessage = Mapping[str, Any]
 CredentialResolver = Callable[[str, RuntimeCallConnection], str]
@@ -56,12 +57,14 @@ class ProviderChatResponse:
     response: Any
     http_status: int = 200
     usage: Mapping[str, str] | None = None
+    source_cost: SourceCost | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class ProviderStreamPart:
     value: Any
     usage: Mapping[str, str] | None = None
+    source_cost: SourceCost | None = None
 
 
 @dataclass(frozen=True, slots=True)

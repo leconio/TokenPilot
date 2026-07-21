@@ -35,6 +35,7 @@ from .manual_usage import RecordUsageInput
 from .openai import apply_ai_context_to_openai_request, sanitize_caller_tags
 from .reservation import async_with_aiu_reservation, with_aiu_reservation
 from .routing import RuntimeRouteContext, RuntimeRouteSelection, resolve_runtime_route
+from .source_cost import SourceCost
 
 __all__ = [
     "AiChatAttempt",
@@ -60,6 +61,7 @@ __all__ = [
     "RuntimeUserReservationRequest",
     "RuntimeUserReservationResponse",
     "SdkReservationResult",
+    "SourceCost",
     "SyncProviderAdapter",
     "ai_context",
     "apply_ai_context_to_openai_request",

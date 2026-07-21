@@ -20,6 +20,7 @@ from ai_control_sdk import (
     ProviderChatRequest,
     ProviderChatResponse,
     ProviderChatStreamResponse,
+    SourceCost,
     ai_context,
     async_ai_context,
 )
@@ -241,6 +242,7 @@ def test_registered_provider_adapter_reuses_an_existing_client(tmp_path: Path) -
                 response={"choices": [{"message": {"content": "existing client"}}]},
                 http_status=201,
                 usage={"uncached_input_tokens": "3", "output_tokens": "2"},
+                source_cost=SourceCost(amount="0.0042", currency="USD"),
             )
 
         def stream(self, _request: ProviderChatRequest) -> ProviderChatStreamResponse:
@@ -269,6 +271,11 @@ def test_registered_provider_adapter_reuses_an_existing_client(tmp_path: Path) -
     assert result.response["choices"][0]["message"]["content"] == "existing client"
     assert result.attempts[0].http_status == 201
     assert batches[0]["events"][0]["usage"]["output_tokens"] == "2"
+    assert batches[0]["events"][0]["source_cost"] == {
+        "amount": "0.0042",
+        "currency": "USD",
+        "is_estimated": False,
+    }
     runtime.close()
 
 

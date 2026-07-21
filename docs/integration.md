@@ -18,7 +18,7 @@ In **Models**, configure in this order:
 1. Add a call connection: LiteLLM, OpenAI-compatible service, or Anthropic.
 2. Set a credential reference such as `OPENAI_API_KEY`. This is a local lookup name, not a secret.
 3. Add real models. Each record binds one connection to the model name sent to that service.
-4. Add Provider-cost and AI Unit prices to each real model.
+4. Publish AI Unit rates. Add conditional cost fallbacks only where callers cannot report cost.
 5. Create a virtual model such as `customer-support`, arrange preferred and fallback models, and
    add schedule or user conditions if needed.
 6. Publish. The release page returns all validation problems together.
@@ -158,6 +158,7 @@ conditions, and fallback order; the Connector translates each published real mod
 Persist the spool and last-known-good directories. An invalid update is rejected atomically and the
 last valid policy continues to serve requests. With `AI_CONTROL_POLICY_REQUIRED=true`, requests
 fail closed when neither current nor unexpired last-known-good configuration is available.
+LiteLLM's `response_cost` is reported as the attempt's source cost when it is available.
 
 ## Users and custom fields
 
@@ -191,5 +192,7 @@ the application before publishing a route to it.
 
 Use SDK `recordUsage` / `record_usage` only for a service that cannot yet use a full adapter. The
 caller supplies stable event and attempt IDs, measured counters, a virtual model, and a candidate
-real-model ID. The SDK still enforces the active application user, published route, privacy
-allowlist, and durable spool.
+real-model ID. Include `sourceCost` in Node or `SourceCost` in Python when the service returns an
+actual or estimated amount. The SDK still enforces the active application user, published route,
+privacy allowlist, and durable spool. A reported amount takes precedence over cost fallback rules;
+AI Unit is still calculated independently from usage.

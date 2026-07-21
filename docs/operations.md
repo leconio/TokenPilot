@@ -93,16 +93,16 @@ passes. A failure keeps delivery paused for investigation.
 
 ## Common alerts
 
-| Alert                             | First check                                           |
-| --------------------------------- | ----------------------------------------------------- |
-| Connector heartbeat stale         | LiteLLM process, key status, network, spool integrity |
-| Connector backlog growing         | API readiness, spool capacity, ingest errors          |
-| Unpriced Provider usage           | Real-model resolution and missing usage price         |
-| Unrated AIU usage                 | Published AIU card and inherited rate coverage        |
-| ClickHouse sink lag               | ClickHouse readiness, Outbox leases, pause owner      |
-| Quota reservation expiry spike    | Client cancellation path and request timeout          |
-| Configuration acknowledgement lag | Connector instance and exact published revision       |
-| Reconciliation difference         | Export the redacted difference before repair          |
+| Alert                             | First check                                                  |
+| --------------------------------- | ------------------------------------------------------------ |
+| Connector heartbeat stale         | LiteLLM process, key status, network, spool integrity        |
+| Connector backlog growing         | API readiness, spool capacity, ingest errors                 |
+| Unpriced Provider usage           | Source amount, real-model resolution, matching fallback rule |
+| Unrated AIU usage                 | Published AIU card and inherited rate coverage               |
+| ClickHouse sink lag               | ClickHouse readiness, Outbox leases, pause owner             |
+| Quota reservation expiry spike    | Client cancellation path and request timeout                 |
+| Configuration acknowledgement lag | Connector instance and exact published revision              |
+| Reconciliation difference         | Export the redacted difference before repair                 |
 
 ## Secret rotation
 

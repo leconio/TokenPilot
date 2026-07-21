@@ -476,17 +476,31 @@ CREATE TABLE "model_cost_versions" (
 );
 
 -- CreateTable
-CREATE TABLE "model_cost_items" (
+CREATE TABLE "model_cost_rules" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "application_id" UUID NOT NULL,
     "version_id" UUID NOT NULL,
-    "usage_type" VARCHAR(120) NOT NULL,
-    "unit_key" VARCHAR(128) NOT NULL DEFAULT '',
-    "unit_size" DECIMAL(38,9) NOT NULL,
-    "unit_price" DECIMAL(38,18) NOT NULL,
+    "name" VARCHAR(120) NOT NULL,
+    "priority" INTEGER NOT NULL,
+    "match_mode" VARCHAR(3) NOT NULL DEFAULT 'all',
+    "conditions_json" JSONB NOT NULL DEFAULT '[]',
+    "fixed_amount" DECIMAL(38,18),
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "model_cost_items_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "model_cost_rules_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "model_cost_rule_items" (
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "application_id" UUID NOT NULL,
+    "rule_id" UUID NOT NULL,
+    "usage_type" VARCHAR(120) NOT NULL,
+    "unit_key" VARCHAR(128) NOT NULL DEFAULT '',
+    "amount_per_unit" DECIMAL(38,18) NOT NULL,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "model_cost_rule_items_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable

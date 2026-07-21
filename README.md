@@ -22,8 +22,9 @@ not. Product teams still need consistent answers to questions such as:
 
 TokenPilot provides a self-hosted control plane for those concerns. Its Node and Python SDKs, and
 its optional LiteLLM Connector, send content-free usage events to the same pipeline. TokenPilot
-calculates provider cost and product-defined **AI Units**, maintains user quotas, and publishes
-runtime routing policies to applications without changing the virtual model name used in code.
+records actual provider cost or applies conditional fallbacks, calculates product-defined **AI
+Units**, maintains user quotas, and publishes runtime routing policies to applications without
+changing the virtual model name used in code.
 
 TokenPilot does **not** proxy model traffic or require Provider API keys. Prompts, responses, tool
 arguments, and Provider credentials stay in your application or LiteLLM environment.
@@ -33,7 +34,7 @@ arguments, and Provider credentials stay in your application or LiteLLM environm
 - Usage analytics by application, user, model, provider, feature, and custom property.
 - Token, request, latency, error, provider-cost, and AI Unit dashboards.
 - Call connections for LiteLLM, OpenAI-compatible services, and Anthropic, plus a real-model catalog
-  with independent provider-cost and AI Unit rates.
+  with reported-cost-first fallback rules and independent AI Unit rates.
 - Virtual models with candidate models, fallback order, schedules, conditions, and temporary
   overrides.
 - Per-user quotas with reservation, settlement, release, reset, and hard-limit modes.
@@ -106,7 +107,7 @@ first application, then displays the initial application keys once.
 Next:
 
 1. Add a call connection. Choose LiteLLM, an OpenAI-compatible service, or Anthropic.
-2. Add real models and define their provider-cost and AI Unit rates.
+2. Add real models, configure cost fallbacks when callers cannot report cost, and define AI Unit rates.
 3. Create a virtual model such as `customer-support`, arrange its preferred and fallback models,
    and publish it.
 4. Copy the Node, Python, or LiteLLM example shown by Setup and configure referenced credentials in

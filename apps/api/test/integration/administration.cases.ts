@@ -54,16 +54,33 @@ export function registerAdministrationCases(): void {
     });
     const modelId = created.json().id as string;
 
-    const cost = await request("PUT", `/models/${modelId}/cost`, {
-      request: "0.01",
-      input_per_million: "1.25",
-      output_per_million: "4.5",
+    const cost = await request("PUT", `/models/${modelId}/cost-rules`, {
+      rules: [
+        {
+          name: "Integration fallback",
+          match: "all",
+          conditions: [],
+          fixed_amount: "0.01",
+          rates: [
+            { usage_type: "uncached_input_token", amount_per_unit: "0.00000125" },
+            { usage_type: "output_token", amount_per_unit: "0.0000045" },
+          ],
+        },
+      ],
     });
     expect(cost.statusCode).toBe(200);
-    expect(cost.json().cost.rates).toMatchObject({
-      request: "0.01",
-      input_per_million: "1.25",
-      output_per_million: "4.5",
+    expect(cost.json().cost).toMatchObject({
+      source_priority: "reported_first",
+      rules: [
+        {
+          name: "Integration fallback",
+          fixed_amount: "0.01",
+          rates: [
+            { usage_type: "uncached_input_token", amount_per_unit: "0.00000125" },
+            { usage_type: "output_token", amount_per_unit: "0.0000045" },
+          ],
+        },
+      ],
     });
     const aiu = await request("PUT", `/models/${modelId}/aiu`, {
       input_per_million: "2",

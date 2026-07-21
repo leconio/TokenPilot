@@ -114,7 +114,14 @@ export function buildManualUsageEvent(input: {
       latency_ms: value.latencyMs ?? null,
       error_class: value.errorClass ?? null,
     },
-    source_cost: null,
+    source_cost:
+      value.sourceCost === undefined
+        ? null
+        : {
+            amount: value.sourceCost.amount,
+            currency: value.sourceCost.currency,
+            is_estimated: value.sourceCost.isEstimated ?? false,
+          },
     privacy: { contains_prompt: false, contains_response: false },
     usage: value.usage,
   });

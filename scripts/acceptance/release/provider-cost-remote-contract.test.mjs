@@ -29,9 +29,9 @@ test("remote model pricing acceptance rates the model that actually served the r
   assert.match(preparation, /driver: "litellm"/u);
   assert.match(preparation, /request_model: "text\.fast\.demo-primary"/u);
   assert.match(preparation, /connection_id: connection\.id/u);
-  assert.match(preparation, /models\/\$\{model\.id\}\/cost/u);
-  assert.match(preparation, /input_per_million: "1000"/u);
-  assert.match(preparation, /output_per_million: "2000"/u);
+  assert.match(preparation, /models\/\$\{model\.id\}\/cost-rules/u);
+  assert.match(preparation, /usage_type: "uncached_input_token", amount_per_unit: "0\.001"/u);
+  assert.match(preparation, /usage_type: "output_token", amount_per_unit: "0\.002"/u);
   assert.match(preparation, /models\/\$\{model\.id\}\/aiu/u);
   assert.match(
     verification,

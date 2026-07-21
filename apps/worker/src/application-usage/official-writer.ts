@@ -131,7 +131,9 @@ function ratingOutboxes(
     context.applicationId,
     context.event.event_id,
     "cost",
+    cost.source ?? "unpriced",
     cost.versionId ?? "unpriced",
+    cost.ruleId ?? "no-rule",
     cost.total ?? "",
   );
   const aiuFingerprint = fingerprint(
@@ -155,7 +157,10 @@ function ratingOutboxes(
         status: cost.status,
         rating_fingerprint: costFingerprint,
         price_version_id: cost.versionId,
-        calculation_version: "application-model-cost-1",
+        calculation_version: "conditional-model-cost-1",
+        cost_source: cost.source,
+        cost_rule_id: cost.ruleId,
+        cost_rule_name: cost.ruleName,
         total_amount: cost.total ?? "0.000000000000000000",
         currency: cost.currency,
         deltas: [
@@ -166,12 +171,16 @@ function ratingOutboxes(
             amount: cost.total,
             currency: cost.currency,
             price_version_id: cost.versionId,
-            calculation_version: "application-model-cost-1",
+            calculation_version: "conditional-model-cost-1",
             rating_fingerprint: costFingerprint,
             reason:
               cost.status === "official"
-                ? "application model cost rating"
-                : "application model cost is not configured",
+                ? cost.source === "rule"
+                  ? `matched model cost rule: ${cost.ruleName ?? cost.ruleId ?? "unknown"}`
+                  : cost.source === "reported_estimate"
+                    ? "source-reported model cost estimate"
+                    : "source-reported model cost"
+                : "no reported model cost or matching cost rule",
           },
         ],
       }),

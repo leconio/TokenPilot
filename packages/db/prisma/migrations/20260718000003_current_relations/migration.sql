@@ -86,7 +86,10 @@ ALTER TABLE "model_cost_versions" ADD CONSTRAINT "model_cost_versions_applicatio
 ALTER TABLE "model_cost_versions" ADD CONSTRAINT "model_cost_versions_application_id_model_id_fkey" FOREIGN KEY ("application_id", "model_id") REFERENCES "model_definitions"("application_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "model_cost_items" ADD CONSTRAINT "model_cost_items_application_id_version_id_fkey" FOREIGN KEY ("application_id", "version_id") REFERENCES "model_cost_versions"("application_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "model_cost_rules" ADD CONSTRAINT "model_cost_rules_application_id_version_id_fkey" FOREIGN KEY ("application_id", "version_id") REFERENCES "model_cost_versions"("application_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "model_cost_rule_items" ADD CONSTRAINT "model_cost_rule_items_application_id_rule_id_fkey" FOREIGN KEY ("application_id", "rule_id") REFERENCES "model_cost_rules"("application_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "model_aiu_versions" ADD CONSTRAINT "model_aiu_versions_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "applications"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

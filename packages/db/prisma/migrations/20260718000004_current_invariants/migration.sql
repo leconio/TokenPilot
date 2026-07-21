@@ -46,9 +46,14 @@ ALTER TABLE "virtual_model_targets"
   ADD CONSTRAINT "virtual_model_targets_priority_check" CHECK ("priority" >= 0),
   ADD CONSTRAINT "virtual_model_targets_weight_check" CHECK ("weight" > 0);
 
-ALTER TABLE "model_cost_items"
-  ADD CONSTRAINT "model_cost_items_unit_size_check" CHECK ("unit_size" > 0),
-  ADD CONSTRAINT "model_cost_items_unit_price_check" CHECK ("unit_price" >= 0);
+ALTER TABLE "model_cost_rules"
+  ADD CONSTRAINT "model_cost_rules_name_check" CHECK (length(btrim("name")) BETWEEN 1 AND 120),
+  ADD CONSTRAINT "model_cost_rules_priority_check" CHECK ("priority" >= 0),
+  ADD CONSTRAINT "model_cost_rules_match_mode_check" CHECK ("match_mode" IN ('all', 'any')),
+  ADD CONSTRAINT "model_cost_rules_fixed_amount_check" CHECK ("fixed_amount" IS NULL OR "fixed_amount" >= 0);
+
+ALTER TABLE "model_cost_rule_items"
+  ADD CONSTRAINT "model_cost_rule_items_amount_check" CHECK ("amount_per_unit" >= 0);
 
 ALTER TABLE "model_aiu_items"
   ADD CONSTRAINT "model_aiu_items_unit_size_check" CHECK ("unit_size" > 0),
@@ -114,7 +119,7 @@ ALTER TABLE "application_usage_ratings"
       AND "provider_cost" IS NOT NULL
       AND "provider_cost" >= 0
       AND "currency" IS NOT NULL
-      AND "cost_version_id" IS NOT NULL)
+      )
     OR
     ("cost_status" = 'unpriced'
       AND "provider_cost" IS NULL

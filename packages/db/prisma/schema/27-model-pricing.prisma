@@ -10,7 +10,7 @@ model ModelCostVersion {
   createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   application   Application       @relation(fields: [applicationId], references: [id], onDelete: Restrict)
   model         ModelDefinition   @relation(fields: [applicationId, modelId], references: [applicationId, id], onDelete: Restrict)
-  items         ModelCostItem[]
+  rules         ModelCostRule[]
 
   @@unique([applicationId, id], map: "model_cost_versions_application_id_key")
   @@unique([applicationId, modelId, version], map: "model_cost_versions_model_version_key")
@@ -18,20 +18,38 @@ model ModelCostVersion {
   @@map("model_cost_versions")
 }
 
-model ModelCostItem {
-  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  applicationId String           @map("application_id") @db.Uuid
-  versionId     String           @map("version_id") @db.Uuid
-  usageType     String           @map("usage_type") @db.VarChar(120)
-  unitKey       String           @default("") @map("unit_key") @db.VarChar(128)
-  unitSize      Decimal          @map("unit_size") @db.Decimal(38, 9)
-  unitPrice     Decimal          @map("unit_price") @db.Decimal(38, 18)
-  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  version       ModelCostVersion @relation(fields: [applicationId, versionId], references: [applicationId, id], onDelete: Cascade)
+model ModelCostRule {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId  String              @map("application_id") @db.Uuid
+  versionId      String              @map("version_id") @db.Uuid
+  name           String              @db.VarChar(120)
+  priority       Int
+  matchMode      String              @default("all") @map("match_mode") @db.VarChar(3)
+  conditionsJson Json                @default("[]") @map("conditions_json")
+  fixedAmount    Decimal?            @map("fixed_amount") @db.Decimal(38, 18)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  version        ModelCostVersion    @relation(fields: [applicationId, versionId], references: [applicationId, id], onDelete: Cascade)
+  items          ModelCostRuleItem[]
 
-  @@unique([versionId, usageType, unitKey], map: "model_cost_items_usage_key")
-  @@index([applicationId, usageType, createdAt], map: "model_cost_items_application_usage_idx")
-  @@map("model_cost_items")
+  @@unique([applicationId, id], map: "model_cost_rules_application_id_key")
+  @@unique([versionId, priority], map: "model_cost_rules_priority_key")
+  @@index([applicationId, versionId, priority], map: "model_cost_rules_match_idx")
+  @@map("model_cost_rules")
+}
+
+model ModelCostRuleItem {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId String        @map("application_id") @db.Uuid
+  ruleId        String        @map("rule_id") @db.Uuid
+  usageType     String        @map("usage_type") @db.VarChar(120)
+  unitKey       String        @default("") @map("unit_key") @db.VarChar(128)
+  amountPerUnit Decimal       @map("amount_per_unit") @db.Decimal(38, 18)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  rule          ModelCostRule @relation(fields: [applicationId, ruleId], references: [applicationId, id], onDelete: Cascade)
+
+  @@unique([ruleId, usageType, unitKey], map: "model_cost_rule_items_usage_key")
+  @@index([applicationId, usageType, createdAt], map: "model_cost_rule_items_application_usage_idx")
+  @@map("model_cost_rule_items")
 }
 
 model ModelAiuVersion {

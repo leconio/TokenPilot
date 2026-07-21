@@ -26,6 +26,7 @@ from ai_control_sdk import (
     ProviderChatResponse,
     ProviderChatStreamResponse,
     ProviderStreamPart,
+    SourceCost,
     ai_context,
     async_ai_context,
 )
@@ -184,6 +185,11 @@ def test_async_stream_and_request_cancellation_have_matching_semantics(tmp_path:
                     yield ProviderStreamPart(
                         value={"delta": "ok"},
                         usage={"uncached_input_tokens": "1", "output_tokens": "1"},
+                        source_cost=SourceCost(
+                            amount="0.006",
+                            currency="USD",
+                            is_estimated=True,
+                        ),
                     )
                     if self.stream_calls > 1:
                         await asyncio.Future()
@@ -218,6 +224,11 @@ def test_async_stream_and_request_cancellation_have_matching_semantics(tmp_path:
             ]
         assert values == [{"delta": "ok"}]
         assert batches[-1]["events"][0]["result"]["status"] == "success"
+        assert batches[-1]["events"][0]["source_cost"] == {
+            "amount": "0.006",
+            "currency": "USD",
+            "is_estimated": True,
+        }
 
         async with async_ai_context(AiRuntimeContext(user_id="async-stream-cancel-user")):
             stream = runtime.chat_stream(

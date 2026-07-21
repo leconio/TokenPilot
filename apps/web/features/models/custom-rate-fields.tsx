@@ -9,11 +9,9 @@ import { useLocale } from "@/i18n/locale-provider";
 import type { CustomRate } from "./types";
 
 export function CustomRateFields({
-  kind,
   values,
   onChange,
 }: Readonly<{
-  kind: "cost" | "aiu";
   values: readonly CustomRate[];
   onChange: (values: CustomRate[]) => void;
 }>) {
@@ -61,13 +59,10 @@ export function CustomRateFields({
             onChange={(event) => update(index, "unit_size", event.target.value)}
           />
           <Input
-            aria-label={text(
-              `自定义单位 ${index + 1} ${kind === "cost" ? "花费" : "AIU"}`,
-              `Custom unit ${index + 1} ${kind === "cost" ? "cost" : "AIU"}`,
-            )}
+            aria-label={text(`自定义单位 ${index + 1} AIU`, `Custom unit ${index + 1} AIU`)}
             inputMode="decimal"
             min="0"
-            placeholder={kind === "cost" ? "花费" : "AIU"}
+            placeholder="AIU"
             step="any"
             type="number"
             value={item.rate}

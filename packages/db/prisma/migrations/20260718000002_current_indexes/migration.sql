@@ -161,10 +161,19 @@ CREATE UNIQUE INDEX "model_cost_versions_application_id_key" ON "model_cost_vers
 CREATE UNIQUE INDEX "model_cost_versions_model_version_key" ON "model_cost_versions"("application_id", "model_id", "version");
 
 -- CreateIndex
-CREATE INDEX "model_cost_items_application_usage_idx" ON "model_cost_items"("application_id", "usage_type", "created_at");
+CREATE INDEX "model_cost_rules_match_idx" ON "model_cost_rules"("application_id", "version_id", "priority");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "model_cost_items_usage_key" ON "model_cost_items"("version_id", "usage_type", "unit_key");
+CREATE UNIQUE INDEX "model_cost_rules_application_id_key" ON "model_cost_rules"("application_id", "id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "model_cost_rules_priority_key" ON "model_cost_rules"("version_id", "priority");
+
+-- CreateIndex
+CREATE INDEX "model_cost_rule_items_application_usage_idx" ON "model_cost_rule_items"("application_id", "usage_type", "created_at");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "model_cost_rule_items_usage_key" ON "model_cost_rule_items"("rule_id", "usage_type", "unit_key");
 
 -- CreateIndex
 CREATE INDEX "model_aiu_versions_current_idx" ON "model_aiu_versions"("application_id", "model_id", "status", "effective_from");

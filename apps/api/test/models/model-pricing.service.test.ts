@@ -5,30 +5,51 @@ import { Prisma, type DatabaseClient } from "@tokenpilot/db";
 
 import type { AuditContextService } from "../../src/audit-context.js";
 import type { AuditService } from "../../src/audit.service.js";
-import { aiuUsage, costUsage } from "../../src/models/model-pricing.catalog.js";
+import { aiuUsage } from "../../src/models/model-pricing.catalog.js";
 import { ModelPricingService } from "../../src/models/model-pricing.service.js";
 
 const applicationId = "00000000-0000-4000-8000-000000000711";
 const modelId = "00000000-0000-4000-8000-000000000712";
 const now = new Date("2026-07-20T00:00:00.000Z");
 
+interface CostRuleCreate {
+  readonly name: string;
+  readonly priority: number;
+  readonly matchMode: string;
+  readonly conditionsJson: unknown;
+  readonly fixedAmount: string | null;
+  readonly items: { readonly create: readonly Record<string, unknown>[] };
+}
+
+interface CostVersionCreate {
+  readonly rules: { readonly create: readonly CostRuleCreate[] };
+  readonly [key: string]: unknown;
+}
+
 function fixture() {
   let cost: Record<string, unknown> | null = null;
   let aiu: Record<string, unknown> | null = null;
-  const costCreate = vi.fn().mockImplementation(({ data }) => {
+  const costCreate = vi.fn().mockImplementation(({ data }: { data: CostVersionCreate }) => {
     cost = {
       id: "00000000-0000-4000-8000-000000000713",
       ...data,
       status: "PUBLISHED",
       publishedAt: now,
       createdAt: now,
-      items: data.items.create.map((item: Record<string, unknown>, index: number) => ({
-        id: `cost-${index}`,
-        unitKey: "",
-        ...item,
-        unitSize: new Prisma.Decimal(String(item.unitSize)),
-        unitPrice: new Prisma.Decimal(String(item.unitPrice)),
+      rules: data.rules.create.map((rule, ruleIndex) => ({
+        id: `00000000-0000-4000-8000-00000000072${ruleIndex}`,
+        ...rule,
+        fixedAmount:
+          rule.fixedAmount === null ? null : new Prisma.Decimal(String(rule.fixedAmount)),
+        conditionsJson: rule.conditionsJson,
         createdAt: now,
+        items: rule.items.create.map((item: Record<string, unknown>, itemIndex: number) => ({
+          id: `cost-${ruleIndex}-${itemIndex}`,
+          unitKey: "",
+          ...item,
+          amountPerUnit: new Prisma.Decimal(String(item.amountPerUnit)),
+          createdAt: now,
+        })),
       })),
     };
     return Promise.resolve(cost);
@@ -54,6 +75,7 @@ function fixture() {
     modelCostVersion: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), create: costCreate },
     modelAiuVersion: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), create: aiuCreate },
   };
+  const propertyFindMany = vi.fn().mockResolvedValue([]);
   const database = {
     modelDefinition: {
       findFirst: vi.fn().mockResolvedValue({
@@ -63,18 +85,31 @@ function fixture() {
         application: { baseCurrency: "CNY" },
       }),
     },
+    propertyDefinition: { findMany: propertyFindMany },
     modelCostVersion: {
       findFirst: vi
         .fn()
         .mockImplementation(({ select }) =>
-          Promise.resolve(select ? (cost === null ? null : { version: cost.version }) : cost),
+          Promise.resolve(
+            select
+              ? cost === null
+                ? null
+                : { version: (cost as { readonly version: unknown }).version }
+              : cost,
+          ),
         ),
     },
     modelAiuVersion: {
       findFirst: vi
         .fn()
         .mockImplementation(({ select }) =>
-          Promise.resolve(select ? (aiu === null ? null : { version: aiu.version }) : aiu),
+          Promise.resolve(
+            select
+              ? aiu === null
+                ? null
+                : { version: (aiu as { readonly version: unknown }).version }
+              : aiu,
+          ),
         ),
     },
     $transaction: vi.fn().mockImplementation((callback) => callback(transaction)),
@@ -85,33 +120,71 @@ function fixture() {
   const audit = { record: vi.fn() } as unknown as AuditService;
   return {
     database,
+    propertyFindMany,
     costCreate,
     aiuCreate,
+    audit,
     service: new ModelPricingService(database, context, audit),
   };
 }
 
 describe("ModelPricingService", () => {
-  it("covers every current contract usage type, with request excluded only from AIU", () => {
-    const costTypes = new Set([...costUsage.map((item) => item.usageType), "custom_unit"]);
+  it("keeps AIU coverage independent from model cost rules", () => {
     const aiuTypes = new Set([...aiuUsage.map((item) => item.usageType), "custom_unit", "request"]);
-    expect(costTypes).toEqual(new Set(usageTypeValues));
     expect(aiuTypes).toEqual(new Set(usageTypeValues));
     expect(aiuUsage.some((item) => item.usageType === "request")).toBe(false);
   });
 
-  it("publishes model cost in the application currency with explicit units", async () => {
+  it("publishes ordered conditional cost rules in the application currency", async () => {
     const value = fixture();
-    const result = await value.service.saveCost(
+    const result = await value.service.saveCostRules(
       modelId,
-      { request: "0.002", input_per_million: "2.5", output_per_million: "10" },
+      {
+        rules: [
+          {
+            name: "语音生产流量",
+            match: "all",
+            conditions: [
+              { kind: "builtin", field: "provider", operator: "equals", values: ["openai"] },
+            ],
+            fixed_amount: "0.002",
+            rates: [
+              { usage_type: "uncached_input_token", amount_per_unit: "0.0000025" },
+              { usage_type: "output_token", amount_per_unit: "0.00001" },
+              {
+                usage_type: "custom_unit",
+                unit_key: "voice_second",
+                amount_per_unit: "0.005",
+              },
+            ],
+          },
+        ],
+      },
       now,
     );
+
     expect(result).toMatchObject({
+      cost_currency: "CNY",
       cost: {
         version: 1,
         currency: "CNY",
-        rates: { request: "0.002", input_per_million: "2.5", output_per_million: "10" },
+        source_priority: "reported_first",
+        rules: [
+          {
+            name: "语音生产流量",
+            priority: 0,
+            fixed_amount: "0.002",
+            rates: [
+              { usage_type: "uncached_input_token", amount_per_unit: "0.0000025" },
+              { usage_type: "output_token", amount_per_unit: "0.00001" },
+              {
+                usage_type: "custom_unit",
+                unit_key: "voice_second",
+                amount_per_unit: "0.005",
+              },
+            ],
+          },
+        ],
       },
       aiu: null,
     });
@@ -120,30 +193,95 @@ describe("ModelPricingService", () => {
         applicationId,
         modelId,
         currency: "CNY",
-        items: {
+        rules: {
           create: [
-            expect.objectContaining({ usageType: "request", unitSize: "1", unitPrice: "0.002" }),
             expect.objectContaining({
-              usageType: "uncached_input_token",
-              unitSize: "1000000",
-              unitPrice: "2.5",
-            }),
-            expect.objectContaining({
-              usageType: "output_token",
-              unitSize: "1000000",
-              unitPrice: "10",
+              name: "语音生产流量",
+              priority: 0,
+              matchMode: "all",
+              fixedAmount: "0.002",
+              items: {
+                create: expect.arrayContaining([
+                  expect.objectContaining({
+                    usageType: "uncached_input_token",
+                    amountPerUnit: "0.0000025",
+                  }),
+                  expect.objectContaining({
+                    usageType: "custom_unit",
+                    unitKey: "voice_second",
+                  }),
+                ]),
+              },
             }),
           ],
         },
       }),
-      include: { items: true },
+      include: { rules: { include: { items: true } } },
     });
-    expect(value.costCreate.mock.calls[0]?.[0].data.items.create).toEqual(
-      expect.arrayContaining([expect.not.objectContaining({ applicationId: expect.anything() })]),
-    );
   });
 
-  it("stores AIU as integer micro-units without floating point settlement", async () => {
+  it("validates custom fields against active non-sensitive property definitions", async () => {
+    const value = fixture();
+    value.propertyFindMany.mockResolvedValue([
+      { key: "tier", scope: "USER", dataType: "ENUM", sensitive: false },
+    ]);
+    await expect(
+      value.service.saveCostRules(modelId, {
+        rules: [
+          {
+            name: "企业用户",
+            match: "all",
+            conditions: [
+              {
+                kind: "property",
+                scope: "user",
+                key: "tier",
+                operator: "equals",
+                values: ["enterprise"],
+              },
+            ],
+            fixed_amount: "1",
+            rates: [],
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({ cost: { rules: [expect.objectContaining({ name: "企业用户" })] } });
+
+    const rejected = fixture();
+    rejected.propertyFindMany.mockResolvedValue([
+      { key: "secret", scope: "USER", dataType: "TEXT", sensitive: true },
+    ]);
+    await expect(
+      rejected.service.saveCostRules(modelId, {
+        rules: [
+          {
+            name: "敏感字段",
+            match: "all",
+            conditions: [
+              {
+                kind: "property",
+                scope: "user",
+                key: "secret",
+                operator: "equals",
+                values: ["x"],
+              },
+            ],
+            fixed_amount: "1",
+            rates: [],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("allows an empty fallback list so only reported costs are accepted", async () => {
+    const value = fixture();
+    await expect(value.service.saveCostRules(modelId, { rules: [] }, now)).resolves.toMatchObject({
+      cost: { source_priority: "reported_first", rules: [] },
+    });
+  });
+
+  it("stores AIU as integer micro-units without changing its existing contract", async () => {
     const value = fixture();
     const result = await value.service.saveAiu(
       modelId,
@@ -189,73 +327,31 @@ describe("ModelPricingService", () => {
       }),
       include: { items: true },
     });
-    expect(value.aiuCreate.mock.calls[0]?.[0].data.items.create).toEqual(
-      expect.arrayContaining([expect.not.objectContaining({ applicationId: expect.anything() })]),
-    );
   });
 
-  it("publishes multimodal, embedding, and typed custom-unit rates", async () => {
+  it("strictly rejects malformed or duplicate cost amounts and AIU custom units", async () => {
     const value = fixture();
-    const result = await value.service.saveCost(
-      modelId,
-      {
-        input_image: "0.01",
-        output_audio_second: "0.0025",
-        embedding_per_million: "0.125",
-        custom_units: [
-          { unit_key: "gpu_millisecond", unit_size: "1000", rate: "0.04" },
-          { unit_key: "tool_call", unit_size: "1", rate: "0.005" },
-        ],
-      },
-      now,
-    );
-
-    expect(result).toMatchObject({
-      cost: {
-        rates: {
-          input_image: "0.01",
-          output_audio_second: "0.0025",
-          embedding_per_million: "0.125",
-          custom_units: [
-            { unit_key: "gpu_millisecond", unit_size: "1000", rate: "0.04" },
-            { unit_key: "tool_call", unit_size: "1", rate: "0.005" },
-          ],
-        },
-      },
-    });
-    expect(value.costCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          items: {
-            create: expect.arrayContaining([
-              expect.objectContaining({ usageType: "input_image", unitSize: "1" }),
-              expect.objectContaining({ usageType: "output_audio_second", unitSize: "1" }),
-              expect.objectContaining({ usageType: "embedding_token", unitSize: "1000000" }),
-              expect.objectContaining({
-                usageType: "custom_unit",
-                unitKey: "gpu_millisecond",
-                unitSize: "1000",
-              }),
-            ]),
+    await expect(
+      value.service.saveCostRules(modelId, {
+        rules: [
+          {
+            name: "重复用量",
+            match: "all",
+            conditions: [],
+            rates: [
+              { usage_type: "output_token", amount_per_unit: "1" },
+              { usage_type: "output_token", amount_per_unit: "2" },
+            ],
           },
-        }),
+        ],
       }),
-    );
-  });
-
-  it("strictly rejects duplicate or malformed custom-unit rates", async () => {
-    const value = fixture();
+    ).rejects.toMatchObject({ status: 400 });
     await expect(
       value.service.saveAiu(modelId, {
         custom_units: [
           { unit_key: "tool_call", unit_size: "1", rate: "1" },
           { unit_key: "tool_call", unit_size: "2", rate: "2" },
         ],
-      }),
-    ).rejects.toMatchObject({ status: 400 });
-    await expect(
-      value.service.saveCost(modelId, {
-        custom_units: [{ unit_key: "Tool Call", unit_size: "0", rate: "1" }],
       }),
     ).rejects.toMatchObject({ status: 400 });
     expect(value.costCreate).not.toHaveBeenCalled();

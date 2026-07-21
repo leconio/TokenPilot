@@ -91,13 +91,13 @@ function CostSummary({ report }: Readonly<{ report: CostReport | undefined }>) {
         icon={<CircleDollarSign className="size-5" />}
       />
       <MetricCard
-        label="未配置成本"
+        label="未统计花费"
         value={
           report?.unpriced_events === undefined
             ? "-"
             : `${report.unpriced_events} ${text("次", "calls")}`
         }
-        description="不会把缺少价格的调用计算为 0"
+        description="没有上报金额或匹配规则的调用不会按 0 计算"
         icon={<AlertTriangle className="size-5" />}
       />
       <MetricCard
@@ -290,7 +290,8 @@ export function CostsPage() {
                 {(data?.unpriced_events ?? 0) > 0 ? (
                   <Alert>
                     <AlertDescription>
-                      有 {data?.unpriced_events} 次调用尚未配置成本，当前总花费不包含这些调用。
+                      有 {data?.unpriced_events}{" "}
+                      次调用没有上报金额，也没有匹配备用规则，当前总花费不包含这些调用。
                     </AlertDescription>
                   </Alert>
                 ) : null}

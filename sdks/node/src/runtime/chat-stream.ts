@@ -83,6 +83,7 @@ export function executeChatStream<T>(
         const attemptId = `att_${ulid(environment.now().getTime())}`;
         const started = performance.now();
         let usage: UsageEvent["usage"] = { request_count: "1" };
+        let sourceCost: UsageEvent["source_cost"] = null;
         let emitted = false;
         let completed = false;
         let streamError: unknown;
@@ -99,6 +100,7 @@ export function executeChatStream<T>(
             for await (const part of provider.stream) {
               emitted = true;
               usage = mergeUsage(usage, part.usage);
+              if (part.sourceCost !== undefined) sourceCost = part.sourceCost;
               yield part.value;
             }
             completed = true;
@@ -175,6 +177,7 @@ export function executeChatStream<T>(
               httpStatus: provider.status,
               latencyMs,
               usage,
+              sourceCost,
               final: true,
               reservationId: reservation.token?.id ?? null,
             }),

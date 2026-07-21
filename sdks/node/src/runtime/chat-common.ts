@@ -89,6 +89,7 @@ export function eventFor(
     readonly httpStatus: number | null;
     readonly latencyMs: number;
     readonly usage: UsageEvent["usage"];
+    readonly sourceCost?: UsageEvent["source_cost"];
     readonly final: boolean;
     readonly reservationId: string | null;
   },
@@ -152,7 +153,7 @@ export function eventFor(
       latency_ms: input.latencyMs,
       error_class: input.status === "success" ? null : `provider_${input.status}`,
     },
-    source_cost: null,
+    source_cost: input.sourceCost ?? null,
     privacy: { contains_prompt: false, contains_response: false },
     usage: input.usage,
   };

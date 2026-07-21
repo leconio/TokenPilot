@@ -83,7 +83,7 @@ python scripts/connector-spool-admin.py backup \
 | -------------------- | ------------------------------------------ |
 | Connector 心跳过期   | LiteLLM 进程、密钥状态、网络、spool 完整性 |
 | Connector 积压增长   | API 就绪、spool 容量、接入错误             |
-| 服务商用量未定价     | 真实模型识别和缺少的用量类型价格           |
+| 服务商用量未定价     | 上报金额、真实模型识别和匹配的备用规则     |
 | AIU 未计算           | 已发布 AIU 单价和继承覆盖                  |
 | ClickHouse sink 延迟 | ClickHouse 就绪、Outbox 租约、暂停所有者   |
 | 额度预留过期突增     | 客户端取消路径和请求超时                   |

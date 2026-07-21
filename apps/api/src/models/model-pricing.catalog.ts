@@ -1,15 +1,14 @@
 import { Prisma } from "@tokenpilot/db";
 
-import type { SaveModelAiu, SaveModelCost } from "./model-pricing.schemas.js";
+import type { SaveModelAiu } from "./model-pricing.schemas.js";
 
 export interface StandardRateDefinition {
-  readonly field: Exclude<keyof SaveModelCost, "custom_units">;
+  readonly field: Exclude<keyof SaveModelAiu, "custom_units">;
   readonly usageType: string;
   readonly unitSize: string;
 }
 
-export const costUsage: readonly StandardRateDefinition[] = [
-  { field: "request", usageType: "request", unitSize: "1" },
+export const aiuUsage: readonly StandardRateDefinition[] = [
   { field: "input_per_million", usageType: "uncached_input_token", unitSize: "1000000" },
   {
     field: "cache_read_per_million",
@@ -36,12 +35,6 @@ export const costUsage: readonly StandardRateDefinition[] = [
   { field: "embedding_per_million", usageType: "embedding_token", unitSize: "1000000" },
   { field: "unknown_unit", usageType: "unknown", unitSize: "1" },
 ] as const;
-
-export const aiuUsage = costUsage.filter(
-  (definition) => definition.field !== "request",
-) as readonly (StandardRateDefinition & {
-  readonly field: Exclude<keyof SaveModelAiu, "custom_units">;
-})[];
 
 export function trimmedDecimal(value: Prisma.Decimal): string {
   const text = value.toFixed();

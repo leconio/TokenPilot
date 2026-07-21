@@ -57,22 +57,6 @@ export const configurationTranslations = {
   关联到此模型: "Link to this model",
   服务商成本: "Provider cost",
   当前模型花费设置: "Current provider cost",
-  创建服务商成本配置: "Create provider cost",
-  保存服务商成本草稿: "Save provider cost draft",
-  保存成本草稿: "Save cost draft",
-  发布服务商成本: "Publish provider cost",
-  停用服务商成本: "Disable provider cost",
-  更正模型花费: "Correct model cost",
-  "填写输入与输出成本即可；首次保存会自动创建成本配置。":
-    "Enter input and output cost. The first save creates the provider cost configuration.",
-  "不会把缺少价格的调用计算为 0": "Calls with missing prices are never treated as zero cost",
-  "输入成本 / 百万 Token": "Input cost / million tokens",
-  "输出成本 / 百万 Token": "Output cost / million tokens",
-  价格项: "Price items",
-  "成本草稿已保存，请到发布中心完成检查与发布。":
-    "Provider cost draft saved. Review and publish it in Releases.",
-  "当前成本配置已完整载入，其他模型的价格会保持不变。":
-    "The complete cost configuration is loaded; prices for other models will be preserved.",
   "AIU 定价": "AIU pricing",
   "AIU 单价": "AIU price",
   "当前 AIU 单价": "Current AIU price",

@@ -11,13 +11,16 @@ current product behavior kept in the repository.
   reports, and audit records.
 - Application-scoped users populated automatically from reported `user_id` and optional
   `display_user`, with manual administration, tags, groups, quota reset, and access suspension.
-- LiteLLM-tag models with independent model-cost and AIU rates for each usage dimension.
+- LiteLLM-tag models with reported-cost-first conditional fallbacks and independent AIU rates for
+  each usage dimension.
 - Virtual models with conditional routes, ordered fallbacks, temporary rules, signed runtime
   snapshots, and connector acknowledgements.
 - Typed event and user properties, ClickHouse-backed event search, saved reports, dashboards, and
   user-group analysis.
 - Node and Python SDKs, a LiteLLM connector, and a native Python example for reporting usage from a
   Mac without local containers.
+- Exact or estimated source-cost reporting from LiteLLM, manual SDK events, and Node/Python
+  provider adapters.
 
 ### Architecture
 

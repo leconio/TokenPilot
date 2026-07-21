@@ -284,6 +284,7 @@ describe("Node runtime SDK chat", () => {
           modelId: "model-primary",
           status: "success",
           latencyMs: 42,
+          sourceCost: { amount: "0.0125", currency: "USD", isEstimated: false },
           usage: { uncached_input_tokens: "6", output_tokens: "2", request_count: "1" },
         }),
     );
@@ -293,6 +294,7 @@ describe("Node runtime SDK chat", () => {
       request: { attempt_id: "manual-attempt-1", operation_id: "manual-operation-1" },
       model: { model_id: "model-primary", connection_id: "connection-litellm" },
       route: { reason: "manual" },
+      source_cost: { amount: "0.0125", currency: "USD", is_estimated: false },
       privacy: { contains_prompt: false, contains_response: false },
     });
     expect(batches[0]!.events).toEqual([event]);

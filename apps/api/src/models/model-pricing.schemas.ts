@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-const money = z.string().regex(/^(?:0|[1-9][0-9]{0,19})(?:\.[0-9]{1,18})?$/u);
 const aiu = z
   .string()
   .regex(/^(?:0|[1-9][0-9]{0,12})(?:\.[0-9]{1,6})?$/u)
@@ -14,27 +13,6 @@ const unitSize = z
   .regex(/^(?:0|[1-9][0-9]{0,28})(?:\.[0-9]{1,9})?$/u)
   .refine((value) => value !== "0" && !/^0\.0+$/u.test(value), "Unit size must be positive");
 const unitKey = z.string().regex(/^[a-z][a-z0-9._-]{0,127}$/u);
-
-const costFields = {
-  request: money.nullable().optional(),
-  input_per_million: money.nullable().optional(),
-  cache_read_per_million: money.nullable().optional(),
-  cache_write_per_million: money.nullable().optional(),
-  output_per_million: money.nullable().optional(),
-  reasoning_per_million: money.nullable().optional(),
-  input_image: money.nullable().optional(),
-  output_image: money.nullable().optional(),
-  input_audio_second: money.nullable().optional(),
-  output_audio_second: money.nullable().optional(),
-  input_video_second: money.nullable().optional(),
-  output_video_second: money.nullable().optional(),
-  embedding_per_million: money.nullable().optional(),
-  unknown_unit: money.nullable().optional(),
-  custom_units: z
-    .array(z.strictObject({ unit_key: unitKey, unit_size: unitSize, rate: money }))
-    .max(32)
-    .optional(),
-} as const;
 
 const aiuFields = {
   input_per_million: aiu.nullable().optional(),
@@ -72,14 +50,6 @@ function hasUniqueCustomUnits(value: {
   return new Set(keys).size === keys.length;
 }
 
-export const saveModelCostSchema = z
-  .strictObject(costFields)
-  .refine(hasValue, "Set at least one model cost")
-  .refine(hasUniqueCustomUnits, {
-    message: "Custom unit keys must be unique",
-    path: ["custom_units"],
-  });
-
 export const saveModelAiuSchema = z
   .strictObject(aiuFields)
   .refine(hasValue, "Set at least one AIU rate")
@@ -88,5 +58,4 @@ export const saveModelAiuSchema = z
     path: ["custom_units"],
   });
 
-export type SaveModelCost = z.infer<typeof saveModelCostSchema>;
 export type SaveModelAiu = z.infer<typeof saveModelAiuSchema>;

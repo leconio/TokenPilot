@@ -12,7 +12,7 @@ import type { ModelDefinition, ModelIssue } from "./types";
 const roleLabels = { default: "默认模型", candidate: "候选模型", rule: "条件规则" } as const;
 const issueLabels = {
   unresolved: "模型未识别",
-  unpriced: "未设置花费",
+  unpriced: "未统计花费",
   unrated: "未计算 AIU",
 } as const;
 
@@ -116,7 +116,7 @@ export function ModelInsights({ model }: Readonly<{ model: ModelDefinition }>) {
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="size-4" /> 最近问题
             </CardTitle>
-            <CardDescription>优先补齐价格或检查模型名称。</CardDescription>
+            <CardDescription>优先检查上报金额、备用规则或模型名称。</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">
             {issues.length === 0 ? (

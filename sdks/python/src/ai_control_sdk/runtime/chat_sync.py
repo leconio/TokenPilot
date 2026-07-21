@@ -19,6 +19,7 @@ from .chat_types import (
 from .context import new_ulid, require_ai_context
 from .contracts import RuntimeUserReservation
 from .provider_transport import provider_failure, provider_request, usage
+from .source_cost import SourceCost
 
 
 def execute_chat(
@@ -71,6 +72,7 @@ def execute_chat(
             attempt_id = f"att_{new_ulid()}"
             started = time.perf_counter()
             status: int | None = None
+            source_cost: SourceCost | None = None
             try:
                 if adapter is None:
                     url, headers, body = provider_request(
@@ -122,6 +124,7 @@ def execute_chat(
                     value = adapted.response
                     status = adapted.http_status
                     measured = dict(adapted.usage or {"request_count": "1"})
+                    source_cost = adapted.source_cost
                 attempt = AiChatAttempt(
                     attempt_id,
                     attempt_index,
@@ -142,6 +145,7 @@ def execute_chat(
                         connection,
                         attempt,
                         measured,
+                        source_cost,
                         final=True,
                         reservation_id=token.id if token is not None else None,
                     )

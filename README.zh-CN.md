@@ -17,7 +17,7 @@
 - 怎样把产品使用的稳定模型名映射到真实模型、时间策略和 fallback？
 - 控制面暂时不可用时，怎样保证用量事件不丢失且不拖慢模型响应？
 
-TokenPilot 为这些问题提供一套自托管控制面。Node、Python SDK 和可选的 LiteLLM Connector 都把不含模型内容的用量事件送入同一条链路。TokenPilot 计算服务商成本与产品自定义的 **AI Unit**、维护用户额度，并把路由策略下发给应用；业务代码使用的虚拟模型名不需要改变。
+TokenPilot 为这些问题提供一套自托管控制面。Node、Python SDK 和可选的 LiteLLM Connector 都把不含模型内容的用量事件送入同一条链路。TokenPilot 优先记录服务商实际金额，缺失时按条件规则补算，同时计算产品自定义的 **AI Unit**、维护用户额度，并把路由策略下发给应用；业务代码使用的虚拟模型名不需要改变。
 
 TokenPilot **不代理**模型流量，也不需要模型服务商 API Key。提示词、模型回复、工具参数和服务商凭据始终留在你的应用或 LiteLLM 环境中。
 
@@ -25,7 +25,7 @@ TokenPilot **不代理**模型流量，也不需要模型服务商 API Key。提
 
 - 按应用、用户、模型、服务商、功能和自定义属性分析用量。
 - Token、请求数、延迟、错误、服务商成本和 AI Unit 仪表盘。
-- LiteLLM、OpenAI 兼容服务和 Anthropic 调用连接，以及相互独立的真实模型、服务商成本与 AI Unit 换算率。
+- LiteLLM、OpenAI 兼容服务和 Anthropic 调用连接，以及实际上报优先的成本备用规则与独立的 AI Unit 换算率。
 - 虚拟模型、候选模型、失败顺序、时间条件、匹配规则和临时切换。
 - 用户额度，以及预留、结算、释放、重置和严格限制模式。
 - Node、Python 可信 SDK 和可选的 LiteLLM Connector；三种路径都使用可靠的本地 SQLite 队列和后台重试。
@@ -83,7 +83,7 @@ docker compose up -d --build --wait
 接下来：
 
 1. 新增调用连接，可选择 LiteLLM、OpenAI 兼容服务或 Anthropic。
-2. 新增真实模型，并配置服务商成本和 AI Unit 换算率。
+2. 新增真实模型；调用端不能上报成本时配置备用规则，并设置 AI Unit 换算率。
 3. 创建 `customer-support` 这样的虚拟模型，排列首选与备用模型并发布。
 4. 复制首次配置页提供的 Node、Python 或 LiteLLM 示例，在应用环境中配置所引用的凭据。
 5. 调用虚拟模型，确认用量、AI Cost、AIU 和应用用户都已出现。

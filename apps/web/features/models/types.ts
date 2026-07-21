@@ -51,11 +51,13 @@ export interface ModelDisableImpact {
 
 export interface ModelRates {
   readonly model: Pick<ModelDefinition, "id" | "name" | "request_model">;
+  readonly cost_currency: string;
   readonly cost: {
     readonly version: number;
     readonly currency: string;
     readonly effective_from: string;
-    readonly rates: RateValues;
+    readonly source_priority: "reported_first";
+    readonly rules: readonly ModelCostRule[];
   } | null;
   readonly aiu: {
     readonly version: number;
@@ -65,7 +67,6 @@ export interface ModelRates {
 }
 
 export interface RateValues {
-  readonly request?: string | null;
   readonly input_per_million?: string | null;
   readonly cache_read_per_million?: string | null;
   readonly cache_write_per_million?: string | null;
@@ -90,3 +91,37 @@ export interface CustomRate {
 
 export type RateField = Exclude<keyof RateValues, "custom_units">;
 export type EditableRates = Record<RateField, string> & { custom_units: CustomRate[] };
+
+export type CostConditionValue = string | number | boolean;
+
+export type ModelCostCondition =
+  | Readonly<{
+      kind: "builtin";
+      field: string;
+      operator: string;
+      values: readonly CostConditionValue[];
+    }>
+  | Readonly<{
+      kind: "property";
+      scope: "event" | "user";
+      key: string;
+      data_type?: string;
+      operator: string;
+      values: readonly CostConditionValue[];
+    }>;
+
+export interface ModelCostUsageAmount {
+  readonly usage_type: string;
+  readonly unit_key?: string;
+  readonly amount_per_unit: string;
+}
+
+export interface ModelCostRule {
+  readonly id: string;
+  readonly name: string;
+  readonly priority: number;
+  readonly match: "all" | "any";
+  readonly conditions: readonly ModelCostCondition[];
+  readonly fixed_amount: string | null;
+  readonly rates: readonly ModelCostUsageAmount[];
+}

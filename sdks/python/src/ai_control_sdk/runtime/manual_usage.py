@@ -11,6 +11,7 @@ from ..errors import AiControlSdkError
 from .context import ResolvedAiRuntimeContext, require_ai_context
 from .contracts import OPAQUE_ID_PATTERN, ULID_PATTERN, RuntimeCallConnection, RuntimeRouteTarget
 from .routing import RuntimeRouteContext, RuntimeRouteSelection
+from .source_cost import SourceCost, source_cost_payload
 
 ResultStatus = Literal["success", "failure", "cancelled", "timeout", "unknown"]
 ALLOWED_USAGE_KEYS = frozenset(
@@ -47,6 +48,7 @@ class RecordUsageInput:
     latency_ms: int | None = None
     error_class: str | None = None
     fallback_from: str | None = None
+    source_cost: SourceCost | None = None
 
 
 class ManualUsageClient(Protocol):
@@ -165,7 +167,7 @@ def build_manual_usage_event(client: ManualUsageClient, input: RecordUsageInput)
             "latency_ms": input.latency_ms,
             "error_class": input.error_class,
         },
-        "source_cost": None,
+        "source_cost": source_cost_payload(input.source_cost),
         "privacy": {"contains_prompt": False, "contains_response": False},
         "usage": dict(input.usage),
     }

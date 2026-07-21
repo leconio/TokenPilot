@@ -27,9 +27,9 @@ A **call connection** describes how the application reaches a model service. It 
 LiteLLM, an OpenAI-compatible service, or Anthropic. TokenPilot stores only a local credential
 reference such as `OPENAI_API_KEY`; the value stays in the application environment.
 
-A **real model** combines a connection with the model name sent on the wire. Provider-cost and AI
-Unit rates bind to this record, so the same Provider model reached through two connections is
-represented by two real models.
+A **real model** combines a connection with the model name sent on the wire. Provider-cost fallback
+rules and AI Unit rates bind to this record, so the same Provider model reached through two
+connections is represented by two real models.
 
 A **virtual model** is the stable name used by business code. It owns the preferred real model,
 fallback order, weights, schedules, user conditions, and temporary switches. Publishing a new
@@ -37,17 +37,24 @@ policy can change the selected registered connection without changing applicatio
 
 ## Provider cost
 
-Each published Provider price book defines a price per usage type and unit. The calculation uses
-integer quantities and decimal arithmetic:
+The amount reported by the calling SDK or Connector is authoritative for an attempt. This supports
+Provider pricing that depends on account agreements, batches, service tiers, promotions, or other
+conditions that cannot be represented by one fixed token price. The event records the amount,
+currency, and whether the amount is estimated.
+
+When the caller cannot report an amount, an ordered list of conditional rules can provide a
+fallback. A rule can match built-in call fields or typed event and user properties. The first
+matching rule contributes an optional fixed amount plus configured amounts for the usage types it
+contains:
 
 ```text
-line cost = quantity × unit price / price unit
-attempt cost = sum of every matched line cost
+rule cost = fixed amount + sum(quantity × amount per unit)
 ```
 
-All non-zero usage lines must match. If one line has no price, the whole attempt is marked unpriced.
-This prevents a partial cost from looking complete. An official result can replace a provisional
-result by writing a signed delta; history remains immutable.
+If neither a reported amount nor a matching rule exists, the attempt is marked unpriced. An empty
+fallback list is valid when every caller reports cost. Provider cost retains the reported currency;
+rule-calculated cost uses the application's currency. An official result can replace a provisional
+result by writing a signed delta, while history remains immutable.
 
 ## AI Unit
 
@@ -65,8 +72,9 @@ The internal value is an integer number of micro-AIU. Rounding occurs once at th
 boundary, never through floating-point arithmetic. The published rate snapshot, rounding mode, and
 attempt policy are stored with the decision.
 
-Provider cost and AI Unit are intentionally independent. A model can be priced but unrated, or
-rated while Provider cost is not yet configured. Coverage pages show both gaps.
+Provider cost and AI Unit are intentionally independent. Changing cost reporting or cost rules does
+not change AI Unit conversion, allowance, reservation, or enforcement. Coverage pages show both
+gaps independently.
 
 ## Virtual model and routing
 
@@ -97,13 +105,13 @@ receives analytical projections but never decides whether a request is allowed.
 
 ## Data ownership
 
-| Data                                            | Authority                            |
-| ----------------------------------------------- | ------------------------------------ |
-| Model catalog, prices, rates, policies, keys    | PostgreSQL                           |
-| Rating decisions, quota, reservations, journals | PostgreSQL                           |
-| Queue leases and short-lived coordination       | Redis                                |
-| Reports and dashboards                          | ClickHouse                           |
-| SDK or Connector retry buffer                   | Local SQLite spool beside the caller |
+| Data                                             | Authority                            |
+| ------------------------------------------------ | ------------------------------------ |
+| Model catalog, cost rules, rates, policies, keys | PostgreSQL                           |
+| Rating decisions, quota, reservations, journals  | PostgreSQL                           |
+| Queue leases and short-lived coordination        | Redis                                |
+| Reports and dashboards                           | ClickHouse                           |
+| SDK or Connector retry buffer                    | Local SQLite spool beside the caller |
 
 Reports do not fall back to PostgreSQL. A ClickHouse failure is visible as an unavailable report,
 which is safer than returning a different or incomplete number.

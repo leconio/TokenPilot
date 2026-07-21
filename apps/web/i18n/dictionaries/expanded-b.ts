@@ -108,7 +108,6 @@ export const expandedTranslationsB = {
   "此功能尚未启用，请先在设置中开启。": "This feature is not enabled. Enable it in Settings first.",
   "每个虚拟模型维护一套默认和条件策略。":
     "Each virtual model has its own default and conditional routing.",
-  每次请求成本: "Cost per request",
   没有可用候选: "No available candidates",
   "没有条件命中时使用。": "Used when no condition matches.",
   沿用: "Inherit",

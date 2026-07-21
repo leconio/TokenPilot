@@ -51,8 +51,10 @@ runtime.
 Open **Models → Real models** and add a model on the connection. Its request name is the exact model
 identifier expected by the Provider. Add a second real model if you want to exercise fallback.
 
-For each real model, publish Provider cost and AI Unit rates for the usage lines you expect. Input,
-output, cache, reasoning, image, audio, and other supported units can use different rates.
+For each real model, publish its AI Unit rates. Provider amounts reported by the SDK or Connector
+need no price setup. If a caller cannot report cost, add ordered fallback rules and match them by
+built-in fields or typed properties. A fallback can combine a fixed call amount with per-unit input,
+output, cache, reasoning, image, audio, or custom amounts.
 
 ## 4. Create and publish a virtual model
 

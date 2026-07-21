@@ -31,6 +31,7 @@ from ai_control_sdk import (
     RecordUsageInput,
     RuntimeRouteContext,
     RuntimeSnapshot,
+    SourceCost,
     ai_context,
     resolve_runtime_route,
     with_aiu_reservation,
@@ -254,6 +255,7 @@ def test_manual_usage_requires_governed_model_and_caller_idempotency_ids(tmp_pat
                 model="text.fast",
                 model_id="model-primary",
                 latency_ms=42,
+                source_cost=SourceCost(amount="0.0125", currency="USD"),
                 usage={
                     "uncached_input_tokens": "6",
                     "output_tokens": "2",
@@ -265,6 +267,11 @@ def test_manual_usage_requires_governed_model_and_caller_idempotency_ids(tmp_pat
     assert event["request"]["operation_id"] == "manual-operation-1"
     assert event["model"]["connection_id"] == "connection-primary"
     assert event["route"]["reason"] == "manual"
+    assert event["source_cost"] == {
+        "amount": "0.0125",
+        "currency": "USD",
+        "is_estimated": False,
+    }
     assert event["privacy"] == {"contains_prompt": False, "contains_response": False}
     assert batches[0]["events"] == [event]
 

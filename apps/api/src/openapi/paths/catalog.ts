@@ -114,18 +114,35 @@ const virtualModel = object(
     rules: array({ type: "object", additionalProperties: true }),
   },
 );
-const rates = object(["model", "cost", "aiu"], {
+const rates = object(["model", "cost_currency", "cost", "aiu"], {
   model,
+  cost_currency: { type: "string", minLength: 3, maxLength: 3 },
   cost: nullable({ type: "object", additionalProperties: true }),
   aiu: nullable({ type: "object", additionalProperties: true }),
 });
-const pricingInput = object([], {
-  request: nullable({ type: "string" }),
+const aiuPricingInput = object([], {
   input_per_million: nullable({ type: "string" }),
   cache_read_per_million: nullable({ type: "string" }),
   cache_write_per_million: nullable({ type: "string" }),
   output_per_million: nullable({ type: "string" }),
   reasoning_per_million: nullable({ type: "string" }),
+});
+const costRulesInput = object(["rules"], {
+  rules: array(
+    object(["name", "match", "conditions", "rates"], {
+      name: { type: "string", minLength: 1, maxLength: 120 },
+      match: { type: "string", enum: ["all", "any"] },
+      conditions: array({ type: "object", additionalProperties: true }),
+      fixed_amount: nullable({ type: "string" }),
+      rates: array(
+        object(["usage_type", "amount_per_unit"], {
+          usage_type: { type: "string" },
+          unit_key: { type: "string" },
+          amount_per_unit: { type: "string" },
+        }),
+      ),
+    }),
+  ),
 });
 
 export const CATALOG_OPERATION_CONTRACTS: Readonly<Record<string, OperationContract>> = {
@@ -207,16 +224,16 @@ export const CATALOG_OPERATION_CONTRACTS: Readonly<Record<string, OperationContr
   },
   "GET /applications/{applicationSlug}/models/{id}/rates": {
     parameters: [application(), id("id")],
-    success: success("200", rates, "Current model cost and AIU rates."),
+    success: success("200", rates, "Current model cost rules and AIU rates."),
   },
-  "PUT /applications/{applicationSlug}/models/{id}/cost": {
+  "PUT /applications/{applicationSlug}/models/{id}/cost-rules": {
     parameters: [application(), id("id")],
-    requestBody: body(pricingInput),
-    success: success("200", rates, "Model cost published."),
+    requestBody: body(costRulesInput),
+    success: success("200", rates, "Conditional model cost rules published."),
   },
   "PUT /applications/{applicationSlug}/models/{id}/aiu": {
     parameters: [application(), id("id")],
-    requestBody: body(pricingInput),
+    requestBody: body(aiuPricingInput),
     success: success("200", rates, "Model AIU rates published."),
   },
   "GET /applications/{applicationSlug}/virtual-models": {
