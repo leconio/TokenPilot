@@ -33,7 +33,7 @@ export const WEB_OPERATION_CONTRACTS: Readonly<Record<string, OperationContract>
     ),
     success: success(
       "201",
-      object(["initialized", "user", "application", "expires_at", "csrf_token"], {
+      object(["initialized", "user", "application", "access_key", "expires_at", "csrf_token"], {
         initialized: { type: "boolean", enum: [true] },
         user: object(["id", "name", "email"], {
           id: { type: "string" },
@@ -44,6 +44,15 @@ export const WEB_OPERATION_CONTRACTS: Readonly<Record<string, OperationContract>
           id: { type: "string" },
           name: { type: "string" },
           slug: { type: "string" },
+        }),
+        access_key: object(["id", "key_prefix", "api_key"], {
+          id: { type: "string" },
+          key_prefix: { type: "string" },
+          api_key: {
+            type: "string",
+            writeOnly: true,
+            description: "Initial application access key. Displayed once.",
+          },
         }),
         expires_at: DATE_TIME,
         csrf_token: { type: "string", readOnly: true },

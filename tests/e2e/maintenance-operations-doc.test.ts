@@ -9,7 +9,7 @@ describe("maintenance operations runbook", () => {
 
     expect(deployment).toContain("docker compose up -d --build --wait");
     expect(deployment).toContain("docker compose down --volumes --remove-orphans");
-    expect(runbook).toContain("Never restore into the active project");
+    expect(runbook).toContain("not the active project");
     expect(runbook).toContain("new isolated Compose project");
   });
 
@@ -18,7 +18,7 @@ describe("maintenance operations runbook", () => {
     const deployment = await readFile("docs/deployment.md", "utf8");
 
     expect(deployment).toContain("CADDY_BIND_ADDRESS=127.0.0.1");
-    expect(deployment).toContain("Never publish ports 5432, 6379, 8123, or 9000");
+    expect(deployment).toContain("Do not publish ports 5432, 6379, 8123, or 9000");
     expect(runbook).toContain("This retains volumes");
   });
 

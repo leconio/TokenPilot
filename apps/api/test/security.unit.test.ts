@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { hashApplicationApiKey, type DatabaseClient } from "@tokenpilot/db";
 
-import type { ApiConfiguration } from "../src/api-config.js";
+import { shouldSendStrictTransportSecurity, type ApiConfiguration } from "../src/api-config.js";
 import { AuditService } from "../src/audit.service.js";
 import { ApiKeyScopeGuard } from "../src/auth.js";
 import { RateLimitExceededException } from "../src/rate-limit.js";
@@ -71,6 +71,24 @@ class FakeRedis {
 }
 
 describe("security boundaries", () => {
+  it("sends HSTS only for a production HTTPS origin", () => {
+    expect(
+      shouldSendStrictTransportSecurity({
+        ...configuration,
+        environment: "production",
+        webBaseUrl: "https://control.example.test",
+      }),
+    ).toBe(true);
+    expect(
+      shouldSendStrictTransportSecurity({
+        ...configuration,
+        environment: "production",
+        webBaseUrl: "http://192.168.51.207:15000",
+      }),
+    ).toBe(false);
+    expect(shouldSendStrictTransportSecurity(configuration)).toBe(false);
+  });
+
   it("marks Web session cookies secure only when the public origin uses HTTPS", () => {
     const plainHttp = new WebAuthService(
       {} as DatabaseClient,

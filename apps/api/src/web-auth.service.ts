@@ -8,37 +8,18 @@ import {
 } from "node:crypto";
 import { promisify } from "node:util";
 
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { z } from "zod";
 import type { Redis } from "ioredis";
 
-import {
-  ApplicationRole,
-  Prisma,
-  applicationPermissionsForWrite,
-  applicationSlugBase,
-  type DatabaseClient,
-} from "@tokenpilot/db";
+import type { DatabaseClient } from "@tokenpilot/db";
 
 import type { ApiConfiguration } from "./api-config.js";
-import { normalizeAuditIp } from "./audit-context.js";
 import { RateLimitExceededException } from "./rate-limit.js";
 import { API_CONFIGURATION, DATABASE_CLIENT, REDIS_CLIENT } from "./tokens.js";
+import { initializeWebSetup } from "./web-auth-setup.js";
 
 const scrypt = promisify(scryptCallback);
-const initializeSchema = z.strictObject({
-  name: z.string().min(1).max(120),
-  email: z.string().email().max(320),
-  password: z.string().min(12).max(256),
-  application_name: z.string().trim().min(1).max(120),
-});
 const loginSchema = z.strictObject({
   email: z.string().email().max(320),
   password: z.string().min(1).max(256),
@@ -66,12 +47,6 @@ export function cookies(header: string | undefined): Record<string, string> {
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
-}
-
-async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16);
-  const derived = (await scrypt(password, salt, 64)) as Buffer;
-  return `scrypt$${salt.toString("base64url")}$${derived.toString("base64url")}`;
 }
 
 async function verifyPassword(password: string, encoded: string): Promise<boolean> {
@@ -108,77 +83,8 @@ export class WebAuthService {
     };
   }
 
-  async initialize(input: unknown, ipAddress?: string) {
-    const parsed = initializeSchema.safeParse(input);
-    if (!parsed.success) throw new BadRequestException("Invalid setup request");
-    const value = parsed.data;
-    const password = await hashPassword(value.password);
-    const normalizedIp = normalizeAuditIp(ipAddress);
-    try {
-      return await this.database.$transaction(
-        async (transaction) => {
-          if ((await transaction.user.count()) !== 0) {
-            throw new ConflictException("Setup is already complete");
-          }
-          const user = await transaction.user.create({
-            data: {
-              id: randomUUID(),
-              name: value.name,
-              email: value.email.toLowerCase(),
-              emailVerified: true,
-            },
-          });
-          await transaction.account.create({
-            data: {
-              id: randomUUID(),
-              accountId: user.email,
-              providerId: "credential",
-              userId: user.id,
-              password,
-            },
-          });
-          const application = await transaction.application.create({
-            data: {
-              name: value.application_name,
-              slug: applicationSlugBase(value.application_name),
-              timezone: this.configuration.timezone,
-              baseCurrency: this.configuration.baseCurrency,
-              settings: { create: {} },
-              members: {
-                create: {
-                  userId: user.id,
-                  role: ApplicationRole.OWNER,
-                  permissions: applicationPermissionsForWrite(ApplicationRole.OWNER),
-                },
-              },
-            },
-          });
-          await transaction.auditLog.create({
-            data: {
-              actorId: `user:${user.id}`,
-              action: "setup.initialize",
-              objectType: "application",
-              objectId: application.id,
-              afterJson: { email: user.email, application_slug: application.slug },
-              reason: "Initial administrator setup",
-              ...(normalizedIp === undefined ? {} : { ip: normalizedIp }),
-            },
-          });
-          return {
-            initialized: true,
-            user: { id: user.id, name: user.name, email: user.email },
-            application: { id: application.id, name: application.name, slug: application.slug },
-          };
-        },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-      );
-    } catch (error) {
-      if (error instanceof ConflictException) throw error;
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        throw new ConflictException("Setup is already complete");
-      }
-      throw error;
-    }
+  async initialize(input: unknown, ipAddress?: string, userAgent?: string) {
+    return initializeWebSetup(this.database, this.configuration, input, ipAddress, userAgent);
   }
 
   async login(input: unknown, ipAddress?: string, userAgent?: string) {

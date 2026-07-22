@@ -217,7 +217,19 @@ export class ControlPlaneMock {
     this.users.set(slug, []);
     this.members.set(slug, []);
     this.setupRequired = false;
-    return json(route, { initialized: true, application: this.applications[0] }, 201);
+    return json(
+      route,
+      {
+        initialized: true,
+        application: this.applications[0],
+        access_key: {
+          id: "key-initial",
+          key_prefix: `tp_live_${slug}`,
+          api_key: `tp_live_${slug}_initial_application_access`,
+        },
+      },
+      201,
+    );
   }
 
   private applicationCollection(route: Route, method: string, value: unknown) {

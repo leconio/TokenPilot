@@ -6,7 +6,7 @@ import { ulid } from "ulid";
 
 import { ApiErrorDto } from "@tokenpilot/contracts";
 
-import type { ApiConfiguration } from "./api-config.js";
+import { shouldSendStrictTransportSecurity, type ApiConfiguration } from "./api-config.js";
 import { AuditContextService } from "./audit-context.js";
 import { ApiExceptionFilter } from "./api-exception.filter.js";
 import { ApiModule } from "./api.module.js";
@@ -149,7 +149,7 @@ export async function createApiApplication(
     void reply.header("referrer-policy", "no-referrer");
     void reply.header("content-security-policy", "default-src 'none'; frame-ancestors 'none'");
     void reply.header("permissions-policy", "camera=(), microphone=(), geolocation=()");
-    if (configuration.environment === "production") {
+    if (shouldSendStrictTransportSecurity(configuration)) {
       void reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
     }
     done(null, payload);

@@ -14,12 +14,7 @@ test("首次配置创建管理员、首个应用和一枚应用接入密钥", as
   await expect(page.getByRole("heading", { name: "配置已完成" })).toBeVisible();
   await expect(page.getByLabel("应用接入密钥 key")).toHaveValue(/tp_live_knowledge/u);
   const keyCalls = mock.callsFor("POST", "/applications/knowledge/service-api-keys");
-  expect(keyCalls).toHaveLength(1);
-  expect(keyCalls[0]?.body).toEqual({
-    name: "应用接入",
-    scopes: ["usage:write", "connector:heartbeat", "runtime:read", "runtime:write", "runtime:ack"],
-    reason: "首次配置创建应用接入密钥",
-  });
+  expect(keyCalls).toHaveLength(0);
   await page.getByRole("button", { name: "进入应用" }).click();
   await expect(page).toHaveURL(/\/apps\/knowledge\/dashboard/u);
 });

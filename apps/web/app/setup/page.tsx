@@ -32,7 +32,6 @@ export default function SetupPage() {
     applicationSlug: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [creatingKeys, setCreatingKeys] = useState(false);
   const [storageHealth, setStorageHealth] = useState<RequiredDatastoreHealth | null>(null);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const form = useForm<SetupForm>({
@@ -71,28 +70,16 @@ export default function SetupPage() {
   async function initialize(value: SetupForm) {
     setError(null);
     try {
-      const initialized = await postJson<{ application: { slug: string } }>(
-        "/web/setup/initialize",
-        value,
-      );
-      setCreatingKeys(true);
-      const keysPath = `/applications/${initialized.application.slug}/service-api-keys`;
-      const access = await postJson<IssuedKey>(keysPath, {
-        name: "应用接入",
-        scopes: [
-          "usage:write",
-          "connector:heartbeat",
-          "runtime:read",
-          "runtime:write",
-          "runtime:ack",
-        ],
-        reason: "首次配置创建应用接入密钥",
+      const initialized = await postJson<{
+        application: { slug: string };
+        access_key: IssuedKey;
+      }>("/web/setup/initialize", value);
+      setIssued({
+        access: initialized.access_key,
+        applicationSlug: initialized.application.slug,
       });
-      setIssued({ access, applicationSlug: initialized.application.slug });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "初始化失败");
-    } finally {
-      setCreatingKeys(false);
     }
   }
 
@@ -162,7 +149,12 @@ export default function SetupPage() {
           )}
           {storageUnavailable || storageHealth === null || status === null ? null : issued ===
             null ? (
-            <form className="form-grid" onSubmit={form.handleSubmit(initialize)}>
+            <form
+              className="form-grid"
+              onSubmit={form.handleSubmit(initialize, () => {
+                setError("请检查表单中的提示后重试。");
+              })}
+            >
               <div className="field">
                 <Label htmlFor="application_name">应用名称</Label>
                 <Input id="application_name" {...form.register("application_name")} />
@@ -199,12 +191,8 @@ export default function SetupPage() {
                 <ShieldCheck size={15} style={{ verticalAlign: "text-bottom", marginRight: 7 }} />
                 完成后，首次配置入口会自动关闭。
               </div>
-              <Button
-                className="w-full"
-                type="submit"
-                disabled={form.formState.isSubmitting || creatingKeys}
-              >
-                {form.formState.isSubmitting || creatingKeys ? "正在创建…" : "创建管理员"}
+              <Button className="w-full" type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "正在创建…" : "创建管理员"}
               </Button>
             </form>
           ) : (

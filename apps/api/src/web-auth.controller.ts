@@ -28,21 +28,22 @@ export class WebAuthController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     this.auth.assertPreAuthOrigin(request.headers.origin, request.headers["sec-fetch-site"]);
-    const initialized = await this.auth.initialize(body, request.ip);
-    const credentials = body as { email: string; password: string };
-    const session = await this.auth.login(
-      { email: credentials.email, password: credentials.password },
-      request.ip,
-      request.headers["user-agent"],
-    );
+    const initialized = await this.auth.initialize(body, request.ip, request.headers["user-agent"]);
     void reply.header(
       "set-cookie",
-      this.auth.cookieHeaders(session.token, session.csrf, session.expiresAt),
+      this.auth.cookieHeaders(
+        initialized.session.token,
+        initialized.session.csrf,
+        initialized.session.expiresAt,
+      ),
     );
     return {
-      ...initialized,
-      expires_at: session.expiresAt.toISOString(),
-      csrf_token: session.csrf,
+      initialized: initialized.initialized,
+      user: initialized.user,
+      application: initialized.application,
+      access_key: initialized.access_key,
+      expires_at: initialized.session.expiresAt.toISOString(),
+      csrf_token: initialized.session.csrf,
     };
   }
 

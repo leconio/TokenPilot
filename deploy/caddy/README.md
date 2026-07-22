@@ -8,7 +8,8 @@ container listens on unprivileged port `8080`, runs as UID/GID 1000 with every L
 dropped, and exposes `/healthz` for the Compose health check.
 
 The default listener is plain HTTP so it can run behind an existing TLS load balancer. It deliberately
-omits HSTS and `upgrade-insecure-requests`, because either header breaks direct HTTP access. Terminate
-TLS before production traffic reaches the host; add those headers only when the public origin is HTTPS.
+omits HSTS, Cross-Origin-Opener-Policy, and `upgrade-insecure-requests`, because those headers require
+HTTPS or are not useful on a plain HTTP LAN origin. Terminate TLS before production traffic reaches
+the host; add the HTTPS-only headers at the TLS ingress.
 To let Caddy manage public certificates directly, replace `CADDY_ADDRESS` with the HTTPS hostname,
 remove `auto_https off`, expose 443, and persist the existing `caddy-data` volume.

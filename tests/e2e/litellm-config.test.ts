@@ -164,6 +164,7 @@ describe("LiteLLM production and key-free demo configuration", () => {
       demoEnvironment,
       callbackShim,
       setupPage,
+      setupService,
       realStackFixtures,
       realStackVerification,
       runtimeDockerfile,
@@ -174,6 +175,7 @@ describe("LiteLLM production and key-free demo configuration", () => {
       readFile(new URL("deploy/litellm/demo.env", root), "utf8"),
       readFile(new URL("deploy/litellm/ai_control_callback.py", root), "utf8"),
       readFile(new URL("apps/web/app/setup/page.tsx", root), "utf8"),
+      readFile(new URL("apps/api/src/web-auth-setup.ts", root), "utf8"),
       readFile(new URL("apps/web/e2e/real-stack-fixtures.ts", root), "utf8"),
       readFile(new URL("apps/web/e2e/real-stack-verification.ts", root), "utf8"),
       readFile(new URL("deploy/docker/LiteLLM.Dockerfile", root), "utf8"),
@@ -237,7 +239,7 @@ describe("LiteLLM production and key-free demo configuration", () => {
     expect(realStackVerification).toContain("trace_id: traceId");
     expect(realStackVerification).not.toContain("business_request_id");
     expect(setupPage).toContain("TOKENPILOT_RUNTIME_KEY=${issued.access.api_key}");
-    expect(setupPage).toContain("setIssued({ access");
+    expect(setupPage).toContain("access: initialized.access_key");
     for (const scope of [
       "usage:write",
       "connector:heartbeat",
@@ -245,7 +247,7 @@ describe("LiteLLM production and key-free demo configuration", () => {
       "runtime:write",
       "runtime:ack",
     ]) {
-      expect(setupPage).toContain(`"${scope}"`);
+      expect(setupService).toContain(`"${scope}"`);
     }
     expect(setupPage).not.toContain("issued.ingest");
     expect(setupPage).not.toContain("issued.policy");

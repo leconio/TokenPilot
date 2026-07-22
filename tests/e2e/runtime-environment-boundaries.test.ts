@@ -82,5 +82,12 @@ describe("Compose runtime environment boundaries", () => {
     expect(controlRoute).toContain(
       'process.env.API_INTERNAL_URL ?? process.env.API_BASE_URL ?? "http://127.0.0.1:4000"',
     );
+    expect(controlRoute).toContain("controlProxyRequestHeaders(request.url, request.headers)");
+  });
+
+  it("does not send trust-required browser headers from the plain HTTP ingress", async () => {
+    const caddy = await readFile(new URL("deploy/caddy/Caddyfile", root), "utf8");
+    expect(caddy).not.toContain("Cross-Origin-Opener-Policy");
+    expect(caddy).not.toContain("Strict-Transport-Security");
   });
 });

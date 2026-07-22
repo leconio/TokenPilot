@@ -40,6 +40,7 @@ export const systemTranslations = {
   保存模型并完成配置: "Save model and finish setup",
   无法读取实例: "Could not load this instance",
   初始化失败: "Setup failed",
+  "请检查表单中的提示后重试。": "Check the highlighted fields and try again.",
   无法创建首个模型映射: "Could not create the first model mapping",
   "确认当前实例是否已经完成首次配置。": "Check whether this instance has completed setup.",
   额度规则: "Quota policies",

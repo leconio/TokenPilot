@@ -36,6 +36,13 @@ export interface ApiConfiguration {
   readonly connectorBacklogAlertDepth: number;
 }
 
+export function shouldSendStrictTransportSecurity(configuration: ApiConfiguration): boolean {
+  return (
+    configuration.environment === "production" &&
+    new URL(configuration.webBaseUrl).protocol === "https:"
+  );
+}
+
 export function toApiConfiguration(environment: Environment): ApiConfiguration {
   return {
     instanceId: environment.INSTANCE_ID,
